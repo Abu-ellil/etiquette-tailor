@@ -13,6 +13,7 @@ interface LoginProps {
 
 export default function LoginPage({ onLogin }: LoginProps) {
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -22,7 +23,10 @@ export default function LoginPage({ onLogin }: LoginProps) {
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setError('');
-      const session = await window.electronAPI.auth.login({ username: data.username, password: data.password });
+      const session = await window.electronAPI.auth.login({
+        username: data.username,
+        password: data.password,
+      });
       if (session) {
         onLogin(session);
       } else {
@@ -34,52 +38,132 @@ export default function LoginPage({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm p-8 bg-white rounded-xl shadow-lg">
-        <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">
-          Etiquette Tailor
-        </h1>
-        <p className="text-sm text-center text-gray-500 mb-8">
-          Sign in to your account
-        </p>
+    <div className="min-h-screen flex items-center justify-center p-6"
+      style={{
+        backgroundColor: '#f8f9fa',
+        backgroundImage: 'radial-gradient(#d1c2d2 0.5px, transparent 0.5px)',
+        backgroundSize: '24px 24px',
+      }}
+    >
+      <main className="w-full max-w-md">
+        {/* Brand Identity Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white shadow-[0px_20px_40px_rgba(25,28,29,0.06)] mb-6">
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: '2.5rem' }}>
+              straighten
+            </span>
+          </div>
+          <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface mb-2">
+            Etiquette Tailor
+          </h1>
+          <p className="text-secondary text-sm tracking-wide">
+            Bespoke Studio
+          </p>
+        </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
+        {/* Login Card */}
+        <div className="bg-surface-container-lowest rounded-xl p-10 shadow-[0px_20px_40px_rgba(25,28,29,0.06)] border border-outline-variant/10">
+          {error && (
+            <div className="mb-6 p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium text-center">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Username
-            </label>
-            <input
-              {...register('username', { required: 'Username is required' })}
-              type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              autoComplete="username"
-            />
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            {/* Username Field */}
+            <div className="relative group">
+              <label
+                className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
+                htmlFor="username"
+              >
+                Username
+              </label>
+              <div className="relative flex items-center">
+                <span className="material-symbols-outlined absolute left-4 text-outline">
+                  person
+                </span>
+                <input
+                  {...register('username', { required: 'Username is required' })}
+                  id="username"
+                  type="text"
+                  className="input-field pl-12"
+                  placeholder="Workshop ID or Email"
+                  autoComplete="username"
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="relative group">
+              <div className="flex justify-between items-center mb-2 px-1">
+                <label
+                  className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary"
+                  htmlFor="password"
+                >
+                  Password
+                </label>
+              </div>
+              <div className="relative flex items-center">
+                <span className="material-symbols-outlined absolute left-4 text-outline">
+                  lock
+                </span>
+                <input
+                  {...register('password', { required: 'Password is required' })}
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="input-field pl-12 pr-12"
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="absolute right-4 text-outline hover:text-primary transition-colors"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                >
+                  <span className="material-symbols-outlined">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Login Button */}
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn-primary w-full h-14 rounded-lg font-headline font-bold text-lg flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Signing in...' : 'Sign In'}
+                {!isSubmitting && (
+                  <span className="material-symbols-outlined">arrow_forward</span>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <footer className="mt-12 text-center">
+          <div className="flex items-center justify-center gap-6 mb-4">
+            <span className="h-px w-8 bg-outline-variant/40" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-outline/60">
+              Bespoke Security Standards
+            </p>
+            <span className="h-px w-8 bg-outline-variant/40" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              {...register('password', { required: 'Password is required' })}
-              type="password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              autoComplete="current-password"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-2.5 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {isSubmitting ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
+          <p className="text-[11px] text-secondary/60 font-medium">
+            &copy; 2024 Etiquette Tailor System. All rights reserved.
+          </p>
+        </footer>
+      </main>
+
+      {/* Visual Accent Element */}
+      <div className="fixed bottom-0 right-0 p-12 opacity-5 pointer-events-none hidden lg:block">
+        <span className="material-symbols-outlined text-primary" style={{ fontSize: '20rem' }}>
+          straighten
+        </span>
       </div>
     </div>
   );

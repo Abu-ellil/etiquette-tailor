@@ -4,9 +4,13 @@ import LoginPage from './pages/Login';
 import DashboardPage from './pages/Dashboard';
 import CustomersPage from './pages/Customers';
 import OrdersPage from './pages/Orders';
-import MyTasksPage from './pages/MyTasks';
+import NewOrderPage from './pages/NewOrder';
+import MeasurementsPage from './pages/Measurements';
 import WorkersPage from './pages/Workers';
-import SettingsPage from './pages/Settings';
+import WorkerPayRatesPage from './pages/WorkerPayRates';
+import ReportsPage from './pages/Reports';
+import InvoicePage from './pages/Invoice';
+import BackupPage from './pages/Backup';
 import AppLayout from './components/AppLayout';
 
 export interface Session {
@@ -19,10 +23,10 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/my-tasks', '/workers', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/workers'],
-  reception: ['/dashboard', '/customers', '/orders'],
-  worker: ['/dashboard', '/my-tasks'],
+  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/reports', '/backup'],
+  manager: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/reports'],
+  reception: ['/dashboard', '/customers', '/measurements', '/orders'],
+  worker: ['/dashboard'],
 };
 
 function ProtectedRoute({
@@ -54,8 +58,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-gray-500 text-lg">Loading...</div>
+      <div className="flex items-center justify-center h-screen bg-surface">
+        <div className="text-on-surface-variant text-lg">Loading...</div>
       </div>
     );
   }
@@ -101,6 +105,14 @@ export default function App() {
             }
           />
           <Route
+            path="measurements"
+            element={
+              <ProtectedRoute path="/measurements" session={session}>
+                <MeasurementsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="orders"
             element={
               <ProtectedRoute path="/orders" session={session}>
@@ -109,10 +121,10 @@ export default function App() {
             }
           />
           <Route
-            path="my-tasks"
+            path="orders/new"
             element={
-              <ProtectedRoute path="/my-tasks" session={session}>
-                <MyTasksPage />
+              <ProtectedRoute path="/orders" session={session}>
+                <NewOrderPage />
               </ProtectedRoute>
             }
           />
@@ -125,10 +137,34 @@ export default function App() {
             }
           />
           <Route
-            path="settings"
+            path="worker-rates"
             element={
-              <ProtectedRoute path="/settings" session={session}>
-                <SettingsPage />
+              <ProtectedRoute path="/worker-rates" session={session}>
+                <WorkerPayRatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="reports"
+            element={
+              <ProtectedRoute path="/reports" session={session}>
+                <ReportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="invoice/:id"
+            element={
+              <ProtectedRoute path="/orders" session={session}>
+                <InvoicePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="backup"
+            element={
+              <ProtectedRoute path="/backup" session={session}>
+                <BackupPage />
               </ProtectedRoute>
             }
           />
