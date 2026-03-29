@@ -163,7 +163,7 @@ export default function CustomersPage() {
   return (
     <div className="space-y-10">
       {/* ── Header ── */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
           <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
             Customers
@@ -203,7 +203,7 @@ export default function CustomersPage() {
       </div>
 
       {/* ── Customer Table ── */}
-      <div className="bg-surface-container-lowest overflow-hidden rounded-xl">
+      <div className="bg-surface-container-lowest overflow-x-auto rounded-xl">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
@@ -309,7 +309,7 @@ export default function CustomersPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-content w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="px-8 py-10">
+              <div className="px-4 py-6 md:px-8 md:py-10">
                 {/* Modal Header */}
                 <div className="flex justify-between items-start mb-10">
                   <div>

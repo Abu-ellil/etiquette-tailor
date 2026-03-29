@@ -258,7 +258,7 @@ export default function WorkersPage() {
   return (
     <div className="space-y-10">
       {/* ---- Header ---- */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
             Workers
@@ -324,7 +324,7 @@ export default function WorkersPage() {
       </div>
 
       {/* ---- Workers Table ---- */}
-      <div className="bg-surface-container-lowest rounded-2xl overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-2xl overflow-x-auto overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined animate-spin mr-2">
@@ -463,7 +463,7 @@ export default function WorkersPage() {
               className="modal-content w-full max-w-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-8 py-8">
+              <div className="px-4 py-6 md:px-8 md:py-8">
                 {/* Modal Header */}
                 <div className="flex justify-between items-start mb-8">
                   <div className="flex items-center gap-4">

@@ -237,7 +237,7 @@ export default function OrdersPage() {
   return (
     <div className="space-y-8">
       {/* ---- Header ---- */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h2 className="text-4xl font-bold tracking-tight text-on-surface mb-2 font-headline">
             Orders Registry
@@ -273,7 +273,7 @@ export default function OrdersPage() {
       </div>
 
       {/* ---- Filter Tabs ---- */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -299,7 +299,7 @@ export default function OrdersPage() {
       </div>
 
       {/* ---- Table ---- */}
-      <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-[0px_20px_40px_rgba(25,28,29,0.06)]">
+      <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-[0px_20px_40px_rgba(25,28,29,0.06)] overflow-x-auto">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>

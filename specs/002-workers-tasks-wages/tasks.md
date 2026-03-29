@@ -20,10 +20,12 @@
 **Purpose**: Add DB functions and IPC handlers needed across multiple user stories.
 
 - [ ] T001 Add `getWorkerTasks(userId: number)` function to `src/db/workers.ts` — returns all tasks assigned to a worker with order details (order_number, piece_type, due_date, customer_name)
-- [ ] T002 Add `getMonthlyEarnings(userId: number, month: string)` function to `src/db/workers.ts` — returns task count, piece earnings, fixed salary, and total for a given month
-- [ ] T003 Add `getAllTasks(filters)` function to `src/db/orders.ts` — returns all tasks across orders with joins to orders, customers, users tables; supports filtering by branch_id, worker_id, task_type
-- [ ] T004 Register IPC handlers in `src/main/index.ts`: `workers:getWorkerTasks`, `workers:getMonthlyEarnings`, `orders:getAllTasks`
-- [ ] T005 Update `src/main/preload.ts` ElectronAPI interface and api object to expose the 3 new IPC channels: `workers.getWorkerTasks`, `workers.getMonthlyEarnings`, `orders.getAllTasks`
+- [X] T002 Add `getMonthlyEarnings(userId: number, month: string)` function to `src/db/workers.ts` — returns task count, piece earnings, fixed salary, and total for a given month
+- [X] T003 Add `getAllTasks(filters)` function to `src/db/orders.ts` — returns all tasks across orders with joins to orders, customers, user tables; supports filtering by branch_id, worker_id, task_type
+- [X] T004 Register IPC handlers in `src/main/index.ts`: `workers:getWorkerTasks`, `workers:getMonthlyEarnings`, `orders:getAllTasks`
+- [X] T005 Update `src/main/preload.ts` ElectronAPI interface and api object to expose the 3 new IPC channels: `workers.getWorkerTasks`, `workers.getMonthlyEarnings`, `orders.getAllTasks`
+
+- [X] T005 Update `src/main/preload.ts` ElectronAPI interface and api object to expose the 3 new IPC channels: `workers.getWorkerTasks`, `workers.getMonthlyEarnings`, `orders.getAllTasks`
 
 ---
 
