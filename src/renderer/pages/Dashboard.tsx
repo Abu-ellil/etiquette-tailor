@@ -106,9 +106,10 @@ export default function DashboardPage() {
         setStats(statsData);
         // Show the 5 most recent orders
         setOrders((ordersData || []).slice(0, 5));
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Failed to load dashboard data:', err);
-        setError('Failed to load dashboard data. Please try again.');
+        const message = err instanceof Error ? err.message : 'Failed to load dashboard data. Please try again.';
+        setError(message);
       } finally {
         setLoading(false);
       }

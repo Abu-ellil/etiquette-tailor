@@ -145,10 +145,37 @@ export function initializeSchema() {
     seedDatabase();
   }
 
+  // Migrations: add missing columns to existing tables
+  migrateColumns();
+
   // Migration: Fix plain text passwords
   migratePasswords();
 
   console.log('Database schema initialized successfully');
+}
+
+function migrateColumns() {
+  const tables: Record<string, string[]> = {};
+
+  // Get existing columns for each table
+  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates']) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    tables[table] = cols.map((c) => c.name);
+  }
+
+  // Add missing columns
+  const migrations: [string, string, string][] = [
+    ['orders', 'receive_date', 'DATE'],
+    ['orders', 'delivery_date', 'DATE'],
+    ['orders', 'created_by', 'INTEGER REFERENCES users(id)'],
+  ];
+
+  for (const [table, column, def] of migrations) {
+    if (!tables[table]?.includes(column)) {
+      console.log(`Migrating: ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+    }
+  }
 }
 
 function migratePasswords() {

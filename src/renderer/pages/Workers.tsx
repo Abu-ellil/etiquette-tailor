@@ -112,6 +112,7 @@ export default function WorkersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -181,6 +182,7 @@ export default function WorkersPage() {
   const closeModal = () => {
     setModalOpen(false);
     setEditingWorker(null);
+    setShowPassword(false);
     reset({
       name: '',
       username: '',
@@ -458,145 +460,256 @@ export default function WorkersPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div
-              className="modal-content w-full max-w-2xl"
+              className="modal-content w-full max-w-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-8 py-10">
+              <div className="px-8 py-8">
                 {/* Modal Header */}
-                <div className="flex justify-between items-start mb-10">
-                  <div>
-                    <h2 className="text-3xl font-headline font-extrabold text-on-surface tracking-tight">
-                      {editingWorker ? 'Edit Worker' : 'New Worker'}
-                    </h2>
-                    <p className="text-secondary text-sm mt-1">
-                      {editingWorker
-                        ? 'Update worker information and assignment.'
-                        : 'Add a new artisan to the Etiquette Studio team.'}
-                    </p>
+                <div className="flex justify-between items-start mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center text-white">
+                      <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        {editingWorker ? 'edit' : 'person_add'}
+                      </span>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-headline font-extrabold text-on-surface tracking-tight">
+                        {editingWorker ? 'Edit Worker' : 'New Worker'}
+                      </h2>
+                      <p className="text-secondary text-xs mt-0.5">
+                        {editingWorker
+                          ? 'Update worker information'
+                          : 'Add an artisan to the team'}
+                      </p>
+                    </div>
                   </div>
                   <button
                     onClick={closeModal}
-                    className="p-2 text-outline hover:text-on-surface transition-colors"
+                    className="p-2 text-outline hover:text-on-surface transition-colors rounded-lg hover:bg-surface-container-high"
                   >
                     <span className="material-symbols-outlined">close</span>
                   </button>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-                  {/* Name */}
-                  <div className="relative">
-                    <label className="absolute -top-2 left-4 px-1 bg-surface-container-lowest text-xs font-semibold text-secondary uppercase tracking-widest z-10">
-                      Full Name
-                    </label>
-                    <input
-                      {...register('name', { required: 'Name is required' })}
-                      type="text"
-                      className={`input-field ${errors.name ? 'border-b-error' : ''}`}
-                      placeholder="e.g. Ahmad Ali / أحمد علي"
-                    />
-                    {errors.name && (
-                      <p className="text-error text-xs mt-1 ml-4">{errors.name.message}</p>
-                    )}
-                  </div>
-
-                  {/* Username */}
-                  <div className="relative">
-                    <label className="absolute -top-2 left-4 px-1 bg-surface-container-lowest text-xs font-semibold text-secondary uppercase tracking-widest z-10">
-                      Username
-                    </label>
-                    <input
-                      {...register('username', {
-                        required: !editingWorker ? 'Username is required' : false,
-                      })}
-                      type="text"
-                      className={`input-field ${errors.username ? 'border-b-error' : ''}`}
-                      placeholder="Login username"
-                      disabled={!!editingWorker}
-                    />
-                    {errors.username && (
-                      <p className="text-error text-xs mt-1 ml-4">
-                        {errors.username.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Password */}
-                  <div className="relative">
-                    <label className="absolute -top-2 left-4 px-1 bg-surface-container-lowest text-xs font-semibold text-secondary uppercase tracking-widest z-10">
-                      {editingWorker ? 'New Password (leave blank to keep)' : 'Password'}
-                    </label>
-                    <input
-                      {...register('password', {
-                        required: !editingWorker ? 'Password is required' : false,
-                      })}
-                      type="password"
-                      className={`input-field ${errors.password ? 'border-b-error' : ''}`}
-                      placeholder={editingWorker ? 'Leave blank to keep current' : 'Minimum 6 characters'}
-                    />
-                    {errors.password && (
-                      <p className="text-error text-xs mt-1 ml-4">
-                        {errors.password.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Worker Type + Branch (side by side) */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="relative">
-                      <label className="absolute -top-2 left-4 px-1 bg-surface-container-lowest text-xs font-semibold text-secondary uppercase tracking-widest z-10">
-                        Specialty
-                      </label>
-                      <select {...register('worker_type')} className="input-field">
-                        <option value="tailor">Tailor</option>
-                        <option value="cutter">Cutter</option>
-                        <option value="designer">Designer</option>
-                      </select>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  {/* Section: Personal Info */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="material-symbols-outlined text-primary text-lg">badge</span>
+                      <span className="text-xs font-headline font-bold uppercase tracking-widest text-secondary">
+                        Personal Information
+                      </span>
                     </div>
 
-                    <div className="relative">
-                      <label className="absolute -top-2 left-4 px-1 bg-surface-container-lowest text-xs font-semibold text-secondary uppercase tracking-widest z-10">
-                        Branch
+                    {/* Full Name */}
+                    <div>
+                      <label
+                        className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
+                        htmlFor="worker-name"
+                      >
+                        Full Name
                       </label>
-                      <select {...register('branch_id', { valueAsNumber: true })} className="input-field">
-                        {branches.map((b: any) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name_en}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative flex items-center">
+                        <span className="material-symbols-outlined absolute left-4 text-outline">
+                          person
+                        </span>
+                        <input
+                          {...register('name', { required: 'Name is required' })}
+                          id="worker-name"
+                          type="text"
+                          className={`input-field pl-12 ${errors.name ? '!border-b-error' : ''}`}
+                          placeholder="e.g. Ahmad Ali / أحمد علي"
+                        />
+                      </div>
+                      {errors.name && (
+                        <p className="text-error text-xs mt-1 ml-1">{errors.name.message}</p>
+                      )}
+                    </div>
+
+                    {/* Username + Password side by side */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
+                          htmlFor="worker-username"
+                        >
+                          Username
+                        </label>
+                        <div className="relative flex items-center">
+                          <span className="material-symbols-outlined absolute left-4 text-outline">
+                            alternate_email
+                          </span>
+                          <input
+                            {...register('username', {
+                              required: !editingWorker ? 'Username is required' : false,
+                            })}
+                            id="worker-username"
+                            type="text"
+                            className={`input-field pl-12 ${errors.username ? '!border-b-error' : ''}`}
+                            placeholder="Login ID"
+                            disabled={!!editingWorker}
+                          />
+                        </div>
+                        {errors.username && (
+                          <p className="text-error text-xs mt-1 ml-1">{errors.username.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label
+                          className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
+                          htmlFor="worker-password"
+                        >
+                          {editingWorker ? 'New Password' : 'Password'}
+                        </label>
+                        <div className="relative flex items-center">
+                          <span className="material-symbols-outlined absolute left-4 text-outline">
+                            lock
+                          </span>
+                          <input
+                            {...register('password', {
+                              required: !editingWorker ? 'Password is required' : false,
+                            })}
+                            id="worker-password"
+                            type={showPassword ? 'text' : 'password'}
+                            className={`input-field pl-12 pr-12 ${errors.password ? '!border-b-error' : ''}`}
+                            placeholder={editingWorker ? 'Leave blank to keep' : 'Min 6 characters'}
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-4 text-outline hover:text-primary transition-colors"
+                            onClick={() => setShowPassword((v) => !v)}
+                            tabIndex={-1}
+                          >
+                            <span className="material-symbols-outlined">
+                              {showPassword ? 'visibility_off' : 'visibility'}
+                            </span>
+                          </button>
+                        </div>
+                        {errors.password && (
+                          <p className="text-error text-xs mt-1 ml-1">{errors.password.message}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Base Salary */}
-                  <div className="relative">
-                    <label className="absolute -top-2 left-4 px-1 bg-surface-container-lowest text-xs font-semibold text-secondary uppercase tracking-widest z-10">
-                      Base Salary (0 = piece-rate worker)
-                    </label>
-                    <input
-                      {...register('base_salary', { valueAsNumber: true })}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="input-field"
-                      placeholder="0.00"
-                    />
+                  {/* Divider */}
+                  <div className="h-px bg-outline-variant/20" />
+
+                  {/* Section: Work Details */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="material-symbols-outlined text-primary text-lg">work</span>
+                      <span className="text-xs font-headline font-bold uppercase tracking-widest text-secondary">
+                        Work Details
+                      </span>
+                    </div>
+
+                    {/* Specialty + Branch */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
+                          htmlFor="worker-type"
+                        >
+                          Specialty
+                        </label>
+                        <div className="relative flex items-center">
+                          <span className="material-symbols-outlined absolute left-4 text-outline">
+                            styler
+                          </span>
+                          <select
+                            {...register('worker_type')}
+                            id="worker-type"
+                            className="input-field pl-12 appearance-none"
+                          >
+                            <option value="tailor">Tailor</option>
+                            <option value="cutter">Cutter</option>
+                            <option value="designer">Designer</option>
+                          </select>
+                          <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
+                            expand_more
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label
+                          className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
+                          htmlFor="worker-branch"
+                        >
+                          Branch
+                        </label>
+                        <div className="relative flex items-center">
+                          <span className="material-symbols-outlined absolute left-4 text-outline">
+                            store
+                          </span>
+                          <select
+                            {...register('branch_id', { valueAsNumber: true })}
+                            id="worker-branch"
+                            className="input-field pl-12 appearance-none"
+                          >
+                            {branches.map((b: any) => (
+                              <option key={b.id} value={b.id}>
+                                {b.name_en}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
+                            expand_more
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Base Salary */}
+                    <div>
+                      <label
+                        className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
+                        htmlFor="worker-salary"
+                      >
+                        Base Salary
+                      </label>
+                      <div className="relative flex items-center">
+                        <span className="material-symbols-outlined absolute left-4 text-outline">
+                          payments
+                        </span>
+                        <input
+                          {...register('base_salary', { valueAsNumber: true })}
+                          id="worker-salary"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="input-field pl-12"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <p className="text-on-surface-variant text-[11px] mt-1.5 ml-1">
+                        Set to 0 for piece-rate workers
+                      </p>
+                    </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-end gap-4 pt-4">
+                  <div className="flex items-center justify-end gap-3 pt-2">
                     <button
                       type="button"
                       onClick={closeModal}
-                      className="px-8 py-4 text-sm font-semibold text-secondary hover:text-on-surface transition-colors"
+                      className="px-6 py-3 text-sm font-semibold text-secondary hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="btn-primary px-10 py-4 text-sm shadow-xl active:scale-95 transition-all disabled:opacity-50"
+                      className="btn-primary px-8 py-3 text-sm flex items-center gap-2 disabled:opacity-50"
                     >
+                      {isSubmitting && (
+                        <span className="material-symbols-outlined animate-spin text-base">
+                          progress_activity
+                        </span>
+                      )}
                       {isSubmitting
                         ? 'Saving...'
                         : editingWorker

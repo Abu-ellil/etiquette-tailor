@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { Session } from '../App';
+import TitleBar from '../components/TitleBar';
 
 interface LoginFormValues {
   username: string;
@@ -38,13 +39,18 @@ export default function LoginPage({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6"
+    <div className="flex flex-col h-screen"
       style={{
         backgroundColor: '#f8f9fa',
-        backgroundImage: 'radial-gradient(#d1c2d2 0.5px, transparent 0.5px)',
-        backgroundSize: '24px 24px',
       }}
     >
+      <TitleBar />
+      <div className="flex-1 flex items-center justify-center p-6"
+        style={{
+          backgroundImage: 'radial-gradient(#d1c2d2 0.5px, transparent 0.5px)',
+          backgroundSize: '24px 24px',
+        }}
+      >
       <main className="w-full max-w-md">
         {/* Brand Identity Section */}
         <div className="text-center mb-12">
@@ -154,7 +160,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
             <span className="h-px w-8 bg-outline-variant/40" />
           </div>
           <p className="text-[11px] text-secondary/60 font-medium">
-            &copy; 2024 Etiquette Tailor System. All rights reserved.
+            &copy; 2026 Etiquette Tailor System. All rights reserved.
           </p>
         </footer>
       </main>
@@ -164,6 +170,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
         <span className="material-symbols-outlined text-primary" style={{ fontSize: '20rem' }}>
           straighten
         </span>
+      </div>
       </div>
     </div>
   );
