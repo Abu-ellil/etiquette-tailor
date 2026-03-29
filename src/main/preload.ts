@@ -49,6 +49,13 @@ export interface ElectronAPI {
     reassignTask: (taskId: number, workerId: number) => Promise<any>;
     getStats: () => Promise<any>;
   };
+
+  window: {
+    minimize: () => Promise<void>;
+    maximize: () => Promise<void>;
+    close: () => Promise<void>;
+    isMaximized: () => Promise<boolean>;
+  };
 }
 
 const api: ElectronAPI = {
@@ -99,6 +106,13 @@ const api: ElectronAPI = {
     updateTaskStatus: (taskId, status) => ipcRenderer.invoke('orders:updateTaskStatus', taskId, status),
     reassignTask: (taskId, workerId) => ipcRenderer.invoke('orders:reassignTask', taskId, workerId),
     getStats: () => ipcRenderer.invoke('orders:getStats'),
+  },
+
+  window: {
+    minimize: () => ipcRenderer.invoke('window:minimize'),
+    maximize: () => ipcRenderer.invoke('window:maximize'),
+    close: () => ipcRenderer.invoke('window:close'),
+    isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   },
 };
 

@@ -47,8 +47,10 @@ if (started) {
   app.quit();
 }
 
+let mainWindow: BrowserWindow | null = null;
+
 const createWindow = () => {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     frame: false,
@@ -198,6 +200,17 @@ function registerIpcHandlers() {
   ipcMain.handle('orders:getStats', async (_event, branchId?: number) => {
     return getOrderStats(branchId);
   });
+
+  ipcMain.handle('window:minimize', () => mainWindow?.minimize());
+  ipcMain.handle('window:maximize', () => {
+    if (mainWindow?.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow?.maximize();
+    }
+  });
+  ipcMain.handle('window:close', () => mainWindow?.close());
+  ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
 }
 
 app.on('ready', () => {

@@ -1,6 +1,15 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import type { Session } from '../App';
+import TitleBar from './TitleBar';
+
+interface Session {
+  userId: number;
+  username: string;
+  name: string;
+  role: string;
+  branch_id: number;
+  worker_type?: string | null;
+}
 
 interface AppLayoutProps {
   session: Session;
@@ -8,19 +17,21 @@ interface AppLayoutProps {
 }
 
 const SIDEBAR_ITEMS = [
-  { path: '/dashboard', label: 'Dashboard' },
-  { path: '/customers', label: 'Customers' },
-  { path: '/orders', label: 'Orders' },
-  { path: '/my-tasks', label: 'My Tasks' },
-  { path: '/workers', label: 'Workers' },
-  { path: '/settings', label: 'Settings' },
+  { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { path: '/customers', label: 'Customers', icon: 'group' },
+  { path: '/measurements', label: 'Measurements', icon: 'straighten' },
+  { path: '/orders', label: 'Orders', icon: 'shopping_bag' },
+  { path: '/workers', label: 'Workers', icon: 'badge' },
+  { path: '/worker-rates', label: 'Worker Rates', icon: 'payments' },
+  { path: '/reports', label: 'Reports', icon: 'assessment' },
+  { path: '/backup', label: 'Backup', icon: 'settings_backup_restore' },
 ];
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/my-tasks', '/workers', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/workers'],
-  reception: ['/dashboard', '/customers', '/orders'],
-  worker: ['/dashboard', '/my-tasks'],
+  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/reports', '/backup'],
+  manager: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/reports'],
+  reception: ['/dashboard', '/customers', '/measurements', '/orders'],
+  worker: ['/dashboard'],
 };
 
 export default function AppLayout({ session, setSession }: AppLayoutProps) {
@@ -38,57 +49,97 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col shrink-0">
-        <div className="h-14 flex items-center px-5 border-b border-gray-200">
-          <h1 className="text-lg font-bold text-gray-900">Etiquette Tailor</h1>
-        </div>
-
-        <nav className="flex-1 py-3 px-3 space-y-1 overflow-y-auto">
-          {visibleItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === item.path
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="p-3 border-t border-gray-200 space-y-2">
-          <button
-            onClick={() => navigate('/orders')}
-            className="w-full py-2.5 px-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            + New Order
-          </button>
-          <button
-            onClick={handleLogout}
-            className="w-full py-2.5 px-3 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      </aside>
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
-          <div />
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{session.name}</span>
-            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full capitalize">
-              {session.role}
-            </span>
+    <div className="flex flex-col h-screen bg-surface">
+      <TitleBar />
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar */}
+        <aside className="h-full w-72 shrink-0 overflow-y-auto flex flex-col py-6 space-y-2 bg-gradient-to-r from-slate-50 to-slate-100">
+          {/* Logo */}
+          <div className="px-8 mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-white">
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  straighten
+                </span>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-slate-800 leading-tight font-headline">
+                  Etiquette Tailor
+                </h1>
+                <p className="text-[10px] font-headline font-semibold tracking-widest uppercase text-secondary">
+                  Bespoke Studio
+                </p>
+              </div>
+            </div>
           </div>
-        </header>
 
-        <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+          {/* Navigation */}
+          <nav className="flex-1 px-4 space-y-1">
+            {visibleItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={`flex items-center gap-3 px-4 py-3 mx-2 my-1 rounded-lg transition-all cursor-pointer w-full text-left ${
+                    isActive
+                      ? 'bg-white text-purple-700 shadow-sm'
+                      : 'text-slate-500 hover:bg-slate-200/50 hover:translate-x-1'
+                  }`}
+                >
+                  <span className="material-symbols-outlined">{item.icon}</span>
+                  <span className="font-headline text-sm font-semibold tracking-wide uppercase">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* New Order CTA + Logout */}
+          <div className="px-6 mt-8 space-y-3">
+            <button
+              onClick={() => navigate('/orders/new')}
+              className="btn-primary w-full py-4 text-sm tracking-wide flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">add_circle</span>
+              New Order
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-full py-2.5 text-slate-500 hover:bg-slate-200/50 rounded-lg text-sm font-medium transition-colors"
+            >
+              Logout
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col min-h-0 bg-surface">
+          {/* Header */}
+          <header
+            className="sticky top-0 z-30 h-20 bg-white/85 backdrop-blur-xl shadow-[0px_20px_40px_rgba(25,28,29,0.06)] flex justify-between items-center px-8 w-full shrink-0"
+            style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+          >
+            <div />
+            <div
+              className="flex items-center gap-4"
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            >
+              <span className="text-sm text-on-surface-variant font-medium">{session.name}</span>
+              <span className="chip chip-progress capitalize">{session.role}</span>
+            </div>
+          </header>
+
+          {/* Page Content */}
+          <div className="flex-1 overflow-y-auto p-10">
+            <div className="max-w-[1600px] mx-auto">
+              <Outlet />
+            </div>
+          </div>
         </main>
       </div>
     </div>

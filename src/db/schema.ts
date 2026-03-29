@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { app } from 'electron';
+import crypto from 'crypto';
 
 const dbPath = path.join(app.getPath('userData'), 'app.db');
 const db = new Database(dbPath);
@@ -144,7 +145,54 @@ export function initializeSchema() {
     seedDatabase();
   }
 
+  // Migrations: add missing columns to existing tables
+  migrateColumns();
+
+  // Migration: Fix plain text passwords
+  migratePasswords();
+
   console.log('Database schema initialized successfully');
+}
+
+function migrateColumns() {
+  const tables: Record<string, string[]> = {};
+
+  // Get existing columns for each table
+  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates']) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    tables[table] = cols.map((c) => c.name);
+  }
+
+  // Add missing columns
+  const migrations: [string, string, string][] = [
+    ['orders', 'receive_date', 'DATE'],
+    ['orders', 'delivery_date', 'DATE'],
+    ['orders', 'created_by', 'INTEGER REFERENCES users(id)'],
+  ];
+
+  for (const [table, column, def] of migrations) {
+    if (!tables[table]?.includes(column)) {
+      console.log(`Migrating: ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+    }
+  }
+}
+
+function migratePasswords() {
+  const users = db.prepare('SELECT id, username, password_hash FROM users').all() as any[];
+
+  for (const user of users) {
+    // Check if password is plain text (not a 64-character hex string)
+    if (user.password_hash.length !== 64 || !/^[a-f0-9]{64}$/.test(user.password_hash)) {
+      console.log(`Migrating password for user: ${user.username}`);
+      const hashedPassword = hashPassword(user.password_hash);
+      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashedPassword, user.id);
+    }
+  }
+}
+
+function hashPassword(password: string): string {
+  return crypto.createHash('sha256').update(password).digest('hex');
 }
 
 function seedDatabase() {
@@ -159,5 +207,5 @@ function seedDatabase() {
     'INSERT INTO users (name, username, password_hash, role, worker_type, branch_id, base_salary) VALUES (?, ?, ?, ?, ?, ?, ?)'
   );
 
-  insertUser.run('Admin', 'admin', 'admin123', 'admin', null, 1, 0);
+  insertUser.run('Admin', 'admin', hashPassword('admin123'), 'admin', null, 1, 0);
 }

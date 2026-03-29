@@ -296,11 +296,11 @@ export function getOrderStats(branchId?: number): { total: number; in_progress: 
   const stmt = db.prepare(`
     SELECT
       COUNT(*) as total,
-      SUM(CASE WHEN status IN ('intake','cutting','sewing') THEN 1 ELSE 0 END) as in_progress,
-      SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) as ready,
-      SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
-      SUM(CASE WHEN status != 'delivered' AND delivery_date < ? THEN 1 ELSE 0 END) as overdue,
-      SUM(CASE WHEN status != 'delivered' THEN price ELSE 0 END) as revenue
+      COALESCE(SUM(CASE WHEN status IN ('intake','cutting','sewing') THEN 1 ELSE 0 END), 0) as in_progress,
+      COALESCE(SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END), 0) as ready,
+      COALESCE(SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END), 0) as delivered,
+      COALESCE(SUM(CASE WHEN status != 'delivered' AND delivery_date < ? THEN 1 ELSE 0 END), 0) as overdue,
+      COALESCE(SUM(CASE WHEN status != 'delivered' THEN price ELSE 0 END), 0) as revenue
     FROM orders
     WHERE 1=1 ${branchFilter}
   `);

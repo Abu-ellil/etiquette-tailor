@@ -3,7 +3,22 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npx tailwindcss:*)",
-      "Bash(npm start:*)"
+      "Bash(npm start:*)",
+      "Read(//d/DEV2/etiquette-tailor/$APPDATA/**)",
+      "Bash(rm -f app.db app.db-shm app.db-wal)",
+      "Bash(ls -la *.db)",
+      "Bash(electron -r esbuild-register fix-admin-password.js)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap\" -o manrope.css)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap\" -o inter.css)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap\" -o material-symbols.css)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36\" -H \"Accept: text/css,*/*;q=0.1\" -H \"Accept-Language: en-US,en;q=0.9\" \"https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap\" -o manrope.css)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36\" -H \"Accept: text/css,*/*;q=0.1\" \"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap\" -o inter.css)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36\" \"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap\" -o material-symbols.css)",
+      "Bash(ls:*)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36\" \"https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap\" -o manrope.css)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36\" \"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap\" -o inter.css)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

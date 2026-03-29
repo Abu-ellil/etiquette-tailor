@@ -56,6 +56,13 @@ export interface ElectronAPI {
     reassignTask: (taskId: number, workerId: number) => Promise<any>;
     getStats: () => Promise<any>;
   };
+
+  window: {
+    minimize: () => Promise<void>;
+    maximize: () => Promise<void>;
+    close: () => Promise<void>;
+    isMaximized: () => Promise<boolean>;
+  };
 }
 
 declare global {
