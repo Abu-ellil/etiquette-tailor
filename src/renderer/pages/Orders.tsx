@@ -417,7 +417,7 @@ export default function OrdersPage() {
             <span className="text-xs text-outline">
               Revenue (open):{' '}
               <span className="font-bold text-on-surface">
-                {(stats?.revenue ?? 0).toLocaleString('en-US')} AED
+                {(stats?.revenue ?? 0).toLocaleString('en-US')} QAR
               </span>
             </span>
           </div>

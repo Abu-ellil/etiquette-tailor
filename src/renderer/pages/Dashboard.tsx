@@ -57,9 +57,9 @@ function isOrderLate(order: Order): boolean {
 
 function formatRevenue(amount: number): string {
   if (amount >= 1000) {
-    return `$${(amount / 1000).toFixed(1)}k`;
+    return `${(amount / 1000).toFixed(1)}k QAR`;
   }
-  return `$${amount.toFixed(0)}`;
+  return `${amount.toFixed(0)} QAR`;
 }
 
 function formatNumber(n: number): string {

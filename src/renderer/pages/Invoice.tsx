@@ -268,7 +268,7 @@ export default function InvoicePage() {
               </div>
               <div className="text-2xl font-headline font-black tracking-tight text-on-surface">
                 {formatCurrency(order.balance)}{' '}
-                <span className="text-xs font-medium ml-1">AED</span>
+                <span className="text-xs font-medium ml-1">QAR</span>
               </div>
             </div>
           </div>

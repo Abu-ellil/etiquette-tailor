@@ -13,7 +13,7 @@ const METRICS = [
   },
   {
     label: 'Revenue',
-    value: 'AED 42,920',
+    value: 'QAR 42,920',
     change: '+8.4%',
     changeType: 'positive' as const,
     icon: 'payments',
@@ -22,16 +22,16 @@ const METRICS = [
   },
   {
     label: 'Workers Cost',
-    value: 'AED 11,450',
+    value: 'QAR 11,450',
     change: '-2.1%',
     changeType: 'negative' as const,
     icon: 'engineering',
-    iconBg: 'bg-primary-fixed',
-    iconColor: 'text-on-primary-fixed-variant',
+    iconBg: 'bg-tertiary-container',
+    iconColor: 'text-on-tertiary-container',
   },
   {
     label: 'Net Profit',
-    value: 'AED 31,470',
+    value: 'QAR 31,470',
     change: '+14.2%',
     changeType: 'positive' as const,
     icon: 'account_balance_wallet',
@@ -41,7 +41,7 @@ const METRICS = [
   },
 ];
 
-const PAYMENT_SPLIT = { card: 72, cash: 28, cardAmount: 'AED 30,902', cashAmount: 'AED 12,018' };
+const PAYMENT_SPLIT = { card: 72, cash: 28, cardAmount: 'QAR 30,902', cashAmount: 'QAR 12,018' };
 
 const MONTHLY_TRENDS = [
   { month: 'Jul', value: 45 },
@@ -53,10 +53,10 @@ const MONTHLY_TRENDS = [
 ];
 
 const RECENT_ORDERS = [
-  { id: '#A-0094', customer: 'Fatima Al-Rashid', initials: 'FR', type: 'Bespoke Abaya', status: 'Ready', value: 'AED 1,250.00' },
-  { id: '#B-0073', customer: 'Noura Khalid', initials: 'NK', type: 'Evening Dress Alteration', status: 'In Progress', value: 'AED 450.00' },
-  { id: '#A-0092', customer: 'Mariam Hassan', initials: 'MH', type: 'Cashmere Overcoat', status: 'Late', value: 'AED 2,100.00' },
-  { id: '#B-0071', customer: 'Sara Al-Maktoum', initials: 'SM', type: '3x Silk Hijabs', status: 'Ready', value: 'AED 820.00' },
+  { id: '#A-0094', customer: 'Fatima Al-Rashid', initials: 'FR', type: 'Bespoke Abaya', status: 'Ready', value: 'QAR 1,250.00' },
+  { id: '#B-0073', customer: 'Noura Khalid', initials: 'NK', type: 'Evening Dress Alteration', status: 'In Progress', value: 'QAR 450.00' },
+  { id: '#A-0092', customer: 'Mariam Hassan', initials: 'MH', type: 'Cashmere Overcoat', status: 'Late', value: 'QAR 2,100.00' },
+  { id: '#B-0071', customer: 'Sara Al-Maktoum', initials: 'SM', type: '3x Silk Hijabs', status: 'Ready', value: 'QAR 820.00' },
 ];
 
 type TimePeriod = 'daily' | 'weekly' | 'monthly';
@@ -97,44 +97,44 @@ export default function ReportsPage() {
       </header>
 
       {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 xl:gap-8 mb-16">
         {METRICS.map((m) =>
           m.highlight ? (
             // Highlighted card (Net Profit)
             <div
               key={m.label}
-              className="bg-primary text-white p-8 rounded-xl flex flex-col justify-between shadow-lg hover:translate-y-[-4px] transition-all duration-300 relative overflow-hidden"
+              className="bg-primary text-white p-6 rounded-xl flex flex-col justify-between shadow-lg hover:translate-y-[-4px] transition-all duration-300 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-4 opacity-10">
                 <span className="material-symbols-outlined text-[8rem]">trending_up</span>
               </div>
               <div className="flex justify-between items-start mb-6 z-10">
-                <span
-                  className={`material-symbols-outlined ${m.iconBg} ${m.iconColor} w-12 h-12 flex items-center justify-center rounded-full`}
-                >
-                  {m.icon}
-                </span>
+                <div className={`w-12 h-12 flex items-center justify-center rounded-full ${m.iconBg} ${m.iconColor}`}>
+                  <span className="material-symbols-outlined">
+                    {m.icon}
+                  </span>
+                </div>
                 <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-full backdrop-blur-md">
                   {m.change}
                 </span>
               </div>
               <div className="z-10">
                 <p className="text-primary-fixed text-xs uppercase tracking-widest mb-1">{m.label}</p>
-                <p className="text-4xl font-headline font-bold">{m.value}</p>
+                <p className="text-3xl 2xl:text-4xl font-headline font-bold whitespace-nowrap tracking-tight">{m.value}</p>
               </div>
             </div>
           ) : (
             // Standard metric card
             <div
               key={m.label}
-              className="bg-surface-container-lowest p-8 rounded-xl flex flex-col justify-between group hover:translate-y-[-4px] transition-all duration-300"
+              className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between group hover:translate-y-[-4px] transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-6">
-                <span
-                  className={`material-symbols-outlined ${m.iconBg} ${m.iconColor} w-12 h-12 flex items-center justify-center rounded-full`}
-                >
-                  {m.icon}
-                </span>
+                <div className={`w-12 h-12 flex items-center justify-center rounded-full ${m.iconBg} ${m.iconColor}`}>
+                  <span className="material-symbols-outlined">
+                    {m.icon}
+                  </span>
+                </div>
                 <span
                   className={`text-xs font-bold px-3 py-1 rounded-full ${
                     m.changeType === 'positive'
@@ -147,7 +147,7 @@ export default function ReportsPage() {
               </div>
               <div>
                 <p className="text-secondary text-xs uppercase tracking-widest mb-1">{m.label}</p>
-                <p className="text-4xl font-headline font-bold text-on-surface">{m.value}</p>
+                <p className="text-3xl 2xl:text-4xl font-headline font-bold text-on-surface whitespace-nowrap tracking-tight">{m.value}</p>
               </div>
             </div>
           ),
