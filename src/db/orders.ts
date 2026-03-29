@@ -3,90 +3,154 @@ import db from './connection';
 export interface Order {
   id?: number;
   order_number: string;
+  branch_id: number;
   customer_id: number;
-  worker_id: number;
   piece_type: string;
-  measurements_id?: number;
+  details?: string;
   price: number;
-  paid?: number;
-  balance?: number;
-  due_date: string;
-  status?: 'In Progress' | 'Ready' | 'Delivered';
-  payment_type: 'Cash' | 'Card';
-  branch: 'A' | 'B';
-  notes?: string;
-  is_deleted?: number;
+  paid: number;
+  balance: number;
+  payment_method: 'cash' | 'card';
+  status: 'intake' | 'cutting' | 'sewing' | 'ready' | 'delivered';
+  receive_date?: string;
+  delivery_date?: string;
+  created_by?: number;
   created_at?: string;
-  updated_at?: string;
+  customer_name?: string;
+  customer_phone?: string;
 }
 
-// Generate order number with branch prefix
-function generateOrderNumber(branch: 'A' | 'B'): string {
-  const stmt = db.prepare('UPDATE order_counters SET counter = counter + 1 WHERE branch = ?');
-  stmt.run(branch);
-
-  const counterStmt = db.prepare('SELECT counter FROM order_counters WHERE branch = ?');
-  const result = counterStmt.get(branch) as { counter: number };
-
-  return `${branch}-${String(result.counter).padStart(3, '0')}`;
+export interface OrderMeasurement {
+  id?: number;
+  order_id: number;
+  chest?: number;
+  waist?: number;
+  hips?: number;
+  length?: number;
+  sleeve?: number;
+  shoulder?: number;
+  notes?: string;
+  taken_by?: number;
+  created_at?: string;
 }
 
-export function getAllOrders(): Order[] {
-  const stmt = db.prepare(`
-    SELECT o.*,
-           c.name as customer_name,
-           w.name as worker_name
+export interface OrderTask {
+  id?: number;
+  order_id: number;
+  task_type: 'cutting' | 'sewing' | 'design';
+  assigned_to?: number;
+  wage_type: 'percentage' | 'fixed';
+  wage_rate: number;
+  wage_amount: number;
+  status: 'pending' | 'in_progress' | 'done';
+  started_at?: string;
+  completed_at?: string;
+  notes?: string;
+  worker_name?: string;
+}
+
+function generateOrderNumber(branchId: number): string {
+  const branch = db.prepare('SELECT prefix, last_sequence FROM branches WHERE id = ?').get(branchId) as { prefix: string; last_sequence: number };
+  if (!branch) throw new Error('Branch not found');
+
+  const nextSeq = branch.last_sequence + 1;
+
+  const updateSeq = db.prepare('UPDATE branches SET last_sequence = ? WHERE id = ?');
+  updateSeq.run(nextSeq, branchId);
+
+  return `${branch.prefix}-${String(nextSeq).padStart(3, '0')}`;
+}
+
+export function getAllOrders(branchId?: number, status?: string): Order[] {
+  let query = `
+    SELECT o.*, c.name as customer_name, c.phone as customer_phone
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
-    LEFT JOIN workers w ON o.worker_id = w.id
-    WHERE o.is_deleted = 0
-    ORDER BY o.created_at DESC
-  `);
-  return stmt.all() as Order[];
+  WHERE 1=1
+  `;
+  const params: any[] = [];
+
+  if (branchId) {
+    query += ' AND o.branch_id = ?';
+    params.push(branchId);
+  }
+  if (status) {
+    query += ' AND o.status = ?';
+    params.push(status);
+  }
+  query += ' ORDER BY o.created_at DESC';
+
+  const stmt = db.prepare(query);
+  return stmt.all(...params) as Order[];
 }
 
 export function getOrder(id: number): Order | undefined {
   const stmt = db.prepare(`
-    SELECT o.*,
-           c.name as customer_name,
-           w.name as worker_name
+    SELECT o.*, c.name as customer_name, c.phone as customer_phone
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
-    LEFT JOIN workers w ON o.worker_id = w.id
-    WHERE o.id = ? AND o.is_deleted = 0
+    WHERE o.id = ?
   `);
   return stmt.get(id) as Order | undefined;
 }
 
-export function createOrder(order: Order): number {
-  const orderNumber = generateOrderNumber(order.branch);
+export function getOrderByNumber(orderNumber: string): Order | undefined {
+  const stmt = db.prepare(`
+    SELECT o.*, c.name as customer_name, c.phone as customer_phone
+    FROM orders o
+    LEFT JOIN customers c ON o.customer_id = c.id
+    WHERE o.order_number = ?
+  `);
+  return stmt.get(orderNumber) as Order | undefined;
+}
 
+export function createOrder(order: Omit<Order, 'id' | 'balance'>, measurements?: OrderMeasurement): number {
   const transaction = db.transaction(() => {
-    const stmt = db.prepare(`
+    const orderNumber = generateOrderNumber(order.branch_id);
+
+    const orderStmt = db.prepare(`
       INSERT INTO orders (
-        order_number, customer_id, worker_id, piece_type,
-        measurements_id, price, paid, due_date, status,
-        payment_type, branch, notes
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        order_number, branch_id, customer_id, piece_type, details,
+        price, paid, payment_method, status, receive_date, delivery_date, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = stmt.run(
+    const result = orderStmt.run(
       orderNumber,
+      order.branch_id,
       order.customer_id,
-      order.worker_id,
       order.piece_type,
-      order.measurements_id || null,
+      order.details || null,
       order.price,
       order.paid || 0,
-      order.due_date,
-      order.status || 'In Progress',
-      order.payment_type,
-      order.branch,
-      order.notes || null
+      order.payment_method,
+      order.status || 'intake',
+      order.receive_date || null,
+      order.delivery_date || null,
+      order.created_by || null
     );
 
-    return result.lastInsertRowid as number;
+    const orderId = result.lastInsertRowid as number;
+
+    if (measurements) {
+      const measStmt = db.prepare(`
+        INSERT INTO order_measurements (order_id, chest, waist, hips, length, sleeve, shoulder, notes, taken_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      measStmt.run(
+        orderId,
+        measurements.chest || null,
+        measurements.waist || null,
+        measurements.hips || null,
+        measurements.length || null,
+        measurements.sleeve || null,
+        measurements.shoulder || null,
+        measurements.notes || null,
+        measurements.taken_by || null
+      );
+    }
+
+    return orderId;
   });
 
   return transaction();
@@ -94,40 +158,151 @@ export function createOrder(order: Order): number {
 
 export function updateOrder(id: number, order: Partial<Order>): void {
   const stmt = db.prepare(`
-    UPDATE orders
-    SET
-      customer_id = ?,
-      worker_id = ?,
-      piece_type = ?,
-      measurements_id = ?,
-      price = ?,
-      paid = ?,
-      due_date = ?,
-      status = ?,
-      payment_type = ?,
-      branch = ?,
-      notes = ?,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = ? AND is_deleted = 0
+    UPDATE orders SET
+      customer_id = ?, piece_type = ?, details = ?,
+      price = ?, paid = ?, payment_method = ?,
+      status = ?, delivery_date = ?
+    WHERE id = ?
   `);
-
   stmt.run(
     order.customer_id,
-    order.worker_id,
     order.piece_type,
-    order.measurements_id || null,
+    order.details || null,
     order.price,
     order.paid || 0,
-    order.due_date,
-    order.status || 'In Progress',
-    order.payment_type,
-    order.branch,
-    order.notes || null,
+    order.payment_method,
+    order.status,
+    order.delivery_date || null,
     id
   );
 }
 
+export function updateOrderStatus(id: number, status: string): void {
+  const stmt = db.prepare('UPDATE orders SET status = ? WHERE id = ?');
+  stmt.run(status, id);
+}
+
 export function deleteOrder(id: number): void {
-  const stmt = db.prepare('UPDATE orders SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+  const stmt = db.prepare('DELETE FROM orders WHERE id = ?');
   stmt.run(id);
+}
+
+export function getOrderMeasurements(orderId: number): OrderMeasurement | undefined {
+  const stmt = db.prepare('SELECT * FROM order_measurements WHERE order_id = ?');
+  return stmt.get(orderId) as OrderMeasurement | undefined;
+}
+
+export function updateOrderMeasurements(orderId: number, measurements: Partial<OrderMeasurement>): void {
+  const stmt = db.prepare(`
+    UPDATE order_measurements SET
+      chest = ?, waist = ?, hips = ?, length = ?,
+      sleeve = ?, shoulder = ?, notes = ?
+    WHERE order_id = ?
+  `);
+  stmt.run(
+    measurements.chest || null,
+    measurements.waist || null,
+    measurements.hips || null,
+    measurements.length || null,
+    measurements.sleeve || null,
+    measurements.shoulder || null,
+    measurements.notes || null,
+    orderId
+  );
+}
+
+export function getOrderTasks(orderId: number): OrderTask[] {
+  const stmt = db.prepare(`
+    SELECT ot.*, u.name as worker_name
+    FROM order_tasks ot
+    LEFT JOIN users u ON ot.assigned_to = u.id
+    WHERE ot.order_id = ?
+    ORDER BY ot.task_type
+  `);
+  return stmt.all(orderId) as OrderTask[];
+}
+
+export function createOrderTask(task: Omit<OrderTask, 'id'>): number {
+  const stmt = db.prepare(`
+    INSERT INTO order_tasks (order_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, status, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const result = stmt.run(
+    task.order_id,
+    task.task_type,
+    task.assigned_to || null,
+    task.wage_type,
+    task.wage_rate,
+    task.wage_amount,
+    task.status || 'pending',
+    task.notes || null
+  );
+  return result.lastInsertRowid as number;
+}
+
+export function updateTaskStatus(taskId: number, status: string): void {
+  const now = new Date().toISOString();
+  if (status === 'in_progress') {
+    const stmt = db.prepare('UPDATE order_tasks SET status = ?, started_at = ? WHERE id = ?');
+    stmt.run(status, now, taskId);
+  } else if (status === 'done') {
+    const stmt = db.prepare('UPDATE order_tasks SET status = ?, completed_at = ? WHERE id = ?');
+    stmt.run(status, now, taskId);
+  } else {
+    const stmt = db.prepare('UPDATE order_tasks SET status = ? WHERE id = ?');
+    stmt.run(status, taskId);
+  }
+}
+
+export function reassignTask(taskId: number, newUserId: number, wageType: string, wageRate: number, wageAmount: number): void {
+  const stmt = db.prepare(`
+    UPDATE order_tasks SET assigned_to = ?, wage_type = ?, wage_rate = ?, wage_amount = ?, status = 'pending', started_at = NULL, completed_at = NULL
+    WHERE id = ?
+  `);
+  stmt.run(newUserId, wageType, wageRate, wageAmount, taskId);
+}
+
+export function searchOrders(query: string, branchId?: number): Order[] {
+  const searchTerm = `%${query}%`;
+  let sql = `
+    SELECT o.*, c.name as customer_name, c.phone as customer_phone
+    FROM orders o
+    LEFT JOIN customers c ON o.customer_id = c.id
+    WHERE (o.order_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)
+  `;
+  const params: any[] = [searchTerm, searchTerm, searchTerm];
+
+  if (branchId) {
+    sql += ' AND o.branch_id = ?';
+    params.push(branchId);
+  }
+  sql += ' ORDER BY o.created_at DESC';
+
+  const stmt = db.prepare(sql);
+  return stmt.all(...params) as Order[];
+}
+
+export function getOrderStats(branchId?: number): { total: number; in_progress: number; ready: number; delivered: number; overdue: number; revenue: number } {
+  let branchFilter = '';
+  const params: any[] = [];
+
+  if (branchId) {
+    branchFilter = ' AND branch_id = ?';
+    params.push(branchId);
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const stmt = db.prepare(`
+    SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN status IN ('intake','cutting','sewing') THEN 1 ELSE 0 END) as in_progress,
+      SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) as ready,
+      SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
+      SUM(CASE WHEN status != 'delivered' AND delivery_date < ? THEN 1 ELSE 0 END) as overdue,
+      SUM(CASE WHEN status != 'delivered' THEN price ELSE 0 END) as revenue
+    FROM orders
+    WHERE 1=1 ${branchFilter}
+  `);
+  return stmt.get(today, ...params) as { total: number; in_progress: number; ready: number; delivered: number; overdue: number; revenue: number };
 }
