@@ -53,11 +53,11 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
       <TitleBar />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar */}
-        <aside className="h-full w-72 shrink-0 overflow-y-auto flex flex-col py-6 space-y-2 bg-gradient-to-r from-slate-50 to-slate-100">
+        <aside className="h-full w lg:w-72 shrink-0 overflow-y-auto flex flex-col py-6 space-y-2 bg-gradient-to-r from-slate-50 to-slate-100 transition-all duration-300">
           {/* Logo */}
-          <div className="px-8 mb-8">
+          <div className="px-0 lg:px-8 mb-8 flex justify-center lg:justify-start">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-white">
+              <div className="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-white shrink-0">
                 <span
                   className="material-symbols-outlined"
                   style={{ fontVariationSettings: "'FILL' 1" }}
@@ -65,7 +65,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
                   straighten
                 </span>
               </div>
-              <div>
+              <div className="hidden lg:block whitespace-nowrap">
                 <h1 className="text-lg font-bold text-slate-800 leading-tight font-headline">
                   Etiquette Tailor
                 </h1>
@@ -77,21 +77,22 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 space-y-1">
+          <nav className="flex-1 px-2 lg:px-4 space-y-1">
             {visibleItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  className={`flex items-center gap-3 px-4 py-3 mx-2 my-1 rounded-lg transition-all cursor-pointer w-full text-left ${
+                  title={item.label}
+                  className={`flex items-center justify-center lg:justify-start gap-3 px-0 lg:px-4 py-3 mx-1 lg:mx-2 my-1 rounded-lg transition-all cursor-pointer w-auto lg:w-full text-left ${
                     isActive
                       ? 'bg-white text-purple-700 shadow-sm'
                       : 'text-slate-500 hover:bg-slate-200/50 hover:translate-x-1'
                   }`}
                 >
-                  <span className="material-symbols-outlined">{item.icon}</span>
-                  <span className="font-headline text-sm font-semibold tracking-wide uppercase">
+                  <span className="material-symbols-outlined shrink-0">{item.icon}</span>
+                  <span className="hidden lg:block font-headline text-sm font-semibold tracking-wide uppercase whitespace-nowrap">
                     {item.label}
                   </span>
                 </button>
@@ -100,19 +101,22 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
           </nav>
 
           {/* New Order CTA + Logout */}
-          <div className="px-6 mt-8 space-y-3">
+          <div className="px-3 lg:px-6 mt-8 space-y-3">
             <button
               onClick={() => navigate('/orders/new')}
-              className="btn-primary w-full py-4 text-sm tracking-wide flex items-center justify-center gap-2"
+              title="New Order"
+              className="btn-primary w-full py-3 lg:py-4 text-sm tracking-wide flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-sm">add_circle</span>
-              New Order
+              <span className="material-symbols-outlined text-lg lg:text-sm shrink-0">add_circle</span>
+              <span className="hidden lg:block whitespace-nowrap">New Order</span>
             </button>
             <button
               onClick={handleLogout}
-              className="w-full py-2.5 text-slate-500 hover:bg-slate-200/50 rounded-lg text-sm font-medium transition-colors"
+              title="Logout"
+              className="w-full py-2.5 text-slate-500 hover:bg-slate-200/50 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
-              Logout
+              <span className="material-symbols-outlined lg:hidden shrink-0">logout</span>
+              <span className="hidden lg:block whitespace-nowrap">Logout</span>
             </button>
           </div>
         </aside>

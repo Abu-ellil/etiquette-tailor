@@ -317,8 +317,8 @@ export default function WorkerPayRatesPage() {
                 const rowBg = idx % 2 === 0 ? 'bg-surface' : 'bg-surface-container-low';
                 const wagePreview =
                   rate.wage_type === 'percentage'
-                    ? `$${((calculatorPrice * rate.rate) / 100).toFixed(2)}`
-                    : `$${rate.rate.toFixed(2)}`;
+                    ? `${((calculatorPrice * rate.rate) / 100).toFixed(2)} QAR`
+                    : `${rate.rate.toFixed(2)} QAR`;
 
                 return (
                   <div
@@ -374,7 +374,7 @@ export default function WorkerPayRatesPage() {
                           placeholder="0"
                         />
                         <span className="absolute right-3 top-3.5 text-secondary font-medium">
-                          {rate.wage_type === 'percentage' ? '%' : '$'}
+                          {rate.wage_type === 'percentage' ? '%' : 'QAR'}
                         </span>
                       </div>
                     </div>
@@ -448,7 +448,7 @@ export default function WorkerPayRatesPage() {
               {/* Unit Price */}
               <div className="space-y-2">
                 <label className="text-[10px] font-bold tracking-widest uppercase text-secondary">
-                  Unit Price ($)
+                  Unit Price (QAR)
                 </label>
                 <input
                   type="number"
@@ -476,13 +476,13 @@ export default function WorkerPayRatesPage() {
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-secondary font-medium">Worker Commission</span>
                   <span className="text-2xl font-headline font-extrabold text-primary">
-                    $ {getCalculatorResult().commission.toFixed(2)}
+                    {getCalculatorResult().commission.toFixed(2)} QAR
                   </span>
                 </div>
                 <div className="flex justify-between items-center opacity-60">
                   <span className="text-sm">Studio Net</span>
                   <span className="text-sm font-semibold">
-                    $ {getCalculatorResult().net.toFixed(2)}
+                    {getCalculatorResult().net.toFixed(2)} QAR
                   </span>
                 </div>
               </div>

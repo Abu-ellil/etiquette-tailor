@@ -572,7 +572,7 @@ export default function NewOrderPage() {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{' '}
-                      AED
+                      QAR
                     </span>
                     {wageType === 'percentage' && wageRate > 0 && (
                       <span className="text-xs text-outline italic">
@@ -589,7 +589,7 @@ export default function NewOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 bg-surface-container-low rounded-2xl">
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  Total Price (AED)
+                  Total Price (QAR)
                 </label>
                 <input
                   type="number"
@@ -600,7 +600,7 @@ export default function NewOrderPage() {
               </div>
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  Amount Paid (AED)
+                  Amount Paid (QAR)
                 </label>
                 <input
                   type="number"
@@ -611,7 +611,7 @@ export default function NewOrderPage() {
               </div>
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  Balance Due (AED)
+                  Balance Due (QAR)
                 </label>
                 <div
                   className={`w-full h-14 bg-surface-container-high border-b-2 font-bold text-xl px-4 rounded-t-lg flex items-center ${
