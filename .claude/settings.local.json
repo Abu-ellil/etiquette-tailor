@@ -3,7 +3,11 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npx tailwindcss:*)",
-      "Bash(npm start:*)"
+      "Bash(npm start:*)",
+      "Read(//d/DEV2/etiquette-tailor/$APPDATA/**)",
+      "Bash(rm -f app.db app.db-shm app.db-wal)",
+      "Bash(ls -la *.db)",
+      "Bash(electron -r esbuild-register fix-admin-password.js)"
     ]
   }
 }
