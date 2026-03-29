@@ -5,9 +5,13 @@ import DashboardPage from './pages/Dashboard';
 import CustomersPage from './pages/Customers';
 import OrdersPage from './pages/Orders';
 import NewOrderPage from './pages/NewOrder';
+import OrderDetailPage from './pages/OrderDetail';
 import MeasurementsPage from './pages/Measurements';
 import WorkersPage from './pages/Workers';
 import WorkerPayRatesPage from './pages/WorkerPayRates';
+import MyTasksPage from './pages/MyTasks';
+import CuttingQueuePage from './pages/CuttingQueue';
+import TaskBoardPage from './pages/TaskBoard';
 import ReportsPage from './pages/Reports';
 import InvoicePage from './pages/Invoice';
 import BackupPage from './pages/Backup';
@@ -23,10 +27,10 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/reports', '/backup'],
-  manager: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/reports'],
+  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/task-board', '/reports', '/backup'],
+  manager: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/task-board', '/reports'],
   reception: ['/dashboard', '/customers', '/measurements', '/orders'],
-  worker: ['/dashboard'],
+  worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };
 
 function ProtectedRoute({
@@ -39,7 +43,12 @@ function ProtectedRoute({
   children: React.ReactNode;
 }) {
   if (!session) return <Navigate to="/login" replace />;
-  const allowed = ROLE_ROUTES[session.role] || [];
+  let allowed = ROLE_ROUTES[session.role] || [];
+  if (session.role === 'worker') {
+    const tailorRoutes = ['/dashboard', '/my-tasks'];
+    const cutterRoutes = ['/dashboard', '/cutting-queue'];
+    allowed = session.worker_type === 'cutter' ? cutterRoutes : tailorRoutes;
+  }
   if (!allowed.includes(path)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
@@ -129,6 +138,14 @@ export default function App() {
             }
           />
           <Route
+            path="orders/:id"
+            element={
+              <ProtectedRoute path="/orders" session={session}>
+                <OrderDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="workers"
             element={
               <ProtectedRoute path="/workers" session={session}>
@@ -141,6 +158,30 @@ export default function App() {
             element={
               <ProtectedRoute path="/worker-rates" session={session}>
                 <WorkerPayRatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="my-tasks"
+            element={
+              <ProtectedRoute path="/my-tasks" session={session}>
+                <MyTasksPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="cutting-queue"
+            element={
+              <ProtectedRoute path="/cutting-queue" session={session}>
+                <CuttingQueuePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="task-board"
+            element={
+              <ProtectedRoute path="/task-board" session={session}>
+                <TaskBoardPage />
               </ProtectedRoute>
             }
           />

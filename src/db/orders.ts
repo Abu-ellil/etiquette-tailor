@@ -282,6 +282,86 @@ export function searchOrders(query: string, branchId?: number): Order[] {
   return stmt.all(...params) as Order[];
 }
 
+export interface TaskBoardItem {
+  task_id: number;
+  order_id: number;
+  order_number: string;
+  customer_name: string;
+  piece_type: string;
+  details?: string;
+  task_type: string;
+  assigned_to?: number;
+  worker_name?: string;
+  wage_type?: string;
+  wage_rate?: number;
+  wage_amount?: number;
+  status: string;
+  started_at?: string;
+  completed_at?: string;
+  due_date?: string;
+  branch_id: number;
+  order_price?: number;
+  order_status?: string;
+  notes?: string;
+}
+
+export function getAllTasks(filters?: { branchId?: number; workerId?: number; taskType?: string }): TaskBoardItem[] {
+  let query = `
+    SELECT
+      ot.id as task_id,
+      ot.order_id,
+      o.order_number,
+      c.name as customer_name,
+      o.piece_type,
+      o.details,
+      ot.task_type,
+      ot.assigned_to,
+      u.name as worker_name,
+      ot.wage_type,
+      ot.wage_rate,
+      ot.wage_amount,
+      ot.status,
+      ot.started_at,
+      ot.completed_at,
+      o.delivery_date as due_date,
+      o.branch_id,
+      o.price as order_price,
+      o.status as order_status,
+      ot.notes
+    FROM order_tasks ot
+    JOIN orders o ON ot.order_id = o.id
+    LEFT JOIN customers c ON o.customer_id = c.id
+    LEFT JOIN users u ON ot.assigned_to = u.id
+    WHERE 1=1
+  `;
+  const params: any[] = [];
+
+  if (filters?.branchId) {
+    query += ' AND o.branch_id = ?';
+    params.push(filters.branchId);
+  }
+  if (filters?.workerId) {
+    query += ' AND ot.assigned_to = ?';
+    params.push(filters.workerId);
+  }
+  if (filters?.taskType) {
+    query += ' AND ot.task_type = ?';
+    params.push(filters.taskType);
+  }
+
+  query += ` ORDER BY
+    CASE ot.status
+      WHEN 'in_progress' THEN 0
+      WHEN 'pending' THEN 1
+      WHEN 'done' THEN 2
+    END,
+    o.delivery_date ASC
+  `;
+
+  const stmt = db.prepare(query);
+  return stmt.all(...params) as TaskBoardItem[];
+}
+
 export function getOrderStats(branchId?: number): { total: number; in_progress: number; ready: number; delivered: number; overdue: number; revenue: number } {
   let branchFilter = '';
   const params: any[] = [];

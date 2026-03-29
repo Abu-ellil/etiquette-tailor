@@ -278,9 +278,9 @@ export default function WorkerPayRatesPage() {
       </div>
 
       {/* ---- Bento Grid ---- */}
-      <div className="grid grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* ---- Left: Rate Cards (col-span-8) ---- */}
-        <section className="col-span-8 space-y-8">
+        <section className="lg:col-span-8 space-y-8">
           {/* Percentage per Item Type */}
           <div className="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10">
             <div className="flex justify-between items-center mb-10">
@@ -440,7 +440,7 @@ export default function WorkerPayRatesPage() {
         </section>
 
         {/* ---- Right: Sidebar Widgets (col-span-4) ---- */}
-        <section className="col-span-4 space-y-8">
+        <section className="lg:col-span-4 space-y-8">
           {/* Earnings Calculator */}
           <div className="bg-white/85 backdrop-blur-xl rounded-xl p-8 shadow-[0px_20px_40px_rgba(25,28,29,0.06)] sticky top-12">
             <h3 className="text-lg font-headline font-bold mb-6">Earnings Calculator</h3>

@@ -24,6 +24,8 @@ export interface ElectronAPI {
     getRates: (workerId: number) => Promise<any[]>;
     setRate: (data: any) => Promise<any>;
     getActiveRate: (workerId: number, pieceType: string) => Promise<any>;
+    getWorkerTasks: (userId: number) => Promise<any[]>;
+    getMonthlyEarnings: (userId: number, month: string) => Promise<any>;
   };
 
   customers: {
@@ -48,6 +50,7 @@ export interface ElectronAPI {
     updateTaskStatus: (taskId: number, status: string) => Promise<any>;
     reassignTask: (taskId: number, workerId: number) => Promise<any>;
     getStats: () => Promise<any>;
+    getAllTasks: (filters?: { branchId?: number; workerId?: number; taskType?: string }) => Promise<any[]>;
   };
 
   window: {
@@ -82,6 +85,8 @@ const api: ElectronAPI = {
     getRates: (workerId) => ipcRenderer.invoke('workers:getRates', workerId),
     setRate: (data) => ipcRenderer.invoke('workers:setRate', data),
     getActiveRate: (workerId, pieceType) => ipcRenderer.invoke('workers:getActiveRate', workerId, pieceType),
+    getWorkerTasks: (userId) => ipcRenderer.invoke('workers:getWorkerTasks', userId),
+    getMonthlyEarnings: (userId, month) => ipcRenderer.invoke('workers:getMonthlyEarnings', userId, month),
   },
 
   customers: {
@@ -106,6 +111,7 @@ const api: ElectronAPI = {
     updateTaskStatus: (taskId, status) => ipcRenderer.invoke('orders:updateTaskStatus', taskId, status),
     reassignTask: (taskId, workerId) => ipcRenderer.invoke('orders:reassignTask', taskId, workerId),
     getStats: () => ipcRenderer.invoke('orders:getStats'),
+    getAllTasks: (filters) => ipcRenderer.invoke('orders:getAllTasks', filters),
   },
 
   window: {

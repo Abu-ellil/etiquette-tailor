@@ -271,7 +271,7 @@ export default function NewOrderPage() {
   return (
     <div>
       {/* ---- Header ---- */}
-      <header className="max-w-4xl mx-auto mb-12 flex justify-between items-end">
+      <header className="max-w-4xl mx-auto mb-8 md:mb-12 flex flex-wrap justify-between items-end gap-4">
         <div>
           <h2 className="text-secondary text-sm uppercase tracking-[0.2em] font-semibold mb-2">
             Order Management
@@ -288,10 +288,10 @@ export default function NewOrderPage() {
 
       {/* ---- Form ---- */}
       <section className="max-w-4xl mx-auto">
-        <div className="bg-surface-container-lowest p-12 rounded-2xl shadow-[0px_20px_40px_rgba(25,28,29,0.06)]">
+        <div className="bg-surface-container-lowest p-4 md:p-8 lg:p-12 rounded-2xl shadow-[0px_20px_40px_rgba(25,28,29,0.06)]">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
             {/* ---- Branch & Status ---- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12">
               {/* Branch */}
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
@@ -456,7 +456,7 @@ export default function NewOrderPage() {
             </div>
 
             {/* ---- Piece Type & Description ---- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12">
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
                   Garment Type
@@ -489,7 +489,7 @@ export default function NewOrderPage() {
                 Worker Assignment
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12">
                 {/* Worker select */}
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
@@ -541,7 +541,7 @@ export default function NewOrderPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12 items-end">
                 {/* Rate / Amount */}
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
@@ -629,7 +629,7 @@ export default function NewOrderPage() {
             </div>
 
             {/* ---- Dates ---- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12">
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
                   Received Date

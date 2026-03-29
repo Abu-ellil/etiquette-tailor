@@ -133,3 +133,94 @@ export function getWorkerEarnings(userId: number, startDate: string, endDate: st
   `);
   return stmt.get(userId, startDate, endDate) as { task_count: number; total_earnings: number; tasks_by_type: string };
 }
+
+export interface WorkerTaskView {
+  task_id: number;
+  order_id: number;
+  order_number: string;
+  piece_type: string;
+  details?: string;
+  task_type: string;
+  status: string;
+  assigned_to?: number;
+  worker_name?: string;
+  wage_type?: string;
+  wage_rate?: number;
+  wage_amount?: number;
+  due_date?: string;
+  customer_name?: string;
+  started_at?: string;
+  completed_at?: string;
+  notes?: string;
+  order_price?: number;
+}
+
+export function getWorkerTasks(userId: number): WorkerTaskView[] {
+  const stmt = db.prepare(`
+    SELECT
+      ot.id as task_id,
+      ot.order_id,
+      o.order_number,
+      o.piece_type,
+      o.details,
+      ot.task_type,
+      ot.status,
+      ot.assigned_to,
+      u.name as worker_name,
+      ot.wage_type,
+      ot.wage_rate,
+      ot.wage_amount,
+      o.delivery_date as due_date,
+      c.name as customer_name,
+      ot.started_at,
+      ot.completed_at,
+      ot.notes,
+      o.price as order_price
+    FROM order_tasks ot
+    JOIN orders o ON ot.order_id = o.id
+    LEFT JOIN customers c ON o.customer_id = c.id
+    LEFT JOIN users u ON ot.assigned_to = u.id
+    WHERE ot.assigned_to = ?
+    ORDER BY
+      CASE ot.status
+        WHEN 'in_progress' THEN 0
+        WHEN 'pending' THEN 1
+        WHEN 'done' THEN 2
+      END,
+      o.delivery_date ASC
+  `);
+  return stmt.all(userId) as WorkerTaskView[];
+}
+
+export interface MonthlyEarnings {
+  task_count: number;
+  piece_earnings: number;
+  fixed_salary: number;
+  total_earnings: number;
+}
+
+export function getMonthlyEarnings(userId: number, month: string): MonthlyEarnings {
+  const startDate = `${month}-01`;
+  const [y, m] = month.split('-').map(Number);
+  const endDate = `${y}-${String(m).padStart(2, '0')}-${new Date(y, m, 0).getDate()}T23:59:59`;
+
+  const earnings = db.prepare(`
+    SELECT
+      COUNT(*) as task_count,
+      COALESCE(SUM(wage_amount), 0) as piece_earnings
+    FROM order_tasks
+    WHERE assigned_to = ? AND status = 'done'
+      AND completed_at BETWEEN ? AND ?
+  `).get(userId, startDate, endDate) as { task_count: number; piece_earnings: number };
+
+  const worker = getWorker(userId);
+  const fixedSalary = worker?.base_salary || 0;
+  const pieceEarnings = earnings?.piece_earnings || 0;
+
+  return {
+    task_count: earnings?.task_count || 0,
+    piece_earnings: pieceEarnings,
+    fixed_salary: fixedSalary,
+    total_earnings: pieceEarnings + fixedSalary,
+  };
+}

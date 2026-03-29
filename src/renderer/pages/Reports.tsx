@@ -68,7 +68,7 @@ export default function ReportsPage() {
   return (
     <div className="pb-12">
       {/* Header & Filters */}
-      <header className="flex justify-between items-end mb-16">
+      <header className="flex flex-wrap justify-between items-end gap-4 mb-16">
         <div>
           <h2 className="text-5xl font-headline font-extrabold text-on-surface tracking-tight mb-2">
             Performance Reports
@@ -84,7 +84,7 @@ export default function ReportsPage() {
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-8 py-3 rounded-lg font-headline text-sm font-bold transition-all capitalize ${
+              className={`px-4 md:px-8 py-3 rounded-lg font-headline text-sm font-bold transition-all capitalize ${
                 period === p
                   ? 'bg-surface-container-lowest text-primary shadow-sm'
                   : 'text-secondary hover:text-on-surface'
@@ -97,7 +97,7 @@ export default function ReportsPage() {
       </header>
 
       {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 xl:gap-8 mb-16">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-8 mb-16">
         {METRICS.map((m) =>
           m.highlight ? (
             // Highlighted card (Net Profit)
