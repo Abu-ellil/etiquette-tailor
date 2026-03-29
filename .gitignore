@@ -90,3 +90,6 @@ typings/
 
 # Electron-Forge
 out/
+
+# Design references ( Stitch exports)
+design/
