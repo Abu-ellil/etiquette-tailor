@@ -10,6 +10,13 @@ export interface ElectronAPI {
   branches: {
     getAll: () => Promise<any[]>;
     getById: (id: number) => Promise<any>;
+    update: (id: number, data: any) => Promise<void>;
+    create: (data: any) => Promise<{ id: number }>;
+  };
+
+  settings: {
+    getAll: () => Promise<Record<string, string>>;
+    set: (settings: Record<string, string>) => Promise<void>;
   };
 
   users: {
@@ -48,7 +55,7 @@ export interface ElectronAPI {
     getTasks: (orderId: number) => Promise<any[]>;
     createTask: (data: any) => Promise<any>;
     updateTaskStatus: (taskId: number, status: string) => Promise<any>;
-    reassignTask: (taskId: number, workerId: number) => Promise<any>;
+    reassignTask: (taskId: number, workerId: number, wageType: string, wageRate: number, wageAmount: number) => Promise<any>;
     getStats: () => Promise<any>;
     getAllTasks: (filters?: { branchId?: number; workerId?: number; taskType?: string }) => Promise<any[]>;
   };
@@ -58,6 +65,10 @@ export interface ElectronAPI {
     maximize: () => Promise<void>;
     close: () => Promise<void>;
     isMaximized: () => Promise<boolean>;
+  };
+
+  pieceTypes: {
+    getAll: () => Promise<any[]>;
   };
 }
 
@@ -71,6 +82,13 @@ const api: ElectronAPI = {
   branches: {
     getAll: () => ipcRenderer.invoke('branches:getAll'),
     getById: (id) => ipcRenderer.invoke('branches:getById', id),
+    update: (id, data) => ipcRenderer.invoke('branches:update', id, data),
+    create: (data) => ipcRenderer.invoke('branches:create', data),
+  },
+
+  settings: {
+    getAll: () => ipcRenderer.invoke('settings:getAll'),
+    set: (settings) => ipcRenderer.invoke('settings:set', settings),
   },
 
   users: {
@@ -109,7 +127,7 @@ const api: ElectronAPI = {
     getTasks: (orderId) => ipcRenderer.invoke('orders:getTasks', orderId),
     createTask: (data) => ipcRenderer.invoke('orders:createTask', data),
     updateTaskStatus: (taskId, status) => ipcRenderer.invoke('orders:updateTaskStatus', taskId, status),
-    reassignTask: (taskId, workerId) => ipcRenderer.invoke('orders:reassignTask', taskId, workerId),
+    reassignTask: (taskId, workerId, wageType, wageRate, wageAmount) => ipcRenderer.invoke('orders:reassignTask', taskId, workerId, wageType, wageRate, wageAmount),
     getStats: () => ipcRenderer.invoke('orders:getStats'),
     getAllTasks: (filters) => ipcRenderer.invoke('orders:getAllTasks', filters),
   },
@@ -119,6 +137,10 @@ const api: ElectronAPI = {
     maximize: () => ipcRenderer.invoke('window:maximize'),
     close: () => ipcRenderer.invoke('window:close'),
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  },
+
+  pieceTypes: {
+    getAll: () => ipcRenderer.invoke('pieceTypes:getAll'),
   },
 };
 

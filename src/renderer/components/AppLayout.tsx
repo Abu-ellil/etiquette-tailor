@@ -28,10 +28,11 @@ const SIDEBAR_ITEMS = [
   { path: '/cutting-queue', label: 'Cutting Queue', icon: 'content_cut', workerTypes: ['cutter'] },
   { path: '/reports', label: 'Reports', icon: 'assessment' },
   { path: '/backup', label: 'Backup', icon: 'settings_backup_restore' },
+  { path: '/settings', label: 'Settings', icon: 'settings', roles: ['admin'] },
 ];
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/task-board', '/reports', '/backup'],
+  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/task-board', '/reports', '/backup', '/settings'],
   manager: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/task-board', '/reports'],
   reception: ['/dashboard', '/customers', '/measurements', '/orders'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],

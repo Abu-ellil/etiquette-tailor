@@ -1,16 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-slate-100 text-slate-600',
-  in_progress: 'bg-blue-100 text-blue-700',
-  done: 'bg-emerald-100 text-emerald-700',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  in_progress: 'In Progress',
-  done: 'Done',
-};
+import StatusChip from '../components/StatusChip';
 
 const TASK_TYPE_ICONS: Record<string, string> = {
   cutting: 'content_cut',
@@ -170,9 +159,7 @@ export default function TaskBoardPage() {
                     </td>
                     {isAdmin && <td className="font-semibold">{Number(task.wage_amount || 0).toFixed(2)} QAR</td>}
                     <td>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[task.status] || 'bg-slate-100'}`}>
-                        {STATUS_LABELS[task.status] || task.status}
-                      </span>
+                      <StatusChip status={task.status} />
                     </td>
                   </tr>
                 );

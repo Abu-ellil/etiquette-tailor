@@ -32,6 +32,14 @@ import {
   updateTaskStatus,
   reassignTask,
   getOrderStats,
+  getAllTasks,
+  getWorkerTasks,
+  getMonthlyEarnings,
+  getAllSettings,
+  setSettings,
+  updateBranch,
+  createBranch,
+  getPieceTypes,
 } from '../db';
 
 let currentSession: {
@@ -129,6 +137,14 @@ function registerIpcHandlers() {
     return getActiveRate(userId, pieceType);
   });
 
+  ipcMain.handle('workers:getWorkerTasks', async (_event, userId: number) => {
+    return getWorkerTasks(userId);
+  });
+
+  ipcMain.handle('workers:getMonthlyEarnings', async (_event, userId: number, month: string) => {
+    return getMonthlyEarnings(userId, month);
+  });
+
   ipcMain.handle('customers:getAll', async (_event, branchId?: number) => {
     return getAllCustomers(branchId);
   });
@@ -201,7 +217,34 @@ function registerIpcHandlers() {
     return getOrderStats(branchId);
   });
 
+  ipcMain.handle('orders:getAllTasks', async (_event, filters?: { branchId?: number; workerId?: number; taskType?: string }) => {
+    return getAllTasks(filters);
+  });
+
+  // Settings
+  ipcMain.handle('settings:getAll', async () => {
+    return getAllSettings();
+  });
+
+  ipcMain.handle('settings:set', async (_event, settings: Record<string, string>) => {
+    return setSettings(settings);
+  });
+
+  // Branch management
+  ipcMain.handle('branches:update', async (_event, id: number, data: any) => {
+    return updateBranch(id, data);
+  });
+
+  ipcMain.handle('branches:create', async (_event, data: any) => {
+    return createBranch(data);
+  });
+
   ipcMain.handle('window:minimize', () => mainWindow?.minimize());
+
+  // Piece types
+  ipcMain.handle('pieceTypes:getAll', async () => {
+    return getPieceTypes();
+  });
   ipcMain.handle('window:maximize', () => {
     if (mainWindow?.isMaximized()) {
       mainWindow.unmaximize();

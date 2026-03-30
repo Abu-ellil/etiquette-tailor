@@ -73,15 +73,8 @@ function statusChipClass(status: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Piece-type labels                                                  */
+/*  Piece-type display (name_en stored, show as-is or lookup)          */
 /* ------------------------------------------------------------------ */
-const PIECE_LABELS: Record<string, string> = {
-  '\u062C\u0644\u0627\u0628\u064A\u0629': 'Jalabiya',
-  '\u0639\u0628\u0627\u064A\u0629': 'Abaya',
-  '\u0641\u0633\u062A\u0627\u0646': 'Dress',
-  '\u062A\u0639\u062F\u064A\u0644': 'Alteration',
-  other: 'Other',
-};
 
 /* ------------------------------------------------------------------ */
 /*  Status Update Dropdown (per-row)                                   */
@@ -334,7 +327,14 @@ export default function OrdersPage() {
                 return (
                   <tr key={order.id} className="group">
                     {/* Order ID */}
-                    <td className="font-bold text-primary">{order.order_number}</td>
+                    <td>
+                      <button
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                        className="font-bold text-primary hover:underline cursor-pointer"
+                      >
+                        {order.order_number}
+                      </button>
+                    </td>
 
                     {/* Customer */}
                     <td>
@@ -348,7 +348,7 @@ export default function OrdersPage() {
 
                     {/* Item Type */}
                     <td className="text-secondary">
-                      {PIECE_LABELS[order.piece_type] || order.piece_type}
+                      {order.piece_type}
                     </td>
 
                     {/* Price */}

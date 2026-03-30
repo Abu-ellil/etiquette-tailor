@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import StatusChip from '../components/StatusChip';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -35,20 +36,8 @@ export default function OrderDetailPage() {
 
   React.useEffect(() => { loadOrder(); }, [loadOrder]);
 
-  const statusColors: Record<string, string> = {
-    pending: 'bg-slate-100 text-slate-600',
-    in_progress: 'bg-blue-100 text-blue-700',
-    done: 'bg-emerald-100 text-emerald-700',
-  };
-
-  const statusLabels: Record<string, string> = {
-    pending: 'Pending',
-    in_progress: 'In Progress',
-    done: 'Done',
-  };
-
   const handleStatusChange = async (taskId: number, currentStatus: string) => {
-    const next: Record<string, string | undefined> = {
+    const next: string | undefined = {
       pending: 'in_progress',
       in_progress: 'done',
     }[currentStatus];
@@ -235,7 +224,7 @@ export default function OrderDetailPage() {
             ) : (
               <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                 <div><span className="text-secondary">Piece Type:</span> <span className="font-semibold">{order.piece_type}</span></div>
-                <div><span className="text-secondary">Status:</span> <span className={`px-2 py-0.5 rounded text-xs font-bold ${statusColors[order.status] || 'bg-slate-100'}`}>{order.status}</span></div>
+                <div><span className="text-secondary">Status:</span> <StatusChip status={order.status} /></div>
                 <div><span className="text-secondary">Price:</span> <span className="font-semibold">{Number(order.price).toFixed(2)} QAR</span></div>
                 <div><span className="text-secondary">Paid:</span> <span className="font-semibold">{Number(order.paid).toFixed(2)} QAR</span></div>
                 <div><span className="text-secondary">Balance:</span> <span className="font-semibold text-primary">{balance.toFixed(2)} QAR</span></div>
@@ -287,9 +276,7 @@ export default function OrderDetailPage() {
                 <div key={task.id} className="bg-surface rounded-lg p-4 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-sm capitalize">{task.task_type}</span>
-                    <button onClick={() => handleStatusChange(task.id, task.status)} className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[task.status]}`}>
-                      {statusLabels[task.status]}
-                    </button>
+                    <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
                   </div>
                   <div className="flex justify-between items-center text-xs text-secondary">
                     <span>Worker: {task.worker_name || 'Unassigned'}</span>

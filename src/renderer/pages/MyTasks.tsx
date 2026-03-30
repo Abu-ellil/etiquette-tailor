@@ -1,16 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-slate-100 text-slate-600',
-  in_progress: 'bg-blue-100 text-blue-700',
-  done: 'bg-emerald-100 text-emerald-700',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  in_progress: 'In Progress',
-  done: 'Done',
-};
+import StatusChip from '../components/StatusChip';
 
 export default function MyTasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -113,12 +102,7 @@ export default function MyTasksPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {task.due_date && <span className="text-xs text-secondary">Due: {task.due_date}</span>}
-                    <button
-                      onClick={() => handleStatusChange(task.task_id, task.status)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[task.status] || 'bg-slate-100'}`}
-                    >
-                      {STATUS_LABELS[task.status] || task.status}
-                    </button>
+                    <StatusChip status={task.status} onClick={() => handleStatusChange(task.task_id, task.status)} />
                   </div>
                 </div>
                 {task.notes && <p className="text-sm text-secondary mt-2">{task.notes}</p>}

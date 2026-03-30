@@ -113,6 +113,12 @@ export default function WorkersPage() {
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [workerEarnings, setWorkerEarnings] = useState<Record<number, any>>({});
+  const [expandedEarnings, setExpandedEarnings] = useState<Record<number, boolean>>({});
 
   const {
     register,
@@ -142,6 +148,22 @@ export default function WorkersPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    async function loadEarnings() {
+      const earningsMap: Record<number, any> = {};
+      for (const w of workers) {
+        try {
+          const data = await window.electronAPI.workers.getMonthlyEarnings(w.id, selectedMonth);
+          earningsMap[w.id] = data;
+        } catch {
+          earningsMap[w.id] = { task_count: 0, piece_earnings: 0, fixed_salary: 0, total_earnings: 0 };
+        }
+      }
+      setWorkerEarnings(earningsMap);
+    }
+    if (workers.length > 0) loadEarnings();
+  }, [workers, selectedMonth]);
 
   /* ---- Derived stats ---- */
 
@@ -311,14 +333,27 @@ export default function WorkersPage() {
           </div>
         </div>
 
-        {/* Payout Cycle */}
+        {/* Month Earnings */}
         <div className="bg-primary-container p-8 rounded-xl text-white flex flex-col justify-between h-40">
-          <span className="text-white/80 font-headline text-xs font-bold uppercase tracking-widest">
-            Total Workforce
-          </span>
+          <div className="flex justify-between items-start">
+            <span className="text-white/80 font-headline text-xs font-bold uppercase tracking-widest">
+              Monthly Earnings
+            </span>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-white/20 text-white text-xs px-2 py-1 rounded border-none outline-none cursor-pointer"
+            />
+          </div>
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-4xl">badge</span>
-            <span className="text-xl font-bold">{totalCount} Workers</span>
+            <span className="material-symbols-outlined text-4xl">payments</span>
+            <div>
+              <span className="text-xl font-bold">
+                {Object.values(workerEarnings).reduce((sum: number, e: any) => sum + (e?.total_earnings || 0), 0).toFixed(0)} QAR
+              </span>
+              <p className="text-white/70 text-xs">{selectedMonth}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -345,6 +380,7 @@ export default function WorkersPage() {
                 <th>Worker Name</th>
                 <th>Employment Type</th>
                 <th>Payment Structure</th>
+                <th>Monthly Earnings</th>
                 <th>Join Date</th>
                 <th className="text-right">Actions</th>
               </tr>
@@ -393,6 +429,44 @@ export default function WorkersPage() {
                         </span>
                         {payment.label}
                       </div>
+                    </td>
+
+                    {/* Monthly Earnings */}
+                    <td>
+                      {workerEarnings[worker.id] && (
+                        <button
+                          onClick={() => setExpandedEarnings((prev) => ({ ...prev, [worker.id]: !prev[worker.id] }))}
+                          className="text-left"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-primary">
+                              {(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR
+                            </span>
+                            <span className="material-symbols-outlined text-xs text-secondary">
+                              {expandedEarnings[worker.id] ? 'expand_less' : 'expand_more'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-secondary">
+                            {workerEarnings[worker.id]?.task_count || 0} tasks
+                          </p>
+                          {expandedEarnings[worker.id] && (
+                            <div className="mt-2 p-2 bg-surface-container rounded text-xs space-y-1 min-w-[160px]">
+                              <div className="flex justify-between">
+                                <span className="text-secondary">Piece Earnings</span>
+                                <span className="font-semibold">{(workerEarnings[worker.id]?.piece_earnings || 0).toFixed(0)} QAR</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-secondary">Fixed Salary</span>
+                                <span className="font-semibold">{(workerEarnings[worker.id]?.fixed_salary || 0).toFixed(0)} QAR</span>
+                              </div>
+                              <div className="flex justify-between border-t border-outline-variant/20 pt-1">
+                                <span className="font-bold">Total</span>
+                                <span className="font-bold text-primary">{(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR</span>
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      )}
                     </td>
 
                     {/* Join Date */}
