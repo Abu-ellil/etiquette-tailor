@@ -35,6 +35,7 @@ import {
   getAllTasks,
   getWorkerTasks,
   getMonthlyEarnings,
+  getWorkerOrderDetails,
   getAllSettings,
   setSettings,
   updateBranch,
@@ -143,6 +144,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle('workers:getMonthlyEarnings', async (_event, userId: number, month: string) => {
     return getMonthlyEarnings(userId, month);
+  });
+
+  ipcMain.handle('workers:getWorkerOrderDetails', async (_event, userId: number, startDate: string, endDate: string) => {
+    return getWorkerOrderDetails(userId, startDate, endDate);
   });
 
   ipcMain.handle('customers:getAll', async (_event, branchId?: number) => {

@@ -6,7 +6,7 @@ export interface Worker {
   username: string;
   password_hash: string;
   role: 'admin' | 'manager' | 'reception' | 'worker';
-  worker_type?: 'tailor' | 'cutter' | 'designer' | null;
+  worker_type?: 'tailor' | 'master_cutter' | null;
   branch_id: number;
   base_salary: number;
   active: number;
@@ -223,4 +223,39 @@ export function getMonthlyEarnings(userId: number, month: string): MonthlyEarnin
     fixed_salary: fixedSalary,
     total_earnings: pieceEarnings + fixedSalary,
   };
+}
+
+export interface WorkerOrderDetail {
+  task_id: number;
+  order_id: number;
+  order_number: string;
+  piece_type: string;
+  price: number;
+  task_type: string;
+  wage_type: string;
+  wage_rate: number;
+  wage_amount: number;
+  completed_at: string | null;
+}
+
+export function getWorkerOrderDetails(userId: number, startDate: string, endDate: string): WorkerOrderDetail[] {
+  const stmt = db.prepare(`
+    SELECT
+      ot.id as task_id,
+      ot.order_id,
+      o.order_number,
+      o.piece_type,
+      o.price,
+      ot.task_type,
+      ot.wage_type,
+      ot.wage_rate,
+      ot.wage_amount,
+      ot.completed_at
+    FROM order_tasks ot
+    JOIN orders o ON ot.order_id = o.id
+    WHERE ot.assigned_to = ? AND ot.status = 'done'
+      AND ot.completed_at BETWEEN ? AND ?
+    ORDER BY ot.completed_at DESC
+  `);
+  return stmt.all(userId, startDate, endDate) as WorkerOrderDetail[];
 }

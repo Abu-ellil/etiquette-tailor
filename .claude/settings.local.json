@@ -20,7 +20,9 @@
       "Bash(npx tsc:*)",
       "Bash(npm run:*)",
       "Bash(npx electron-vite:*)",
-      "mcp__zai-mcp-server__analyze_image"
+      "mcp__zai-mcp-server__analyze_image",
+      "Read(//d/DEV2/etiquette-tailor/$HOME/AppData/Roaming/**)",
+      "Bash(sqlite3 \"$APPDATA/Etiquette Tailor/app.db\" \".schema orders\")"
     ]
   }
 }

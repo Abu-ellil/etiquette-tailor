@@ -25,7 +25,7 @@ const SIDEBAR_ITEMS = [
   { path: '/worker-rates', label: 'Worker Rates', icon: 'payments' },
   { path: '/task-board', label: 'Task Board', icon: 'view_kanban', roles: ['admin', 'manager'] },
   { path: '/my-tasks', label: 'My Tasks', icon: 'task_alt', workerTypes: ['tailor'] },
-  { path: '/cutting-queue', label: 'Cutting Queue', icon: 'content_cut', workerTypes: ['cutter'] },
+  { path: '/cutting-queue', label: 'Cutting Queue', icon: 'content_cut', workerTypes: ['master_cutter'] },
   { path: '/reports', label: 'Reports', icon: 'assessment' },
   { path: '/backup', label: 'Backup', icon: 'settings_backup_restore' },
   { path: '/settings', label: 'Settings', icon: 'settings', roles: ['admin'] },
@@ -46,7 +46,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
   if (session.role === 'worker') {
     const tailorRoutes = ['/dashboard', '/my-tasks'];
     const cutterRoutes = ['/dashboard', '/cutting-queue'];
-    allowedRoutes = session.worker_type === 'cutter' ? cutterRoutes : tailorRoutes;
+    allowedRoutes = session.worker_type === 'master_cutter' ? cutterRoutes : tailorRoutes;
   }
 
   const visibleItems = SIDEBAR_ITEMS.filter((item) => {
@@ -63,7 +63,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
     setSession(null);
   };
 
-  const showNewOrder = !['tailor', 'cutter'].includes(session.worker_type || '') || session.role !== 'worker';
+  const showNewOrder = !['tailor', 'master_cutter'].includes(session.worker_type || '') || session.role !== 'worker';
 
   return (
     <div className="flex flex-col h-screen bg-surface">

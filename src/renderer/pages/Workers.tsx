@@ -11,7 +11,7 @@ interface Worker {
   name: string;
   username: string;
   role: string;
-  worker_type?: 'tailor' | 'cutter' | 'designer' | null;
+  worker_type?: 'tailor' | 'master_cutter' | null;
   branch_id: number;
   base_salary: number;
   active: number;
@@ -41,14 +41,12 @@ const AVATAR_COLORS = [
 
 const WORKER_TYPE_ICONS: Record<string, string> = {
   tailor: 'styler',
-  cutter: 'content_cut',
-  designer: 'palette',
+  master_cutter: 'content_cut',
 };
 
 const WORKER_TYPE_LABELS: Record<string, string> = {
   tailor: 'Tailor',
-  cutter: 'Cutter',
-  designer: 'Designer',
+  master_cutter: 'Master Cutter',
 };
 
 const EMPLOYMENT_BADGES: Record<string, { bg: string; text: string }> = {
@@ -112,6 +110,7 @@ export default function WorkersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
+  const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number; up: boolean } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
@@ -119,6 +118,17 @@ export default function WorkersPage() {
   });
   const [workerEarnings, setWorkerEarnings] = useState<Record<number, any>>({});
   const [expandedEarnings, setExpandedEarnings] = useState<Record<number, boolean>>({});
+  const [expandedOrderDetails, setExpandedOrderDetails] = useState<Record<number, boolean>>({});
+  const [orderDetailDateRange, setOrderDetailDateRange] = useState<{ start: string; end: string }>(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+    };
+  });
+  const [workerOrderDetails, setWorkerOrderDetails] = useState<Record<number, any[]>>({});
 
   const {
     register,
@@ -164,6 +174,29 @@ export default function WorkersPage() {
     }
     if (workers.length > 0) loadEarnings();
   }, [workers, selectedMonth]);
+
+  /* ---- Order detail breakdown loading ---- */
+
+  const loadOrderDetails = useCallback(async (workerId: number) => {
+    try {
+      const data = await window.electronAPI.workers.getWorkerOrderDetails(
+        workerId,
+        orderDetailDateRange.start,
+        orderDetailDateRange.end + 'T23:59:59',
+      );
+      setWorkerOrderDetails((prev) => ({ ...prev, [workerId]: data || [] }));
+    } catch (err) {
+      console.error('Failed to load order details:', err);
+    }
+  }, [orderDetailDateRange]);
+
+  const toggleOrderDetails = (workerId: number) => {
+    const nextExpanded = !expandedOrderDetails[workerId];
+    setExpandedOrderDetails((prev) => ({ ...prev, [workerId]: nextExpanded }));
+    if (nextExpanded && !workerOrderDetails[workerId]) {
+      loadOrderDetails(workerId);
+    }
+  };
 
   /* ---- Derived stats ---- */
 
@@ -434,38 +467,105 @@ export default function WorkersPage() {
                     {/* Monthly Earnings */}
                     <td>
                       {workerEarnings[worker.id] && (
-                        <button
-                          onClick={() => setExpandedEarnings((prev) => ({ ...prev, [worker.id]: !prev[worker.id] }))}
-                          className="text-left"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-primary">
-                              {(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR
-                            </span>
-                            <span className="material-symbols-outlined text-xs text-secondary">
-                              {expandedEarnings[worker.id] ? 'expand_less' : 'expand_more'}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-secondary">
-                            {workerEarnings[worker.id]?.task_count || 0} tasks
-                          </p>
-                          {expandedEarnings[worker.id] && (
-                            <div className="mt-2 p-2 bg-surface-container rounded text-xs space-y-1 min-w-[160px]">
-                              <div className="flex justify-between">
-                                <span className="text-secondary">Piece Earnings</span>
-                                <span className="font-semibold">{(workerEarnings[worker.id]?.piece_earnings || 0).toFixed(0)} QAR</span>
+                        <div>
+                          <button
+                            onClick={() => setExpandedEarnings((prev) => ({ ...prev, [worker.id]: !prev[worker.id] }))}
+                            className="text-left"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-primary">
+                                {(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR
+                              </span>
+                              <span className="material-symbols-outlined text-xs text-secondary">
+                                {expandedEarnings[worker.id] ? 'expand_less' : 'expand_more'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-secondary">
+                              {workerEarnings[worker.id]?.task_count || 0} tasks
+                            </p>
+                            {expandedEarnings[worker.id] && (
+                              <div className="mt-2 p-2 bg-surface-container rounded text-xs space-y-1 min-w-[160px]">
+                                <div className="flex justify-between">
+                                  <span className="text-secondary">Piece Earnings</span>
+                                  <span className="font-semibold">{(workerEarnings[worker.id]?.piece_earnings || 0).toFixed(0)} QAR</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-secondary">Fixed Salary</span>
+                                  <span className="font-semibold">{(workerEarnings[worker.id]?.fixed_salary || 0).toFixed(0)} QAR</span>
+                                </div>
+                                <div className="flex justify-between border-t border-outline-variant/20 pt-1">
+                                  <span className="font-bold">Total</span>
+                                  <span className="font-bold text-primary">{(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR</span>
+                                </div>
+                                {/* Order-level breakdown toggle */}
+                                <div className="border-t border-outline-variant/20 pt-1 mt-1">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); toggleOrderDetails(worker.id); }}
+                                    className="flex items-center gap-1 text-primary font-semibold hover:underline text-[10px]"
+                                  >
+                                    <span className="material-symbols-outlined text-xs">
+                                      {expandedOrderDetails[worker.id] ? 'expand_less' : 'expand_more'}
+                                    </span>
+                                    Order Details
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-secondary">Fixed Salary</span>
-                                <span className="font-semibold">{(workerEarnings[worker.id]?.fixed_salary || 0).toFixed(0)} QAR</span>
+                            )}
+                          </button>
+                          {expandedOrderDetails[worker.id] && expandedEarnings[worker.id] && (
+                            <div className="mt-2 border border-outline-variant/20 rounded-lg overflow-hidden">
+                              <div className="flex items-center gap-2 p-2 bg-surface-container-high">
+                                <input
+                                  type="date"
+                                  value={orderDetailDateRange.start}
+                                  onChange={(e) => setOrderDetailDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                                  className="bg-surface-container-lowest text-xs px-2 py-1 rounded border-none outline-none"
+                                />
+                                <span className="text-secondary text-xs">to</span>
+                                <input
+                                  type="date"
+                                  value={orderDetailDateRange.end}
+                                  onChange={(e) => setOrderDetailDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                                  className="bg-surface-container-lowest text-xs px-2 py-1 rounded border-none outline-none"
+                                />
+                                <button
+                                  onClick={() => loadOrderDetails(worker.id)}
+                                  className="text-xs text-primary font-bold hover:underline"
+                                >
+                                  Apply
+                                </button>
                               </div>
-                              <div className="flex justify-between border-t border-outline-variant/20 pt-1">
-                                <span className="font-bold">Total</span>
-                                <span className="font-bold text-primary">{(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR</span>
-                              </div>
+                              {workerOrderDetails[worker.id] ? (
+                                workerOrderDetails[worker.id].length === 0 ? (
+                                  <p className="text-xs text-secondary p-3">No completed tasks in this period.</p>
+                                ) : (
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="bg-surface-container text-secondary">
+                                        <th className="px-2 py-1 text-left font-semibold">Order</th>
+                                        <th className="px-2 py-1 text-left font-semibold">Piece</th>
+                                        <th className="px-2 py-1 text-right font-semibold">Price</th>
+                                        <th className="px-2 py-1 text-right font-semibold">Wage</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {workerOrderDetails[worker.id].map((d: any) => (
+                                        <tr key={d.task_id} className="border-t border-outline-variant/10">
+                                          <td className="px-2 py-1 font-semibold">{d.order_number}</td>
+                                          <td className="px-2 py-1 text-secondary">{d.piece_type}</td>
+                                          <td className="px-2 py-1 text-right">{Number(d.price).toFixed(0)} QAR</td>
+                                          <td className="px-2 py-1 text-right font-semibold text-primary">{Number(d.wage_amount).toFixed(0)} QAR</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )
+                              ) : (
+                                <p className="text-xs text-secondary p-3">Loading...</p>
+                              )}
                             </div>
                           )}
-                        </button>
+                        </div>
                       )}
                     </td>
 
@@ -480,17 +580,34 @@ export default function WorkersPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActionMenuId(
-                              actionMenuId === worker.id ? null : worker.id,
-                            );
+                            if (actionMenuId === worker.id) {
+                              setActionMenuId(null);
+                              setActionMenuPos(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const up = window.innerHeight - rect.bottom < 120;
+                              setActionMenuPos({
+                                top: up ? rect.top - 4 : rect.bottom + 4,
+                                right: window.innerWidth - rect.right,
+                                up,
+                              });
+                              setActionMenuId(worker.id);
+                            }
                           }}
                           className="text-outline hover:text-primary transition-colors p-1"
                         >
                           <span className="material-symbols-outlined">more_vert</span>
                         </button>
 
-                        {actionMenuId === worker.id && (
-                          <div className="absolute right-0 top-full mt-1 bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/20 z-50 min-w-[160px] py-1">
+                        {actionMenuId === worker.id && actionMenuPos && (
+                          <div
+                            className="fixed bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/20 z-50 min-w-[160px] py-1"
+                            style={{
+                              top: actionMenuPos.top,
+                              right: actionMenuPos.right,
+                              transform: actionMenuPos.up ? 'translateY(-100%)' : undefined,
+                            }}
+                          >
                             <button
                               onClick={() => openEditModal(worker)}
                               className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2"
@@ -699,8 +816,7 @@ export default function WorkersPage() {
                             className="input-field pl-12 appearance-none"
                           >
                             <option value="tailor">Tailor</option>
-                            <option value="cutter">Cutter</option>
-                            <option value="designer">Designer</option>
+                            <option value="master_cutter">Master Cutter</option>
                           </select>
                           <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                             expand_more

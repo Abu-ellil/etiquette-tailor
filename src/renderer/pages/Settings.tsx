@@ -85,6 +85,7 @@ export default function SettingsPage() {
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
+  const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number; up: boolean } | null>(null);
 
   const {
     register,
@@ -452,8 +453,8 @@ export default function SettingsPage() {
                         <td>
                           <span className="font-bold text-on-surface">{user.name}</span>
                           {user.role === 'worker' && user.worker_type && (
-                            <span className="text-xs text-secondary ml-2 capitalize">
-                              ({user.worker_type})
+                            <span className="text-xs text-secondary ml-2">
+                              ({user.worker_type === 'master_cutter' ? 'Master Cutter' : user.worker_type === 'tailor' ? 'Tailor' : user.worker_type})
                             </span>
                           )}
                         </td>
@@ -482,14 +483,33 @@ export default function SettingsPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActionMenuId(actionMenuId === user.id ? null : user.id);
+                                if (actionMenuId === user.id) {
+                                  setActionMenuId(null);
+                                  setActionMenuPos(null);
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const up = window.innerHeight - rect.bottom < 120;
+                                  setActionMenuPos({
+                                    top: up ? rect.top - 4 : rect.bottom + 4,
+                                    right: window.innerWidth - rect.right,
+                                    up,
+                                  });
+                                  setActionMenuId(user.id);
+                                }
                               }}
                               className="text-outline hover:text-primary transition-colors p-1"
                             >
                               <span className="material-symbols-outlined">more_vert</span>
                             </button>
-                            {actionMenuId === user.id && (
-                              <div className="absolute right-0 top-full mt-1 bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/20 z-50 min-w-[160px] py-1">
+                            {actionMenuId === user.id && actionMenuPos && (
+                              <div
+                                className="fixed bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/20 z-50 min-w-[160px] py-1"
+                                style={{
+                                  top: actionMenuPos.top,
+                                  right: actionMenuPos.right,
+                                  transform: actionMenuPos.up ? 'translateY(-100%)' : undefined,
+                                }}
+                              >
                                 <button
                                   onClick={() => openEditUser(user)}
                                   className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2"
@@ -854,8 +874,7 @@ export default function SettingsPage() {
                               className="input-field pl-12 appearance-none"
                             >
                               <option value="tailor">Tailor</option>
-                              <option value="cutter">Cutter</option>
-                              <option value="designer">Designer</option>
+                              <option value="master_cutter">Master Cutter</option>
                             </select>
                             <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                               expand_more

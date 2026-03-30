@@ -47,8 +47,8 @@ function ProtectedRoute({
   let allowed = ROLE_ROUTES[session.role] || [];
   if (session.role === 'worker') {
     const tailorRoutes = ['/dashboard', '/my-tasks'];
-    const cutterRoutes = ['/dashboard', '/cutting-queue'];
-    allowed = session.worker_type === 'cutter' ? cutterRoutes : tailorRoutes;
+    const masterCutterRoutes = ['/dashboard', '/cutting-queue'];
+    allowed = session.worker_type === 'master_cutter' ? masterCutterRoutes : tailorRoutes;
   }
   if (!allowed.includes(path)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;

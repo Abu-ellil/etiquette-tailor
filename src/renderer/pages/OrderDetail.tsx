@@ -307,7 +307,6 @@ export default function OrderDetailPage() {
                     <select value={newTask.task_type} onChange={(e) => setNewTask({...newTask, task_type: e.target.value})} className="input-field w-full appearance-none">
                       <option value="cutting">Cutting</option>
                       <option value="sewing">Sewing</option>
-                      <option value="design">Design</option>
                     </select>
                   </div>
                   <div>

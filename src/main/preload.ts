@@ -33,6 +33,7 @@ export interface ElectronAPI {
     getActiveRate: (workerId: number, pieceType: string) => Promise<any>;
     getWorkerTasks: (userId: number) => Promise<any[]>;
     getMonthlyEarnings: (userId: number, month: string) => Promise<any>;
+    getWorkerOrderDetails: (userId: number, startDate: string, endDate: string) => Promise<any[]>;
   };
 
   customers: {
@@ -105,6 +106,7 @@ const api: ElectronAPI = {
     getActiveRate: (workerId, pieceType) => ipcRenderer.invoke('workers:getActiveRate', workerId, pieceType),
     getWorkerTasks: (userId) => ipcRenderer.invoke('workers:getWorkerTasks', userId),
     getMonthlyEarnings: (userId, month) => ipcRenderer.invoke('workers:getMonthlyEarnings', userId, month),
+    getWorkerOrderDetails: (userId, startDate, endDate) => ipcRenderer.invoke('workers:getWorkerOrderDetails', userId, startDate, endDate),
   },
 
   customers: {

@@ -255,11 +255,13 @@ export default function NewOrderPage() {
 
       const orderId = await window.electronAPI.orders.create(orderData);
 
-      /* Create a sewing task for the assigned worker */
+      /* Create a task for the assigned worker */
       if (data.worker_id && calculatedWage > 0) {
+        const selectedWorker = workers.find(w => w.id === Number(data.worker_id));
+        const taskType = selectedWorker?.worker_type === 'master_cutter' ? 'cutting' : 'sewing';
         await window.electronAPI.orders.createTask({
           order_id: orderId,
-          task_type: 'sewing',
+          task_type: taskType,
           assigned_to: Number(data.worker_id),
           wage_type: data.wage_type,
           wage_rate: Number(data.wage_rate),
@@ -525,7 +527,7 @@ export default function NewOrderPage() {
                     {workers.map((w) => (
                       <option key={w.id} value={w.id}>
                         {w.name}
-                        {w.worker_type ? ` (${w.worker_type})` : ''}
+                        {w.worker_type === 'master_cutter' ? ' (Master Cutter)' : w.worker_type === 'tailor' ? ' (Tailor)' : ''}
                       </option>
                     ))}
                   </select>

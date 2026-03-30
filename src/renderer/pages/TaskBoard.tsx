@@ -111,7 +111,6 @@ export default function TaskBoardPage() {
           <option value="">All Types</option>
           <option value="cutting">Cutting</option>
           <option value="sewing">Sewing</option>
-          <option value="design">Design</option>
         </select>
       </div>
 
