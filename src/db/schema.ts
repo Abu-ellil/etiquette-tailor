@@ -13,6 +13,18 @@ export default db;
 
 export function initializeSchema() {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS piece_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name_en TEXT NOT NULL,
+      name_ar TEXT NOT NULL,
+      category TEXT NOT NULL CHECK(category IN ('custom_wear','abaya','uniform','alteration','special')),
+      active INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 0,
+      UNIQUE(name_en, category)
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS branches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name_ar TEXT,
@@ -56,7 +68,7 @@ export function initializeSchema() {
       order_number TEXT NOT NULL UNIQUE,
       branch_id INTEGER NOT NULL REFERENCES branches(id),
       customer_id INTEGER NOT NULL REFERENCES customers(id),
-      piece_type TEXT NOT NULL CHECK(piece_type IN ('جلابية','عباية','فستان','تعديل','other')),
+      piece_type TEXT NOT NULL,
       details TEXT,
       price REAL NOT NULL,
       paid REAL DEFAULT 0,
@@ -140,9 +152,28 @@ export function initializeSchema() {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
+
   const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get() as { count: number };
   if (branchCount.count === 0) {
     seedDatabase();
+  }
+
+  // Seed piece types if empty
+  const pieceTypeCount = db.prepare('SELECT COUNT(*) as count FROM piece_types').get() as { count: number };
+  if (pieceTypeCount.count === 0) {
+    seedPieceTypes();
+  }
+
+  // Seed default settings if empty
+  const settingsCount = db.prepare('SELECT COUNT(*) as count FROM settings').get() as { count: number };
+  if (settingsCount.count === 0) {
+    seedSettings();
   }
 
   // Migrations: add missing columns to existing tables
@@ -172,9 +203,42 @@ function migrateColumns() {
 
   for (const [table, column, def] of migrations) {
     if (!tables[table]?.includes(column)) {
-      console.log(`Migrating: ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+      console.log(`Migrating: ALTER TABLE ${column} ${def}`);
       db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
     }
+  }
+
+  // Migrate orders.piece_type from CHECK constraint to free text (referencing piece_types.name_en)
+  // SQLite doesn't support ALTER TABLE DROP CHECK, so we recreate the table if needed
+  try {
+    const hasConstraint = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='orders'").get() as { sql: string } | undefined;
+    if (hasConstraint?.sql?.includes("CHECK(piece_type IN")) {
+      console.log('Migrating: removing piece_type CHECK constraint from orders');
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS orders_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_number TEXT NOT NULL UNIQUE,
+          branch_id INTEGER NOT NULL REFERENCES branches(id),
+          customer_id INTEGER NOT NULL REFERENCES customers(id),
+          piece_type TEXT NOT NULL,
+          details TEXT,
+          price REAL NOT NULL,
+          paid REAL DEFAULT 0,
+          balance REAL GENERATED ALWAYS AS (price - paid) VIRTUAL,
+          payment_method TEXT NOT NULL CHECK(payment_method IN ('cash','card')),
+          status TEXT NOT NULL CHECK(status IN ('intake','cutting','sewing','ready','delivered')) DEFAULT 'intake',
+          receive_date DATE,
+          delivery_date DATE,
+          created_by INTEGER REFERENCES users(id),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      db.exec(`INSERT INTO orders_new SELECT * FROM orders`);
+      db.exec(`DROP TABLE orders`);
+      db.exec(`ALTER TABLE orders_new RENAME TO orders`);
+    }
+  } catch (e) {
+    console.log('orders migration skipped or already applied:', (e as Error).message);
   }
 }
 
@@ -208,4 +272,69 @@ function seedDatabase() {
   );
 
   insertUser.run('Admin', 'admin', hashPassword('admin123'), 'admin', null, 1, 0);
+}
+
+function seedSettings() {
+  const insertSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)');
+  insertSetting.run('shop_name_ar', 'إتيكيت خياط');
+  insertSetting.run('shop_name_en', 'Etiquette Tailor');
+  insertSetting.run('shop_phone', '');
+  insertSetting.run('currency', 'QAR');
+  insertSetting.run('receipt_footer', 'Thank you for choosing Etiquette Tailor');
+  insertSetting.run('tax_rate', '0');
+}
+
+function seedPieceTypes() {
+  const insert = db.prepare(
+    'INSERT INTO piece_types (name_en, name_ar, category, sort_order) VALUES (?, ?, ?, ?)'
+  );
+
+  const types: [string, string, string, number][] = [
+    // Custom Wear
+    ['Jalabiya (No Lining)', 'جلابية بدون بطانة', 'custom_wear', 1],
+    ['Jalabiya (With Lining)', 'جلابية مع البطانة', 'custom_wear', 2],
+    ['Dress', 'فستان', 'custom_wear', 3],
+    ['Evening Dress', 'فستان سهرة', 'custom_wear', 4],
+    ['Casual Dress', 'فستان يومي', 'custom_wear', 5],
+    ['Kaftan', 'قفطان', 'custom_wear', 6],
+    ['Skirt', 'تنورة', 'custom_wear', 7],
+    ['Blouse', 'بلوزة', 'custom_wear', 8],
+    ['Top', 'توب', 'custom_wear', 9],
+    ['Pants', 'بنطلون', 'custom_wear', 10],
+    // Abaya
+    ['Classic Abaya', 'عباية سادة', 'abaya', 11],
+    ['Embroidered Abaya', 'عباية مطرزة', 'abaya', 12],
+    ['Open Abaya', 'عباية مفتوحة', 'abaya', 13],
+    ['Luxury Abaya', 'عباية فخمة', 'abaya', 14],
+    ['Daily Abaya', 'عباية يومية', 'abaya', 15],
+    // Uniforms
+    ['School Uniform (Primary)', 'يونفورم ابتدائي', 'uniform', 16],
+    ['School Uniform (Middle)', 'يونفورم إعدادي', 'uniform', 17],
+    ['School Uniform (High School)', 'يونفورم ثانوي', 'uniform', 18],
+    ['Staff Uniform', 'يونفورم موظفات', 'uniform', 19],
+    ['Nurse Uniform', 'يونفورم طبي', 'uniform', 20],
+    ['Company Uniform', 'يونفورم شركات', 'uniform', 21],
+    // Alterations
+    ['Shortening', 'تقصير', 'alteration', 22],
+    ['Length Adjustment', 'تعديل طول', 'alteration', 23],
+    ['Waist Adjustment', 'تضييق / توسيع', 'alteration', 24],
+    ['Sleeve Adjustment', 'تعديل أكمام', 'alteration', 25],
+    ['Repair', 'إصلاح', 'alteration', 26],
+    ['Zipper Change', 'تغيير سحاب', 'alteration', 27],
+    ['Button Fix', 'تركيب أزرار', 'alteration', 28],
+    // Special Orders
+    ['Custom Design', 'تصميم خاص', 'special', 29],
+    ['Embroidery Only', 'تطريز فقط', 'special', 30],
+    ['Fabric Stitching', 'تفصيل قماش جاهز', 'special', 31],
+    ['Re-Stitch', 'إعادة تفصيل', 'special', 32],
+    ['Bridal Dress', 'فستان عروس', 'special', 33],
+    ['Kids Wear', 'ملابس أطفال', 'special', 34],
+  ];
+
+  const tx = db.transaction(() => {
+    for (const t of types) {
+      insert.run(t[0], t[1], t[2], t[3]);
+    }
+  });
+  tx();
 }

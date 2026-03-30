@@ -15,6 +15,7 @@ import TaskBoardPage from './pages/TaskBoard';
 import ReportsPage from './pages/Reports';
 import InvoicePage from './pages/Invoice';
 import BackupPage from './pages/Backup';
+import SettingsPage from './pages/Settings';
 import AppLayout from './components/AppLayout';
 
 export interface Session {
@@ -27,7 +28,7 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/task-board', '/reports', '/backup'],
+  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/task-board', '/reports', '/backup', '/settings'],
   manager: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/task-board', '/reports'],
   reception: ['/dashboard', '/customers', '/measurements', '/orders'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
@@ -206,6 +207,14 @@ export default function App() {
             element={
               <ProtectedRoute path="/backup" session={session}>
                 <BackupPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <ProtectedRoute path="/settings" session={session}>
+                <SettingsPage />
               </ProtectedRoute>
             }
           />

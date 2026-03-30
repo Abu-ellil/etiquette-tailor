@@ -39,16 +39,25 @@ interface WorkerRate {
   rate: number;
 }
 
+interface PieceType {
+  id: number;
+  name_en: string;
+  name_ar: string;
+  category: string;
+  active: number;
+  sort_order: number;
+}
+
 /* ------------------------------------------------------------------ */
-/*  Piece types (must match DB CHECK constraint)                       */
+/*  Category labels                                                    */
 /* ------------------------------------------------------------------ */
-const PIECE_TYPES = [
-  { value: '\u062C\u0644\u0627\u0628\u064A\u0629', label: 'Jalabiya' },
-  { value: '\u0639\u0628\u0627\u064A\u0629', label: 'Abaya' },
-  { value: '\u0641\u0633\u062A\u0627\u0646', label: 'Dress' },
-  { value: '\u062A\u0639\u062F\u064A\u0644', label: 'Alteration' },
-  { value: 'other', label: 'Other' },
-];
+const CATEGORY_LABELS: Record<string, string> = {
+  custom_wear: 'Custom Wear — التفصيل النسائي',
+  abaya: 'Abaya — العبايات',
+  uniform: 'Uniforms — اليونفورم',
+  alteration: 'Alterations — التعديلات',
+  special: 'Special Orders — أعمال خاصة',
+};
 
 /* ------------------------------------------------------------------ */
 /*  Form data shape                                                    */
@@ -79,6 +88,7 @@ export default function NewOrderPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [workerRates, setWorkerRates] = useState<WorkerRate[]>([]);
+  const [pieceTypes, setPieceTypes] = useState<PieceType[]>([]);
 
   /* UI state */
   const [submitting, setSubmitting] = useState(false);
@@ -99,7 +109,7 @@ export default function NewOrderPage() {
     defaultValues: {
       branch_id: 1,
       customer_id: 0,
-      piece_type: '\u062C\u0644\u0627\u0628\u064A\u0629',
+      piece_type: '',
       details: '',
       price: 0,
       paid: 0,
@@ -128,13 +138,16 @@ export default function NewOrderPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [br, wr] = await Promise.all([
+        const [br, wr, pt] = await Promise.all([
           window.electronAPI.branches.getAll(),
           window.electronAPI.workers.getAll(),
+          window.electronAPI.pieceTypes.getAll(),
         ]);
         setBranches(br);
         setWorkers(wr);
+        setPieceTypes(pt);
         if (br.length > 0) setValue('branch_id', br[0].id);
+        if (pt.length > 0) setValue('piece_type', pt[0].name_en);
       } catch (err) {
         console.error('Failed to load reference data:', err);
       }
@@ -462,11 +475,20 @@ export default function NewOrderPage() {
                   Garment Type
                 </label>
                 <select className="input-field" {...register('piece_type')}>
-                  {PIECE_TYPES.map((pt) => (
-                    <option key={pt.value} value={pt.value}>
-                      {pt.label}
-                    </option>
-                  ))}
+                  {(() => {
+                    const categories = [...new Set(pieceTypes.map((pt) => pt.category))];
+                    return categories.map((cat) => (
+                      <optgroup key={cat} label={CATEGORY_LABELS[cat] || cat}>
+                        {pieceTypes
+                          .filter((pt) => pt.category === cat)
+                          .map((pt) => (
+                            <option key={pt.id} value={pt.name_en}>
+                              {pt.name_en} — {pt.name_ar}
+                            </option>
+                          ))}
+                      </optgroup>
+                    ));
+                  })()}
                 </select>
               </div>
             </div>

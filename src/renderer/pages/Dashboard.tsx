@@ -94,18 +94,41 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [workerTasks, setWorkerTasks] = useState<any[]>([]);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
+
+  const session = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('session') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const isWorker = session.role === 'worker';
+  const isTailor = isWorker && session.worker_type === 'tailor';
+  const isCutter = isWorker && session.worker_type === 'cutter';
+  const isManager = session.role === 'manager';
 
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true);
-        const [statsData, ordersData] = await Promise.all([
-          window.electronAPI.orders.getStats(),
-          window.electronAPI.orders.getAll(),
-        ]);
-        setStats(statsData);
-        // Show the 5 most recent orders
-        setOrders((ordersData || []).slice(0, 5));
+
+        if (isWorker) {
+          const tasks = await window.electronAPI.workers.getWorkerTasks(session.userId);
+          setWorkerTasks(tasks || []);
+        } else {
+          const [statsData, ordersData] = await Promise.all([
+            window.electronAPI.orders.getStats(),
+            window.electronAPI.orders.getAll(),
+          ]);
+          setStats(statsData);
+          setOrders((ordersData || []).slice(0, 5));
+
+          const tasks = await window.electronAPI.orders.getAllTasks({});
+          setAllTasks(tasks || []);
+        }
       } catch (err: unknown) {
         console.error('Failed to load dashboard data:', err);
         const message = err instanceof Error ? err.message : 'Failed to load dashboard data. Please try again.';
@@ -116,7 +139,7 @@ export default function DashboardPage() {
     }
 
     fetchData();
-  }, []);
+  }, [isWorker, isTailor, isCutter, session.userId]);
 
   if (loading) {
     return (
@@ -171,6 +194,16 @@ export default function DashboardPage() {
   }
 
   const safeStats = stats || { total: 0, in_progress: 0, ready: 0, delivered: 0, overdue: 0, revenue: 0 };
+
+  if (isTailor || isCutter) {
+    return <WorkerDashboard tasks={workerTasks} isCutter={isCutter} loading={loading} />;
+  }
+
+  const taskCounts = {
+    pending: allTasks.filter((t: any) => t.status === 'pending').length,
+    in_progress: allTasks.filter((t: any) => t.status === 'in_progress').length,
+    done: allTasks.filter((t: any) => t.status === 'done').length,
+  };
 
   return (
     <div className="space-y-12 pb-20">
@@ -266,26 +299,67 @@ export default function DashboardPage() {
         </div>
 
         {/* Revenue */}
-        <div className="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-primary/20 flex flex-col justify-between h-40 bg-gradient-to-br from-white to-slate-50">
-          <div className="flex justify-between items-start">
-            <span
-              className="material-symbols-outlined text-primary"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              payments
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-              Revenue
-            </span>
+        {!isManager && (
+          <div className="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-primary/20 flex flex-col justify-between h-40 bg-gradient-to-br from-white to-slate-50">
+            <div className="flex justify-between items-start">
+              <span
+                className="material-symbols-outlined text-primary"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                payments
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">
+                Revenue
+              </span>
+            </div>
+            <div className="mt-4">
+              <span className="text-3xl font-headline font-extrabold text-on-surface">
+                {formatRevenue(safeStats.revenue)}
+              </span>
+              <p className="text-xs text-secondary mt-1">Open order value</p>
+            </div>
           </div>
-          <div className="mt-4">
-            <span className="text-3xl font-headline font-extrabold text-on-surface">
-              {formatRevenue(safeStats.revenue)}
-            </span>
-            <p className="text-xs text-secondary mt-1">Open order value</p>
+        )}
+        {isManager && (
+          <div className="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-primary/20 flex flex-col justify-between h-40">
+            <div className="flex justify-between items-start">
+              <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                task_alt
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">
+                Tasks Done
+              </span>
+            </div>
+            <div className="mt-4">
+              <span className="text-4xl font-headline font-extrabold text-on-surface">
+                {formatNumber(taskCounts.done)}
+              </span>
+              <p className="text-xs text-secondary mt-1">Completed tasks</p>
+            </div>
           </div>
-        </div>
+        )}
       </section>
+
+      {/* Production Summary (Admin/Manager) */}
+      {allTasks.length > 0 && (
+        <section className="bg-surface-container-lowest rounded-xl p-8">
+          <h3 className="text-xl font-headline font-bold text-slate-800 mb-6">Production Summary</h3>
+          <div className="grid grid-cols-3 gap-6">
+            <div className="bg-surface rounded-lg p-5 text-center">
+              <span className="text-3xl font-headline font-bold text-on-surface">{taskCounts.pending}</span>
+              <p className="text-xs text-secondary mt-1 uppercase font-bold tracking-wider">Pending</p>
+            </div>
+            <div className="bg-primary-fixed rounded-lg p-5 text-center">
+              <span className="text-3xl font-headline font-bold text-on-primary-fixed">{taskCounts.in_progress}</span>
+              <p className="text-xs text-on-primary-fixed-variant mt-1 uppercase font-bold tracking-wider">In Progress</p>
+            </div>
+            <div className="bg-tertiary-fixed rounded-lg p-5 text-center">
+              <span className="text-3xl font-headline font-bold text-on-tertiary-fixed">{taskCounts.done}</span>
+              <p className="text-xs text-on-tertiary-fixed-variant mt-1 uppercase font-bold tracking-wider">Done</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Alerts & Latest Orders */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -451,6 +525,96 @@ export default function DashboardPage() {
           )}
         </div>
       </section>
+    </div>
+  );
+}
+
+function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter: boolean; loading: boolean }) {
+  const filtered = isCutter
+    ? tasks.filter((t) => t.task_type === 'cutting')
+    : tasks;
+
+  const pendingCount = filtered.filter((t) => t.status === 'pending').length;
+  const inProgressCount = filtered.filter((t) => t.status === 'in_progress').length;
+  const doneToday = filtered.filter((t) => {
+    if (t.status !== 'done' || !t.completed_at) return false;
+    return new Date(t.completed_at).toDateString() === new Date().toDateString();
+  }).length;
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="grid grid-cols-3 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-surface-container-lowest p-6 rounded-xl h-32 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-headline font-extrabold text-on-surface tracking-tight">
+          {isCutter ? 'Cutting Queue' : 'My Tasks'}
+        </h2>
+        <p className="text-secondary mt-1">
+          {isCutter ? 'Your cutting tasks sorted by delivery date.' : 'Your assigned production tasks.'}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        <div className="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-primary/20 flex flex-col justify-between h-32">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">Pending</span>
+          <span className="text-4xl font-headline font-extrabold text-on-surface">{pendingCount}</span>
+        </div>
+        <div className="bg-primary-fixed p-6 rounded-xl flex flex-col justify-between h-32">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-on-primary-fixed-variant">In Progress</span>
+          <span className="text-4xl font-headline font-extrabold text-on-primary-fixed">{inProgressCount}</span>
+        </div>
+        <div className="bg-tertiary-fixed p-6 rounded-xl flex flex-col justify-between h-32">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-on-tertiary-fixed-variant">Done Today</span>
+          <span className="text-4xl font-headline font-extrabold text-on-tertiary-fixed">{doneToday}</span>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-secondary">
+            <span className="material-symbols-outlined text-5xl mb-3 text-outline">{isCutter ? 'content_cut' : 'checklist'}</span>
+            <p className="font-semibold text-on-surface">No tasks assigned</p>
+            <p className="text-sm mt-1">Tasks will appear here when assigned to you.</p>
+          </div>
+        ) : (
+          filtered
+            .sort((a, b) => {
+              const order: Record<string, number> = { in_progress: 0, pending: 1, done: 2 };
+              return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+            })
+            .map((task) => (
+              <div key={task.task_id} className="bg-surface-container-lowest rounded-xl p-5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    task.status === 'done' ? 'bg-emerald-100 text-emerald-700'
+                    : task.status === 'in_progress' ? 'bg-blue-100 text-blue-700'
+                    : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {task.status === 'in_progress' ? 'In Progress' : task.status === 'done' ? 'Done' : 'Pending'}
+                  </span>
+                  <div>
+                    <span className="font-bold text-on-surface">{task.order_number}</span>
+                    <span className="text-secondary mx-2">·</span>
+                    <span className="text-sm text-secondary">{task.piece_type}</span>
+                  </div>
+                </div>
+                <div className="text-sm text-secondary">
+                  {task.due_date ? `Due: ${formatDate(task.due_date)}` : ''}
+                </div>
+              </div>
+            ))
+        )}
+      </div>
     </div>
   );
 }

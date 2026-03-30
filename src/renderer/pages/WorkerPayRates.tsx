@@ -22,21 +22,24 @@ interface WorkerRate {
   season_end?: string;
 }
 
-interface RateRowValues {
-  rate: number;
+interface PieceType {
+  id: number;
+  name_en: string;
+  name_ar: string;
+  category: string;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const PIECE_TYPES = [
-  { key: 'جلابية', label: 'Jalabiya', description: 'Traditional Evening Wear', icon: 'styler', color: 'bg-primary-fixed' },
-  { key: 'عباية', label: 'Abaya', description: 'Classic Modern Cut', icon: 'checkroom', color: 'bg-secondary-container' },
-  { key: 'فستان', label: 'Dress', description: 'Formal & Casual', icon: 'apparel', color: 'bg-tertiary-fixed' },
-  { key: 'تعديل', label: 'Alteration', description: 'Repair & Adjustment', icon: 'content_cut', color: 'bg-surface-container-high' },
-  { key: 'other', label: 'Other', description: 'Miscellaneous Pieces', icon: 'layers', color: 'bg-primary-fixed-dim' },
-];
+const CATEGORY_META: Record<string, { icon: string; color: string }> = {
+  custom_wear: { icon: 'styler', color: 'bg-primary-fixed' },
+  abaya: { icon: 'checkroom', color: 'bg-secondary-container' },
+  uniform: { icon: 'apparel', color: 'bg-tertiary-fixed' },
+  alteration: { icon: 'content_cut', color: 'bg-surface-container-high' },
+  special: { icon: 'layers', color: 'bg-primary-fixed-dim' },
+};
 
 const ICON_TEXT_COLORS: Record<string, string> = {
   'bg-primary-fixed': 'text-on-primary-fixed',
@@ -58,16 +61,41 @@ export default function WorkerPayRatesPage() {
   const [saving, setSaving] = useState(false);
   const [calculatorPrice, setCalculatorPrice] = useState(50);
   const [dirty, setDirty] = useState(false);
+  const [pieceTypes, setPieceTypes] = useState<PieceType[]>([]);
 
-  const { register, handleSubmit, reset } = useForm();
+  const [expandedSeasonal, setExpandedSeasonal] = useState<Record<string, boolean>>({});
+
+  const toggleSeasonal = (pieceType: string) => {
+    setExpandedSeasonal((prev) => ({ ...prev, [pieceType]: !prev[pieceType] }));
+  };
+
+  const updateSeasonalDate = (pieceType: string, field: 'season_start' | 'season_end', value: string) => {
+    setRates((prev) => {
+      const existing = prev[pieceType] || {
+        user_id: selectedWorkerId!,
+        piece_type: pieceType,
+        wage_type: 'percentage' as const,
+        rate: 0,
+      };
+      return {
+        ...prev,
+        [pieceType]: { ...existing, [field]: value || undefined },
+      };
+    });
+    setDirty(true);
+  };
 
   /* ---- Load workers ---- */
 
   const loadWorkers = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await window.electronAPI.workers.getAll();
+      const [data, pt] = await Promise.all([
+        window.electronAPI.workers.getAll(),
+        window.electronAPI.pieceTypes.getAll(),
+      ]);
       setWorkers(data || []);
+      setPieceTypes(pt || []);
       if (data && data.length > 0 && !selectedWorkerId) {
         setSelectedWorkerId(data[0].id);
       }
@@ -109,7 +137,7 @@ export default function WorkerPayRatesPage() {
   /* ---- Derived stats ---- */
 
   const configuredCount = Object.keys(rates).filter((k) => rates[k].rate > 0).length;
-  const ratesArray = PIECE_TYPES.map((pt) => rates[pt.key]).filter(Boolean);
+  const ratesArray = pieceTypes.map((pt) => rates[pt.name_en]).filter(Boolean);
   const avgRate =
     ratesArray.length > 0
       ? ratesArray.reduce((sum, r) => sum + r.rate, 0) / ratesArray.length
@@ -166,14 +194,16 @@ export default function WorkerPayRatesPage() {
     if (!selectedWorkerId) return;
     try {
       setSaving(true);
-      for (const pt of PIECE_TYPES) {
-        const rate = rates[pt.key];
+      for (const pt of pieceTypes) {
+        const rate = rates[pt.name_en];
         if (rate && rate.rate > 0) {
           await window.electronAPI.workers.setRate({
             user_id: selectedWorkerId,
-            piece_type: pt.key,
+            piece_type: pt.name_en,
             wage_type: rate.wage_type,
             rate: rate.rate,
+            season_start: rate.season_start || undefined,
+            season_end: rate.season_end || undefined,
           });
         }
       }
@@ -306,14 +336,15 @@ export default function WorkerPayRatesPage() {
               </div>
 
               {/* Rate Rows */}
-              {PIECE_TYPES.map((pt, idx) => {
-                const rate = rates[pt.key] || {
+              {pieceTypes.map((pt, idx) => {
+                const rate = rates[pt.name_en] || {
                   user_id: selectedWorkerId!,
-                  piece_type: pt.key,
+                  piece_type: pt.name_en,
                   wage_type: 'percentage' as const,
                   rate: 0,
                 };
-                const iconTextColor = ICON_TEXT_COLORS[pt.color] || 'text-on-surface';
+                const meta = CATEGORY_META[pt.category] || { icon: 'layers', color: 'bg-surface-container-high' };
+                const iconTextColor = ICON_TEXT_COLORS[meta.color] || 'text-on-surface';
                 const rowBg = idx % 2 === 0 ? 'bg-surface' : 'bg-surface-container-low';
                 const wagePreview =
                   rate.wage_type === 'percentage'
@@ -321,69 +352,124 @@ export default function WorkerPayRatesPage() {
                     : `${rate.rate.toFixed(2)} QAR`;
 
                 return (
-                  <div
-                    key={pt.key}
-                    className={`grid grid-cols-12 items-center px-6 py-5 ${rowBg} rounded-lg mb-2`}
-                  >
-                    {/* Item Category */}
-                    <div className="col-span-4 flex items-center gap-4">
-                      <div
-                        className={`w-10 h-10 rounded ${pt.color} flex items-center justify-center`}
-                      >
-                        <span className={`material-symbols-outlined text-xl ${iconTextColor}`}>
-                          {pt.icon}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-on-surface">{pt.label}</p>
-                        <p className="text-xs text-secondary">{pt.description}</p>
-                      </div>
-                    </div>
-
-                    {/* Rate Type Toggle */}
-                    <div className="col-span-3">
-                      <button
-                        onClick={() => toggleWageType(pt.key)}
-                        className="flex items-center gap-2 group"
-                      >
-                        <span
-                          className={`material-symbols-outlined text-2xl transition-colors ${
-                            rate.wage_type === 'percentage'
-                              ? 'text-primary'
-                              : 'text-on-surface-variant'
-                          }`}
+                  <div key={pt.name_en} className={`${rowBg} rounded-lg mb-2`}>
+                    <div className="grid grid-cols-12 items-center px-6 py-5">
+                      {/* Item Category */}
+                      <div className="col-span-4 flex items-center gap-4">
+                        <div
+                          className={`w-10 h-10 rounded ${meta.color} flex items-center justify-center`}
                         >
-                          {rate.wage_type === 'percentage' ? 'toggle_on' : 'toggle_off'}
-                        </span>
-                        <span className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">
-                          {rate.wage_type === 'percentage' ? 'Percent' : 'Fixed'}
-                        </span>
-                      </button>
-                    </div>
+                          <span className={`material-symbols-outlined text-xl ${iconTextColor}`}>
+                            {meta.icon}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-on-surface">{pt.name_en}</p>
+                          <p className="text-xs text-secondary">{pt.name_ar}</p>
+                        </div>
+                      </div>
 
-                    {/* Rate Input */}
-                    <div className="col-span-3 flex justify-end">
-                      <div className="relative w-28">
-                        <input
-                          type="number"
-                          min="0"
-                          step={rate.wage_type === 'percentage' ? '0.5' : '0.01'}
-                          value={rate.rate || ''}
-                          onChange={(e) => updateRate(pt.key, e.target.value)}
-                          className="bg-surface-container-high w-full h-12 pl-4 pr-8 text-right font-bold text-on-surface rounded-t-sm border-none border-b-2 border-transparent focus:border-primary focus:outline-none transition-colors"
-                          placeholder="0"
-                        />
-                        <span className="absolute right-3 top-3.5 text-secondary font-medium">
-                          {rate.wage_type === 'percentage' ? '%' : 'QAR'}
+                      {/* Rate Type Toggle */}
+                      <div className="col-span-3">
+                        <button
+                          onClick={() => toggleWageType(pt.name_en)}
+                          className="flex items-center gap-2 group"
+                        >
+                          <span
+                            className={`material-symbols-outlined text-2xl transition-colors ${
+                              rate.wage_type === 'percentage'
+                                ? 'text-primary'
+                                : 'text-on-surface-variant'
+                            }`}
+                          >
+                            {rate.wage_type === 'percentage' ? 'toggle_on' : 'toggle_off'}
+                          </span>
+                          <span className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">
+                            {rate.wage_type === 'percentage' ? 'Percent' : 'Fixed'}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Rate Input */}
+                      <div className="col-span-3 flex justify-end">
+                        <div className="relative w-28">
+                          <input
+                            type="number"
+                            min="0"
+                            step={rate.wage_type === 'percentage' ? '0.5' : '0.01'}
+                            value={rate.rate || ''}
+                            onChange={(e) => updateRate(pt.name_en, e.target.value)}
+                            className="bg-surface-container-high w-full h-12 pl-4 pr-8 text-right font-bold text-on-surface rounded-t-sm border-none border-b-2 border-transparent focus:border-primary focus:outline-none transition-colors"
+                            placeholder="0"
+                          />
+                          <span className="absolute right-3 top-3.5 text-secondary font-medium">
+                            {rate.wage_type === 'percentage' ? '%' : 'QAR'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Wage Preview + Seasonal Toggle */}
+                      <div className="col-span-2 text-right flex items-center justify-end gap-2">
+                        <span className="text-sm font-bold text-primary">
+                          {rate.rate > 0 ? wagePreview : '--'}
                         </span>
+                        {rate.season_start && (
+                          <span className="px-1.5 py-0.5 bg-primary-container text-white text-[9px] font-bold rounded uppercase">
+                            S
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {/* Wage Preview */}
-                    <div className="col-span-2 text-right">
-                      <span className="text-sm font-bold text-primary">
-                        {rate.rate > 0 ? wagePreview : '--'}
-                      </span>
+                    {/* Seasonal Override Row */}
+                    <div className="px-6 pb-3">
+                      <button
+                        onClick={() => toggleSeasonal(pt.name_en)}
+                        className="flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-primary transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-sm">
+                          {expandedSeasonal[pt.name_en] ? 'expand_less' : 'expand_more'}
+                        </span>
+                        Seasonal Override
+                        {rate.season_start && rate.season_end && (
+                          <span className="ml-1 text-[10px] text-primary font-semibold">
+                            ({rate.season_start} — {rate.season_end})
+                          </span>
+                        )}
+                      </button>
+                      {expandedSeasonal[pt.name_en] && (
+                        <div className="flex items-center gap-4 mt-3 ml-5">
+                          <div>
+                            <label className="block text-[9px] font-bold tracking-widest uppercase text-secondary mb-1">Start Date</label>
+                            <input
+                              type="date"
+                              value={rate.season_start || ''}
+                              onChange={(e) => updateSeasonalDate(pt.name_en, 'season_start', e.target.value)}
+                              className="bg-surface-container-high h-9 px-3 text-sm rounded border-none focus:ring-2 focus:ring-primary/20 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold tracking-widest uppercase text-secondary mb-1">End Date</label>
+                            <input
+                              type="date"
+                              value={rate.season_end || ''}
+                              onChange={(e) => updateSeasonalDate(pt.name_en, 'season_end', e.target.value)}
+                              className="bg-surface-container-high h-9 px-3 text-sm rounded border-none focus:ring-2 focus:ring-primary/20 outline-none"
+                            />
+                          </div>
+                          {rate.season_start && (
+                            <button
+                              onClick={() => {
+                                updateSeasonalDate(pt.name_en, 'season_start', '');
+                                updateSeasonalDate(pt.name_en, 'season_end', '');
+                              }}
+                              className="text-xs text-error hover:underline mt-4"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -419,7 +505,7 @@ export default function WorkerPayRatesPage() {
                     {configuredCount}
                   </span>
                   <span className="text-xs text-secondary mb-1.5">
-                    of {PIECE_TYPES.length} types
+                    of {pieceTypes.length} types
                   </span>
                 </div>
               </div>
@@ -522,14 +608,14 @@ export default function WorkerPayRatesPage() {
               <div className="flex justify-between items-end pt-4">
                 <span className="text-sm font-semibold">Rates Configured</span>
                 <span className="text-xl font-bold">
-                  {Math.round((configuredCount / PIECE_TYPES.length) * 100)}%
+                  {Math.round((configuredCount / pieceTypes.length) * 100)}%
                 </span>
               </div>
               <div className="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-secondary h-full rounded-full transition-all"
                   style={{
-                    width: `${(configuredCount / PIECE_TYPES.length) * 100}%`,
+                    width: `${(configuredCount / pieceTypes.length) * 100}%`,
                   }}
                 />
               </div>

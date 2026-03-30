@@ -30,7 +30,9 @@ export interface ElectronAPI {
     getAll: () => Promise<any[]>;
     getRates: (workerId: number) => Promise<any[]>;
     setRate: (data: any) => Promise<any>;
-    getActiveRate: (workerId: number) => Promise<any>;
+    getActiveRate: (workerId: number, pieceType: string) => Promise<any>;
+    getWorkerTasks: (userId: number) => Promise<any[]>;
+    getMonthlyEarnings: (userId: number, month: string) => Promise<any>;
   };
 
   customers: {
@@ -53,8 +55,9 @@ export interface ElectronAPI {
     getTasks: (orderId: number) => Promise<any[]>;
     createTask: (data: any) => Promise<any>;
     updateTaskStatus: (taskId: number, status: string) => Promise<any>;
-    reassignTask: (taskId: number, workerId: number) => Promise<any>;
+    reassignTask: (taskId: number, workerId: number, wageType: string, wageRate: number, wageAmount: number) => Promise<any>;
     getStats: () => Promise<any>;
+    getAllTasks: (filters?: { branchId?: number; workerId?: number; taskType?: string }) => Promise<any[]>;
   };
 
   window: {
@@ -62,6 +65,10 @@ export interface ElectronAPI {
     maximize: () => Promise<void>;
     close: () => Promise<void>;
     isMaximized: () => Promise<boolean>;
+  };
+
+  pieceTypes: {
+    getAll: () => Promise<any[]>;
   };
 }
 
