@@ -12,6 +12,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = React.useState(true);
   const [editing, setEditing] = React.useState(false);
   const [showAddTask, setShowAddTask] = React.useState(false);
+  const [originalPrice, setOriginalPrice] = React.useState(0);
   const [newTask, setNewTask] = React.useState({ task_type: 'sewing', assigned_to: null });
 
   const loadOrder = React.useCallback(async () => {
@@ -59,6 +60,18 @@ export default function OrderDetailPage() {
         status: order.status,
         delivery_date: order.delivery_date,
       });
+      const newPrice = Number(order.price);
+      if (newPrice !== originalPrice) {
+        const nonDoneTasks = tasks.filter((t: any) => t.status !== 'done');
+        if (nonDoneTasks.length > 0) {
+          const recalc = window.confirm(
+            `Price changed from ${originalPrice.toFixed(2)} to ${newPrice.toFixed(2)} QAR.\nRecalculate wages for ${nonDoneTasks.length} active task(s)?`
+          );
+          if (recalc) {
+            await window.electronAPI.orders.recalculateTaskWages(order.id, newPrice);
+          }
+        }
+      }
       setEditing(false);
       await loadOrder();
     } catch (err) {
@@ -142,6 +155,7 @@ export default function OrderDetailPage() {
   const balance = (Number(order.price) || 0) - (Number(order.paid) || 0);
 
   const session = JSON.parse(localStorage.getItem('session') || '{}');
+  const isWorker = session.role === 'worker';
 
   return (
     <div className="space-y-8">
@@ -155,16 +169,18 @@ export default function OrderDetailPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          {!editing ? (
-            <button onClick={() => setEditing(true)} className="btn-primary px-6 py-3 text-sm flex items-center gap-2">
-              <span className="material-symbols-outlined text-base">edit</span>
-              Edit Order
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button onClick={() => { setEditing(false); loadOrder(); }} className="px-6 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg">Cancel</button>
-              <button onClick={handleSaveOrder} className="btn-primary px-6 py-3 text-sm">Save</button>
-            </div>
+          {!isWorker && (
+            !editing ? (
+              <button onClick={() => { setEditing(true); setOriginalPrice(Number(order.price)); }} className="btn-primary px-6 py-3 text-sm flex items-center gap-2">
+                <span className="material-symbols-outlined text-base">edit</span>
+                Edit Order
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button onClick={() => { setEditing(false); loadOrder(); }} className="px-6 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg">Cancel</button>
+                <button onClick={handleSaveOrder} className="btn-primary px-6 py-3 text-sm">Save</button>
+              </div>
+            )
           )}
           <button onClick={() => navigate('/orders')} className="px-4 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg flex items-center gap-1">
             <span className="material-symbols-outlined text-base">arrow_back</span>
@@ -193,25 +209,29 @@ export default function OrderDetailPage() {
                     <option value="delivered">Delivered</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Price (QAR)</label>
-                  <input type="number" value={order.price} onChange={(e) => setOrder({...order, price: e.target.value})} className="input-field w-full" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Paid (QAR)</label>
-                  <input type="number" value={order.paid} onChange={(e) => setOrder({...order, paid: e.target.value})} className="input-field w-full" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Balance</label>
-                  <input readOnly value={balance.toFixed(2)} className="input-field w-full opacity-60" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Payment</label>
-                  <select value={order.payment_method} onChange={(e) => setOrder({...order, payment_method: e.target.value})} className="input-field w-full appearance-none">
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
-                  </select>
-                </div>
+                {!isWorker && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Price (QAR)</label>
+                      <input type="number" value={order.price} onChange={(e) => setOrder({...order, price: e.target.value})} className="input-field w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Paid (QAR)</label>
+                      <input type="number" value={order.paid} onChange={(e) => setOrder({...order, paid: e.target.value})} className="input-field w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Balance</label>
+                      <input readOnly value={balance.toFixed(2)} className="input-field w-full opacity-60" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Payment</label>
+                      <select value={order.payment_method} onChange={(e) => setOrder({...order, payment_method: e.target.value})} className="input-field w-full appearance-none">
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                      </select>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Due Date</label>
                   <input type="date" value={order.delivery_date || ''} onChange={(e) => setOrder({...order, delivery_date: e.target.value})} className="input-field w-full" />

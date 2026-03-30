@@ -59,6 +59,7 @@ export interface ElectronAPI {
     reassignTask: (taskId: number, workerId: number, wageType: string, wageRate: number, wageAmount: number) => Promise<any>;
     getStats: () => Promise<any>;
     getAllTasks: (filters?: { branchId?: number; workerId?: number; taskType?: string }) => Promise<any[]>;
+    recalculateTaskWages: (orderId: number, newPrice: number) => Promise<number>;
   };
 
   window: {
@@ -132,6 +133,7 @@ const api: ElectronAPI = {
     reassignTask: (taskId, workerId, wageType, wageRate, wageAmount) => ipcRenderer.invoke('orders:reassignTask', taskId, workerId, wageType, wageRate, wageAmount),
     getStats: () => ipcRenderer.invoke('orders:getStats'),
     getAllTasks: (filters) => ipcRenderer.invoke('orders:getAllTasks', filters),
+    recalculateTaskWages: (orderId, newPrice) => ipcRenderer.invoke('orders:recalculateTaskWages', orderId, newPrice),
   },
 
   window: {

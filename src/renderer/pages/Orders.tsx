@@ -146,6 +146,8 @@ function StatusDropdown({
 /* ------------------------------------------------------------------ */
 export default function OrdersPage() {
   const navigate = useNavigate();
+  const session = JSON.parse(localStorage.getItem('session') || '{}');
+  const isWorker = session.role === 'worker';
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -311,9 +313,9 @@ export default function OrdersPage() {
                 <th>Order ID</th>
                 <th>Customer</th>
                 <th>Item Type</th>
-                <th className="text-right">Price</th>
-                <th className="text-right">Paid</th>
-                <th className="text-right">Balance</th>
+                {!isWorker && <th className="text-right">Price</th>}
+                {!isWorker && <th className="text-right">Paid</th>}
+                {!isWorker && <th className="text-right">Balance</th>}
                 <th>Status</th>
                 <th>Delivery</th>
                 <th className="text-center">Actions</th>
@@ -352,15 +354,15 @@ export default function OrdersPage() {
                     </td>
 
                     {/* Price */}
-                    <td className="text-right font-medium">{formatCurrency(order.price)}</td>
+                    {!isWorker && <td className="text-right font-medium">{formatCurrency(order.price)}</td>}
 
                     {/* Paid */}
-                    <td className="text-right text-secondary">{formatCurrency(order.paid)}</td>
+                    {!isWorker && <td className="text-right text-secondary">{formatCurrency(order.paid)}</td>}
 
                     {/* Balance */}
-                    <td className={`text-right font-bold ${balance > 0 ? 'text-error' : 'text-tertiary'}`}>
+                    {!isWorker && <td className={`text-right font-bold ${balance > 0 ? 'text-error' : 'text-tertiary'}`}>
                       {formatCurrency(balance)}
-                    </td>
+                    </td>}
 
                     {/* Status */}
                     <td>
@@ -414,12 +416,14 @@ export default function OrdersPage() {
             <span className="font-bold text-on-surface">{stats?.total ?? 0}</span> orders
           </div>
           <div className="flex gap-2">
-            <span className="text-xs text-outline">
-              Revenue (open):{' '}
-              <span className="font-bold text-on-surface">
-                {(stats?.revenue ?? 0).toLocaleString('en-US')} QAR
+            {!isWorker && (
+              <span className="text-xs text-outline">
+                Revenue (open):{' '}
+                <span className="font-bold text-on-surface">
+                  {(stats?.revenue ?? 0).toLocaleString('en-US')} QAR
+                </span>
               </span>
-            </span>
+            )}
           </div>
         </div>
       )}

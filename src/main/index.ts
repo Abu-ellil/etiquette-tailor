@@ -41,6 +41,7 @@ import {
   updateBranch,
   createBranch,
   getPieceTypes,
+  recalculateTaskWages,
 } from '../db';
 
 let currentSession: {
@@ -224,6 +225,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle('orders:getAllTasks', async (_event, filters?: { branchId?: number; workerId?: number; taskType?: string }) => {
     return getAllTasks(filters);
+  });
+
+  ipcMain.handle('orders:recalculateTaskWages', async (_event, orderId: number, newPrice: number) => {
+    return recalculateTaskWages(orderId, newPrice);
   });
 
   // Settings

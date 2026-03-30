@@ -97,6 +97,7 @@ export default function NewOrderPage() {
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [selectedWorkerRate, setSelectedWorkerRate] = useState<WorkerRate | null>(null);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
   /* Form */
   const {
@@ -138,14 +139,16 @@ export default function NewOrderPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [br, wr, pt] = await Promise.all([
+        const [br, wr, pt, cust] = await Promise.all([
           window.electronAPI.branches.getAll(),
           window.electronAPI.workers.getAll(),
           window.electronAPI.pieceTypes.getAll(),
+          window.electronAPI.customers.getAll(),
         ]);
         setBranches(br);
         setWorkers(wr);
         setPieceTypes(pt);
+        setCustomers(cust);
         if (br.length > 0) setValue('branch_id', br[0].id);
         if (pt.length > 0) setValue('piece_type', pt[0].name_en);
       } catch (err) {
@@ -159,7 +162,8 @@ export default function NewOrderPage() {
   const searchCustomers = useCallback(
     async (q: string) => {
       if (!q.trim()) {
-        setCustomers([]);
+        const all = await window.electronAPI.customers.getAll();
+        setCustomers(all);
         return;
       }
       try {
@@ -214,6 +218,7 @@ export default function NewOrderPage() {
       });
       setValue('customer_id', id);
       setShowNewCustomer(false);
+      setShowCustomerDropdown(false);
       setNewCustomerName('');
       setNewCustomerPhone('');
       setCustomerSearch(newCustomerName.trim());
@@ -365,40 +370,52 @@ export default function NewOrderPage() {
                 <input
                   type="text"
                   className="input-field pl-12"
-                  placeholder="Type to search customers by name or phone..."
+                  placeholder="Type to search or click to see all customers..."
                   value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  onChange={(e) => {
+                    setCustomerSearch(e.target.value);
+                    if (!watchedValues.customer_id) setShowCustomerDropdown(true);
+                  }}
+                  onFocus={() => {
+                    if (!watchedValues.customer_id) setShowCustomerDropdown(true);
+                  }}
                 />
               </div>
 
-              {/* Search results dropdown */}
-              {customerSearch.trim() && customers.length > 0 && !watchedValues.customer_id && (
+              {/* Customer results dropdown */}
+              {showCustomerDropdown && !watchedValues.customer_id && (
                 <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  {customers.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setValue('customer_id', c.id);
-                        setCustomerSearch(`${c.name}${c.phone ? ` (${c.phone})` : ''}`);
-                        setCustomers([]);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-surface-container-high transition-colors flex items-center gap-3"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-bold flex items-center justify-center shrink-0">
-                        {c.name
-                          .split(' ')
-                          .map((w) => w[0])
-                          .join('')
-                          .toUpperCase()
-                          .slice(0, 2)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-on-surface">{c.name}</p>
-                        {c.phone && <p className="text-xs text-outline">{c.phone}</p>}
-                      </div>
-                    </button>
-                  ))}
+                  {customers.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-secondary text-center">
+                      No customers found. Create a new one below.
+                    </div>
+                  ) : (
+                    customers.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setValue('customer_id', c.id);
+                          setCustomerSearch(`${c.name}${c.phone ? ` (${c.phone})` : ''}`);
+                          setShowCustomerDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-surface-container-high transition-colors flex items-center gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-bold flex items-center justify-center shrink-0">
+                          {c.name
+                            .split(' ')
+                            .map((w) => w[0])
+                            .join('')
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-on-surface">{c.name}</p>
+                          {c.phone && <p className="text-xs text-outline">{c.phone}</p>}
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
 
@@ -411,6 +428,8 @@ export default function NewOrderPage() {
                     onClick={() => {
                       setValue('customer_id', 0);
                       setCustomerSearch('');
+                      setShowCustomerDropdown(false);
+                      searchCustomers('');
                     }}
                     className="text-xs text-error hover:underline"
                   >

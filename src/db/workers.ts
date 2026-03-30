@@ -259,3 +259,26 @@ export function getWorkerOrderDetails(userId: number, startDate: string, endDate
   `);
   return stmt.all(userId, startDate, endDate) as WorkerOrderDetail[];
 }
+
+export function recalculateTaskWages(orderId: number, newPrice: number): number {
+  const tasks = db.prepare(
+    'SELECT id, wage_type, wage_rate FROM order_tasks WHERE order_id = ? AND status != ?'
+  ).all(orderId, 'done') as { id: number; wage_type: string; wage_rate: number }[];
+
+  const update = db.prepare(
+    'UPDATE order_tasks SET wage_amount = ? WHERE id = ?'
+  );
+
+  const txn = db.transaction(() => {
+    let updated = 0;
+    for (const task of tasks) {
+      if (task.wage_type === 'fixed') continue;
+      const newAmount = newPrice * (task.wage_rate / 100);
+      update.run(newAmount, task.id);
+      updated++;
+    }
+    return updated;
+  });
+
+  return txn();
+}
