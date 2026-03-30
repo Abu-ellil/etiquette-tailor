@@ -347,7 +347,7 @@ export default function NewOrderPage() {
                       onClick={() => setValue('payment_method', method)}
                       className={`flex-1 py-3 rounded-lg font-bold transition-all capitalize ${
                         watchedValues.payment_method === method
-                          ? 'bg-white shadow-sm text-primary'
+                          ? 'bg-surface-container-lowest shadow-sm text-primary'
                           : 'text-secondary font-semibold hover:bg-surface-container-high'
                       }`}
                     >
@@ -565,7 +565,7 @@ export default function NewOrderPage() {
                         value="percentage"
                         {...register('wage_type')}
                       />
-                      <div className="py-3 text-center rounded-lg bg-transparent text-secondary font-semibold peer-checked:bg-white peer-checked:shadow-sm peer-checked:text-primary transition-all">
+                      <div className="py-3 text-center rounded-lg bg-transparent text-secondary font-semibold peer-checked:bg-surface-container-lowest peer-checked:shadow-sm peer-checked:text-primary transition-all">
                         Percentage
                       </div>
                     </label>
@@ -576,7 +576,7 @@ export default function NewOrderPage() {
                         value="fixed"
                         {...register('wage_type')}
                       />
-                      <div className="py-3 text-center rounded-lg bg-transparent text-secondary font-semibold peer-checked:bg-white peer-checked:shadow-sm peer-checked:text-primary transition-all">
+                      <div className="py-3 text-center rounded-lg bg-transparent text-secondary font-semibold peer-checked:bg-surface-container-lowest peer-checked:shadow-sm peer-checked:text-primary transition-all">
                         Fixed Amount
                       </div>
                     </label>

@@ -125,7 +125,7 @@ function StatusDropdown({
         <span className="material-symbols-outlined text-xs ml-1 align-middle">expand_more</span>
       </button>
       {open && next.length > 0 && (
-        <div className="absolute z-50 mt-1 left-0 bg-white rounded-lg shadow-lg border border-outline-variant/30 py-1 min-w-[140px]">
+        <div className="absolute z-50 mt-1 left-0 bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/30 py-1 min-w-[140px]">
           {next.map((s) => (
             <button
               key={s}

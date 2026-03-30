@@ -11,6 +11,19 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    ignore: (file: string) => {
+      if (!file) {
+        return false;
+      }
+
+      // The Vite plugin defaults to excluding everything except `/.vite`,
+      // which drops native runtime dependencies like better-sqlite3.
+      const includedPaths = ['/.vite', '/node_modules', '/package.json'];
+      return !includedPaths.some(
+        (includedPath) =>
+          file === includedPath || file.startsWith(`${includedPath}/`),
+      );
+    },
   },
   rebuildConfig: {},
   makers: [

@@ -76,7 +76,7 @@ export default function MyTasksPage() {
         <div className="bg-surface-container-low rounded-xl p-6">
           <span className="text-xs font-bold tracking-widest uppercase text-secondary">Completed Today</span>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-4xl font-extrabold text-emerald-600">{tasks.filter((t) => t.status === 'done' && t.completed_at?.startsWith(today)).length}</span>
+            <span className="text-4xl font-extrabold text-primary">{tasks.filter((t) => t.status === 'done' && t.completed_at?.startsWith(today)).length}</span>
             <span className="text-secondary">tasks</span>
           </div>
         </div>
@@ -98,7 +98,7 @@ export default function MyTasksPage() {
                   <div className="flex items-center gap-4">
                     <span className="font-headline font-bold text-on-surface">{task.order_number}</span>
                     <span className="text-secondary">{task.piece_type}</span>
-                    {isOverdue && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">Overdue</span>}
+                    {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">Overdue</span>}
                   </div>
                   <div className="flex items-center gap-3">
                     {task.due_date && <span className="text-xs text-secondary">Due: {task.due_date}</span>}
@@ -124,7 +124,7 @@ export default function MyTasksPage() {
                   {task.status === 'in_progress' && (
                     <button
                       onClick={() => handleStatusChange(task.task_id, 'in_progress')}
-                      className="text-xs text-emerald-600 font-semibold hover:underline"
+                      className="text-xs text-primary font-semibold hover:underline"
                     >
                       Mark Done
                     </button>

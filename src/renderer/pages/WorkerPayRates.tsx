@@ -280,7 +280,7 @@ export default function WorkerPayRatesPage() {
                 min="0"
                 value={calcPrice}
                 onChange={(e) => setCalcPrice(Number(e.target.value) || 0)}
-                className="w-24 h-9 px-3 text-sm font-bold text-right bg-white rounded-lg border-none focus:ring-2 focus:ring-primary/30 outline-none"
+                className="w-24 h-9 px-3 text-sm font-bold text-right bg-surface-container-lowest rounded-lg border-none focus:ring-2 focus:ring-primary/30 outline-none"
               />
               <span className="text-sm text-secondary">QAR</span>
             </div>
@@ -314,7 +314,7 @@ export default function WorkerPayRatesPage() {
       ) : (
         <>
           {/* ---- Rates Table ---- */}
-          <div className="bg-white rounded-xl shadow-sm border border-outline-variant/10 overflow-hidden">
+          <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/10 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -344,7 +344,7 @@ export default function WorkerPayRatesPage() {
 
                     return (
                       <React.Fragment key={pt.name_en}>
-                        <tr className={`${isEven ? 'bg-surface' : 'bg-white'} hover:bg-primary/5 transition-colors`}>
+                        <tr className={`${isEven ? 'bg-surface' : 'bg-surface-container-lowest'} hover:bg-primary/5 transition-colors`}>
                           {/* Piece Type */}
                           <td className="px-6 py-4">
                             <p className="font-semibold text-on-surface">{pt.name_en}</p>
@@ -433,7 +433,7 @@ export default function WorkerPayRatesPage() {
 
                         {/* Seasonal Dates Row */}
                         {hasSeasonal && (
-                          <tr className={`${isEven ? 'bg-surface' : 'bg-white'}`}>
+                          <tr className={`${isEven ? 'bg-surface' : 'bg-surface-container-lowest'}`}>
                             <td colSpan={5} className="px-6 py-3">
                               <div className="flex items-center gap-3 ml-auto justify-end">
                                 <span className="text-xs text-secondary">From</span>

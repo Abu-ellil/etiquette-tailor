@@ -39,22 +39,18 @@ export default function LoginPage({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="flex flex-col h-screen"
-      style={{
-        backgroundColor: '#f8f9fa',
-      }}
-    >
+    <div className="flex flex-col h-screen bg-surface">
       <TitleBar />
       <div className="flex-1 flex items-center justify-center p-6"
         style={{
-          backgroundImage: 'radial-gradient(#d1c2d2 0.5px, transparent 0.5px)',
+          backgroundImage: 'radial-gradient(var(--color-outline-variant) 0.5px, transparent 0.5px)',
           backgroundSize: '24px 24px',
         }}
       >
       <main className="w-full max-w-md">
         {/* Brand Identity Section */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white shadow-[0px_20px_40px_rgba(25,28,29,0.06)] mb-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-container-lowest shadow-[0px_20px_40px_rgba(25,28,29,0.06)] mb-6">
             <span className="material-symbols-outlined text-primary" style={{ fontSize: '2.5rem' }}>
               straighten
             </span>

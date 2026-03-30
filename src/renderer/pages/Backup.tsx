@@ -189,7 +189,7 @@ export default function BackupPage() {
             aria-label="Toggle automatic backup"
           >
             <span
-              className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
+              className={`inline-block h-5 w-5 rounded-full bg-surface-container-lowest shadow-sm transition-transform duration-300 ${
                 autoBackup ? 'translate-x-7' : 'translate-x-0'
               }`}
             />

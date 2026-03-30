@@ -72,15 +72,15 @@ export default function TaskBoardPage() {
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6">
           <span className="text-xs font-bold tracking-widest uppercase text-secondary">In Progress</span>
-          <div className="text-3xl font-extrabold text-blue-600 mt-2">{inProgressCount}</div>
+          <div className="text-3xl font-extrabold text-primary mt-2">{inProgressCount}</div>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6">
           <span className="text-xs font-bold tracking-widest uppercase text-secondary">Done</span>
-          <div className="text-3xl font-extrabold text-emerald-600 mt-2">{doneCount}</div>
+          <div className="text-3xl font-extrabold text-primary mt-2">{doneCount}</div>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6">
           <span className="text-xs font-bold tracking-widest uppercase text-secondary">Overdue</span>
-          <div className="text-3xl font-extrabold text-red-600 mt-2">{overdueCount}</div>
+          <div className="text-3xl font-extrabold text-error mt-2">{overdueCount}</div>
         </div>
       </div>
 
@@ -153,7 +153,7 @@ export default function TaskBoardPage() {
                     <td>
                       <div className="flex items-center gap-2">
                         <span>{task.due_date || '--'}</span>
-                        {isOverdue && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">Overdue</span>}
+                        {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">Overdue</span>}
                       </div>
                     </td>
                     {isAdmin && <td className="font-semibold">{Number(task.wage_amount || 0).toFixed(2)} QAR</td>}

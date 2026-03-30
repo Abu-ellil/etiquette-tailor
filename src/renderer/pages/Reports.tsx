@@ -114,7 +114,7 @@ export default function ReportsPage() {
                     {m.icon}
                   </span>
                 </div>
-                <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-full backdrop-blur-md">
+                <span className="text-xs font-bold bg-surface-container-lowest/20 px-3 py-1 rounded-full backdrop-blur-md">
                   {m.change}
                 </span>
               </div>

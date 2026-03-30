@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTheme } from '../contexts/ThemeContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -74,6 +75,7 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('shop');
+  const { theme, setTheme } = useTheme();
   const [settings, setSettingsState] = useState<Record<string, string>>({});
   const [users, setUsers] = useState<User[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -616,6 +618,28 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                  Theme
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-4 text-outline">
+                    {theme === 'dark' ? 'dark_mode' : 'light_mode'}
+                  </span>
+                  <select
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+                    className="input-field pl-12 appearance-none"
+                  >
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
+                    expand_more
+                  </span>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
                   Currency

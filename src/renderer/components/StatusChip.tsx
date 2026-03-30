@@ -4,9 +4,9 @@ interface StatusChipProps {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-slate-100 text-slate-600',
-  in_progress: 'bg-blue-100 text-blue-700',
-  done: 'bg-emerald-100 text-emerald-700',
+  pending: 'bg-surface-container-high text-on-surface-variant',
+  in_progress: 'bg-primary-fixed text-on-primary-fixed',
+  done: 'bg-tertiary-fixed text-on-tertiary-fixed',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -16,7 +16,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function StatusChip({ status, onClick }: StatusChipProps) {
-  const style = STATUS_STYLES[status] || 'bg-slate-100 text-slate-600';
+  const style = STATUS_STYLES[status] || 'bg-surface-container-high text-on-surface-variant';
   const label = STATUS_LABELS[status] || status;
 
   if (onClick) {

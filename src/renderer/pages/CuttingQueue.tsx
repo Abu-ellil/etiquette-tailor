@@ -74,20 +74,20 @@ export default function CuttingQueuePage() {
                   <div className="flex items-center gap-4">
                     <span className="font-headline font-bold text-on-surface">{task.order_number}</span>
                     <span className="text-secondary">{task.piece_type}</span>
-                    {isOverdue && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">Overdue</span>}
+                    {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">Overdue</span>}
                   </div>
                   <div className="flex items-center gap-3">
                     {task.due_date && <span className="text-xs text-secondary">Due: {task.due_date}</span>}
                     {!isDone && (
                       <button
                         onClick={() => handleDone(task.task_id)}
-                        className="px-4 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold hover:bg-emerald-200 transition-colors"
+                        className="px-4 py-1.5 bg-tertiary-fixed text-on-tertiary-fixed rounded-full text-xs font-bold hover:opacity-80 transition-colors"
                       >
                         Done
                       </button>
                     )}
                     {isDone && (
-                      <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">Completed</span>
+                      <span className="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed rounded-full text-xs font-bold">Completed</span>
                     )}
                   </div>
                 </div>

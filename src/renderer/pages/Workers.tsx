@@ -376,7 +376,7 @@ export default function WorkersPage() {
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-white/20 text-white text-xs px-2 py-1 rounded border-none outline-none cursor-pointer"
+              className="bg-surface-container-lowest/20 text-white text-xs px-2 py-1 rounded border-none outline-none cursor-pointer"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -468,9 +468,12 @@ export default function WorkersPage() {
                     <td>
                       {workerEarnings[worker.id] && (
                         <div>
-                          <button
+                          <div
                             onClick={() => setExpandedEarnings((prev) => ({ ...prev, [worker.id]: !prev[worker.id] }))}
-                            className="text-left"
+                            className="text-left cursor-pointer"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpandedEarnings((prev) => ({ ...prev, [worker.id]: !prev[worker.id] })); }}
                           >
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-bold text-primary">
@@ -511,7 +514,7 @@ export default function WorkersPage() {
                                 </div>
                               </div>
                             )}
-                          </button>
+                          </div>
                           {expandedOrderDetails[worker.id] && expandedEarnings[worker.id] && (
                             <div className="mt-2 border border-outline-variant/20 rounded-lg overflow-hidden">
                               <div className="flex items-center gap-2 p-2 bg-surface-container-high">
