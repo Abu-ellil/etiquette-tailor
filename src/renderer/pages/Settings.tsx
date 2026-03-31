@@ -778,7 +778,7 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="material-symbols-outlined text-primary text-lg">badge</span>
                       <span className="text-xs font-headline font-bold uppercase tracking-widest text-secondary">
-                        {t('settings.userModal.accountInfo')}
+                        {t('settings.userModal.accountInformation')}
                       </span>
                     </div>
 
