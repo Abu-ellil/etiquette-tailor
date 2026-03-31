@@ -29,7 +29,8 @@
       "Bash(npx --yes better-sqlite3-cli \"C:/Users/MAS/AppData/Roaming/etiquette-tailor/app.db\" \"SELECT sql FROM sqlite_master WHERE name=''orders''\")",
       "Bash(npx electron:*)",
       "Bash(python3 -c \"import sqlite3; conn=sqlite3.connect\\(''C:/Users/MAS/AppData/Roaming/etiquette-tailor/app.db''\\); print\\(conn.execute\\(''SELECT sql FROM sqlite_master WHERE name=\"\"orders\"\"''\\).fetchone\\(\\)\\); conn.close\\(\\)\")",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(xxd)"
     ]
   }
 }

@@ -1,10 +1,12 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import StatusChip from '../components/StatusChip';
+import { useTranslation } from '../contexts/I18nContext';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [order, setOrder] = React.useState<any>(null);
   const [tasks, setTasks] = React.useState<any[]>([]);
   const [measurements, setMeasurements] = React.useState<any>(null);
@@ -65,7 +67,11 @@ export default function OrderDetailPage() {
         const nonDoneTasks = tasks.filter((t: any) => t.status !== 'done');
         if (nonDoneTasks.length > 0) {
           const recalc = window.confirm(
-            `Price changed from ${originalPrice.toFixed(2)} to ${newPrice.toFixed(2)} QAR.\nRecalculate wages for ${nonDoneTasks.length} active task(s)?`
+            t('orderDetail.confirmRecalc', {
+              oldPrice: originalPrice.toFixed(2),
+              newPrice: newPrice.toFixed(2),
+              count: nonDoneTasks.length,
+            })
           );
           if (recalc) {
             await window.electronAPI.orders.recalculateTaskWages(order.id, newPrice);
@@ -94,7 +100,7 @@ export default function OrderDetailPage() {
     try {
       const rate = await window.electronAPI.workers.getActiveRate(newTask.assigned_to, order.piece_type);
       if (!rate) {
-        alert('No rate configured for this worker and piece type.');
+        alert(t('orderDetail.alert.noRateConfigured'));
         return;
       }
       const wageAmount = rate.wage_type === 'percentage'
@@ -137,7 +143,7 @@ export default function OrderDetailPage() {
     return (
       <div className="flex items-center justify-center py-20 text-secondary">
         <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-        Loading order...
+        {t('orderDetail.loading')}
       </div>
     );
   }
@@ -146,23 +152,26 @@ export default function OrderDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-secondary">
         <span className="material-symbols-outlined text-5xl mb-3 text-outline">error</span>
-        <p className="font-headline font-bold text-lg">Order not found</p>
-        <button onClick={() => navigate('/orders')} className="btn-primary mt-4 px-6 py-2 text-sm">Back to Orders</button>
+        <p className="font-headline font-bold text-lg">{t('orderDetail.notFound')}</p>
+        <button onClick={() => navigate('/orders')} className="btn-primary mt-4 px-6 py-2 text-sm">{t('orderDetail.backToOrders')}</button>
       </div>
     );
   }
 
   const balance = (Number(order.price) || 0) - (Number(order.paid) || 0);
 
-  const session = JSON.parse(localStorage.getItem('session') || '{}');
-  const isWorker = session.role === 'worker';
+  const [session, setSession] = React.useState<any>(null);
+  React.useEffect(() => {
+    window.electronAPI.auth.getSession().then((s: any) => setSession(s));
+  }, []);
+  const isWorker = session?.role === 'worker';
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
-            Order {order.order_number}
+            {t('orderDetail.orderTitle', { number: order.order_number })}
           </h1>
           <p className="text-secondary mt-1">
             {order.customer_name} {order.customer_phone && `· ${order.customer_phone}`}
@@ -173,18 +182,18 @@ export default function OrderDetailPage() {
             !editing ? (
               <button onClick={() => { setEditing(true); setOriginalPrice(Number(order.price)); }} className="btn-primary px-6 py-3 text-sm flex items-center gap-2">
                 <span className="material-symbols-outlined text-base">edit</span>
-                Edit Order
+                {t('orderDetail.editOrder')}
               </button>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => { setEditing(false); loadOrder(); }} className="px-6 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg">Cancel</button>
-                <button onClick={handleSaveOrder} className="btn-primary px-6 py-3 text-sm">Save</button>
+                <button onClick={() => { setEditing(false); loadOrder(); }} className="px-6 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg">{t('orderDetail.cancel')}</button>
+                <button onClick={handleSaveOrder} className="btn-primary px-6 py-3 text-sm">{t('orderDetail.save')}</button>
               </div>
             )
           )}
           <button onClick={() => navigate('/orders')} className="px-4 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg flex items-center gap-1">
             <span className="material-symbols-outlined text-base">arrow_back</span>
-            Back
+            {t('orderDetail.back')}
           </button>
         </div>
       </div>
@@ -192,76 +201,78 @@ export default function OrderDetailPage() {
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <div className="bg-surface-container-lowest rounded-xl p-6">
-            <h3 className="text-lg font-headline font-bold mb-4">Order Details</h3>
+            <h3 className="text-lg font-headline font-bold mb-4">{t('orderDetail.orderDetails')}</h3>
             {editing ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Piece Type</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.pieceType')}</label>
                   <input value={order.piece_type} onChange={(e) => setOrder({...order, piece_type: e.target.value})} className="input-field w-full" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Status</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.status')}</label>
                   <select value={order.status} onChange={(e) => setOrder({...order, status: e.target.value})} className="input-field w-full appearance-none">
-                    <option value="intake">Intake</option>
-                    <option value="cutting">Cutting</option>
-                    <option value="sewing">Sewing</option>
-                    <option value="ready">Ready</option>
-                    <option value="delivered">Delivered</option>
+                    <option value="intake">{t('orderDetail.statusIntake')}</option>
+                    <option value="cutting">{t('orderDetail.statusCutting')}</option>
+                    <option value="sewing">{t('orderDetail.statusSewing')}</option>
+                    <option value="ready">{t('orderDetail.statusReady')}</option>
+                    <option value="delivered">{t('orderDetail.statusDelivered')}</option>
                   </select>
                 </div>
                 {!isWorker && (
                   <>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Price (QAR)</label>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.priceQar')}</label>
                       <input type="number" value={order.price} onChange={(e) => setOrder({...order, price: e.target.value})} className="input-field w-full" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Paid (QAR)</label>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.paidQar')}</label>
                       <input type="number" value={order.paid} onChange={(e) => setOrder({...order, paid: e.target.value})} className="input-field w-full" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Balance</label>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.balance')}</label>
                       <input readOnly value={balance.toFixed(2)} className="input-field w-full opacity-60" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Payment</label>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.payment')}</label>
                       <select value={order.payment_method} onChange={(e) => setOrder({...order, payment_method: e.target.value})} className="input-field w-full appearance-none">
-                        <option value="cash">Cash</option>
-                        <option value="card">Card</option>
+                        <option value="cash">{t('orderDetail.cash')}</option>
+                        <option value="card">{t('orderDetail.card')}</option>
                       </select>
                     </div>
                   </>
                 )}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Due Date</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.dueDate')}</label>
                   <input type="date" value={order.delivery_date || ''} onChange={(e) => setOrder({...order, delivery_date: e.target.value})} className="input-field w-full" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Details</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.details')}</label>
                   <textarea value={order.details || ''} onChange={(e) => setOrder({...order, details: e.target.value})} className="input-field w-full min-h-[80px]" />
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-                <div><span className="text-secondary">Piece Type:</span> <span className="font-semibold">{order.piece_type}</span></div>
-                <div><span className="text-secondary">Status:</span> <StatusChip status={order.status} /></div>
-                <div><span className="text-secondary">Price:</span> <span className="font-semibold">{Number(order.price).toFixed(2)} QAR</span></div>
-                <div><span className="text-secondary">Paid:</span> <span className="font-semibold">{Number(order.paid).toFixed(2)} QAR</span></div>
-                <div><span className="text-secondary">Balance:</span> <span className="font-semibold text-primary">{balance.toFixed(2)} QAR</span></div>
-                <div><span className="text-secondary">Payment:</span> <span className="font-semibold capitalize">{order.payment_method}</span></div>
-                <div><span className="text-secondary">Due Date:</span> <span className="font-semibold">{order.delivery_date || '--'}</span></div>
-                <div><span className="text-secondary">Details:</span> <span className="font-semibold">{order.details || '--'}</span></div>
+                <div><span className="text-secondary">{t('orderDetail.pieceType')}:</span> <span className="font-semibold">{order.piece_type}</span></div>
+                <div><span className="text-secondary">{t('orderDetail.status')}:</span> <StatusChip status={order.status} /></div>
+                {!isWorker && (<>
+                  <div><span className="text-secondary">{t('orderDetail.price')}:</span> <span className="font-semibold">{Number(order.price).toFixed(2)} QAR</span></div>
+                  <div><span className="text-secondary">{t('orderDetail.paid')}:</span> <span className="font-semibold">{Number(order.paid).toFixed(2)} QAR</span></div>
+                  <div><span className="text-secondary">{t('orderDetail.balance')}:</span> <span className="font-semibold text-primary">{balance.toFixed(2)} QAR</span></div>
+                  <div><span className="text-secondary">{t('orderDetail.payment')}:</span> <span className="font-semibold capitalize">{order.payment_method}</span></div>
+                </>)}
+                <div><span className="text-secondary">{t('orderDetail.dueDate')}:</span> <span className="font-semibold">{order.delivery_date || '--'}</span></div>
+                <div><span className="text-secondary">{t('orderDetail.details')}:</span> <span className="font-semibold">{order.details || '--'}</span></div>
               </div>
             )}
           </div>
 
           <div className="bg-surface-container-lowest rounded-xl p-6">
-            <h3 className="text-lg font-headline font-bold mb-4">Measurements</h3>
+            <h3 className="text-lg font-headline font-bold mb-4">{t('orderDetail.measurements')}</h3>
             {measurements ? (
               <div className="grid grid-cols-3 gap-4">
                 {['chest', 'waist', 'hips', 'length', 'sleeve', 'shoulder'].map((field) => (
                   <div key={field}>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{field}</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t(`orderDetail.measurement.${field}`)}</label>
                     <input
                       type="number"
                       step="0.1"
@@ -273,25 +284,25 @@ export default function OrderDetailPage() {
                   </div>
                 ))}
                 <div className="col-span-3">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Notes</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.notes')}</label>
                   <textarea value={measurements.notes || ''} onChange={(e) => setMeasurements({...measurements, notes: e.target.value})} className="input-field w-full min-h-[60px]" />
                 </div>
                 <div className="col-span-3 flex justify-end">
-                  <button onClick={handleSaveMeasurements} className="btn-primary px-6 py-2 text-sm">Save Measurements</button>
+                  <button onClick={handleSaveMeasurements} className="btn-primary px-6 py-2 text-sm">{t('orderDetail.saveMeasurements')}</button>
                 </div>
               </div>
             ) : (
-              <p className="text-secondary text-sm">No measurements recorded for this order.</p>
+              <p className="text-secondary text-sm">{t('orderDetail.noMeasurements')}</p>
             )}
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="bg-surface-container-lowest rounded-xl p-6">
-            <h3 className="text-lg font-headline font-bold mb-3">Tasks</h3>
+            <h3 className="text-lg font-headline font-bold mb-3">{t('orderDetail.tasks')}</h3>
             <div className="space-y-2">
               {tasks.length === 0 ? (
-                <p className="text-secondary text-sm py-4">No tasks assigned yet.</p>
+                <p className="text-secondary text-sm py-4">{t('orderDetail.noTasks')}</p>
               ) : tasks.map((task: any) => (
                 <div key={task.id} className="bg-surface rounded-lg p-4 space-y-2">
                   <div className="flex justify-between items-center">
@@ -299,17 +310,17 @@ export default function OrderDetailPage() {
                     <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
                   </div>
                   <div className="flex justify-between items-center text-xs text-secondary">
-                    <span>Worker: {task.worker_name || 'Unassigned'}</span>
-                    <span>Wage: {Number(task.wage_amount || 0).toFixed(2)} QAR</span>
+                    <span>{t('orderDetail.worker')}: {task.worker_name || t('orderDetail.unassigned')}</span>
+                    {!isWorker && <span>{t('orderDetail.wage')}: {Number(task.wage_amount || 0).toFixed(2)} QAR</span>}
                   </div>
-                  {task.started_at && <div className="text-xs text-secondary">Started: {new Date(task.started_at).toLocaleString()}</div>}
-                  {task.completed_at && <div className="text-xs text-secondary">Completed: {new Date(task.completed_at).toLocaleString()}</div>}
+                  {task.started_at && <div className="text-xs text-secondary">{t('orderDetail.started')}: {new Date(task.started_at).toLocaleString()}</div>}
+                  {task.completed_at && <div className="text-xs text-secondary">{t('orderDetail.completed')}: {new Date(task.completed_at).toLocaleString()}</div>}
                 </div>
               ))}
             </div>
             <button onClick={() => setShowAddTask(true)} className="mt-4 w-full py-2 text-sm font-semibold text-primary hover:bg-primary/10 rounded-lg flex items-center justify-center gap-1">
               <span className="material-symbols-outlined text-base">add</span>
-              Add Task
+              {t('orderDetail.addTask')}
             </button>
           </div>
         </div>
@@ -320,26 +331,26 @@ export default function OrderDetailPage() {
           <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content w-full max-w-md" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-6">
-                <h2 className="text-xl font-headline font-bold mb-4">Add Task</h2>
+                <h2 className="text-xl font-headline font-bold mb-4">{t('orderDetail.addTask')}</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Task Type</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.taskType')}</label>
                     <select value={newTask.task_type} onChange={(e) => setNewTask({...newTask, task_type: e.target.value})} className="input-field w-full appearance-none">
-                      <option value="cutting">Cutting</option>
-                      <option value="sewing">Sewing</option>
+                      <option value="cutting">{t('orderDetail.cutting')}</option>
+                      <option value="sewing">{t('orderDetail.sewing')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Assign Worker</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.assignWorker')}</label>
                     <select value={newTask.assigned_to || ''} onChange={(e) => setNewTask({...newTask, assigned_to: e.target.value ? Number(e.target.value) : null})} className="input-field w-full appearance-none">
-                      <option value="">Select worker...</option>
+                      <option value="">{t('orderDetail.selectWorker')}</option>
                       {workers.map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="flex justify-end gap-3 mt-6">
-                  <button onClick={() => setShowAddTask(false)} className="px-4 py-2 text-sm text-secondary">Cancel</button>
-                  <button onClick={handleAddTask} disabled={!newTask.assigned_to} className="btn-primary px-6 py-2 text-sm disabled:opacity-50">Add Task</button>
+                  <button onClick={() => setShowAddTask(false)} className="px-4 py-2 text-sm text-secondary">{t('orderDetail.cancel')}</button>
+                  <button onClick={handleAddTask} disabled={!newTask.assigned_to} className="btn-primary px-6 py-2 text-sm disabled:opacity-50">{t('orderDetail.addTask')}</button>
                 </div>
               </div>
             </div>

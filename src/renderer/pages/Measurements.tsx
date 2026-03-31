@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
+import { useTranslation } from '../contexts/I18nContext';
 
 // --- Types ---
 
@@ -37,23 +38,25 @@ interface CustomerProfile {
   lastVisit: string | null;
 }
 
-// --- Measurement field groups ---
-
-const UPPER_BODY_FIELDS: { key: keyof MeasurementsData; label: string }[] = [
-  { key: 'chest', label: 'Chest (Circumference)' },
-  { key: 'waist', label: 'Waist (True Waist)' },
-  { key: 'hips', label: 'Hips (Circumference)' },
-  { key: 'shoulder', label: 'Shoulder Width' },
-];
-
-const LENGTHS_FIELDS: { key: keyof MeasurementsData; label: string }[] = [
-  { key: 'sleeve', label: 'Sleeve (Shoulder to Wrist)' },
-  { key: 'length', label: 'Total Garment Length' },
-];
+// --- Measurement field groups (labels set inside component via t()) ---
 
 // --- Component ---
 
 export default function MeasurementsPage() {
+  const { t } = useTranslation();
+
+  const UPPER_BODY_FIELDS: { key: keyof MeasurementsData; label: string }[] = [
+    { key: 'chest', label: t('measurements.chestCircumference') },
+    { key: 'waist', label: t('measurements.waist') },
+    { key: 'hips', label: t('measurements.hips') },
+    { key: 'shoulder', label: t('measurements.shoulderWidth') },
+  ];
+
+  const LENGTHS_FIELDS: { key: keyof MeasurementsData; label: string }[] = [
+    { key: 'sleeve', label: t('measurements.sleeve') },
+    { key: 'length', label: t('measurements.totalGarmentLength') },
+  ];
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
@@ -171,7 +174,7 @@ export default function MeasurementsPage() {
       const customerOrders = orders.filter((o) => o.customer_id === selectedCustomer.id);
 
       if (customerOrders.length === 0) {
-        setSaveMessage({ type: 'error', text: 'No orders found for this customer. Create an order first.' });
+        setSaveMessage({ type: 'error', text: t('measurements.error.noOrders') });
         setIsSaving(false);
         return;
       }
@@ -188,9 +191,9 @@ export default function MeasurementsPage() {
       };
 
       await window.electronAPI.orders.updateMeasurements(latestOrder.id, parsedData);
-      setSaveMessage({ type: 'success', text: 'Measurements saved successfully.' });
+      setSaveMessage({ type: 'success', text: t('measurements.success.saved') });
     } catch {
-      setSaveMessage({ type: 'error', text: 'Failed to save measurements.' });
+      setSaveMessage({ type: 'error', text: t('measurements.error.saveFailed') });
     } finally {
       setIsSaving(false);
     }
@@ -212,17 +215,17 @@ export default function MeasurementsPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="space-y-2">
             <p className="text-secondary font-semibold tracking-[0.2em] uppercase text-xs">
-              Atelier Records
+              {t('measurements.atelierRecords')}
             </p>
             <h2 className="text-5xl font-extrabold font-headline tracking-tight text-on-surface">
-              Measurements
+              {t('measurements.pageTitle')}
             </h2>
           </div>
 
           {/* Customer Selector */}
           <div className="relative w-full max-w-md" ref={searchRef}>
             <label className="block text-[10px] font-bold uppercase tracking-widest text-secondary mb-2 ml-1">
-              Select Client
+              {t('measurements.selectClient')}
             </label>
             <div className="group relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-secondary">
@@ -230,7 +233,7 @@ export default function MeasurementsPage() {
               </span>
               <input
                 className="w-full h-14 pl-12 pr-4 bg-surface-container-high border-none border-b-2 border-transparent focus:border-primary focus:outline-none rounded-t-lg font-[family-name:var(--font-inter)] text-on-surface font-medium transition-colors"
-                placeholder="Search customer by name or phone..."
+                placeholder={t('measurements.searchPlaceholder')}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
@@ -272,7 +275,7 @@ export default function MeasurementsPage() {
             )}
             {showDropdown && customers.length === 0 && searchQuery.trim().length > 0 && (
               <div className="absolute z-50 mt-1 w-full bg-surface-container-lowest rounded-xl shadow-[0px_20px_40px_rgba(25,28,29,0.12)] border border-outline-variant/10 p-4">
-                <p className="text-sm text-secondary text-center">No customers found</p>
+                <p className="text-sm text-secondary text-center">{t('measurements.noCustomersFound')}</p>
               </div>
             )}
           </div>
@@ -288,9 +291,9 @@ export default function MeasurementsPage() {
               <span className="material-symbols-outlined text-6xl text-surface-container-highest mb-4">
                 straighten
               </span>
-              <p className="text-lg font-semibold text-secondary">Select a client to view measurements</p>
+              <p className="text-lg font-semibold text-secondary">{t('measurements.selectClientToView')}</p>
               <p className="text-sm text-surface-container-highest mt-1">
-                Use the search bar above to find a customer
+                {t('measurements.useSearchBar')}
               </p>
             </div>
           ) : (
@@ -298,7 +301,7 @@ export default function MeasurementsPage() {
               {/* Upper Body Section */}
               <section>
                 <div className="flex items-center gap-4 mb-8">
-                  <h3 className="text-2xl font-bold font-headline text-on-surface">Upper Body</h3>
+                  <h3 className="text-2xl font-bold font-headline text-on-surface">{t('measurements.upperBody')}</h3>
                   <div className="h-[2px] flex-1 bg-surface-container-highest" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
@@ -321,7 +324,7 @@ export default function MeasurementsPage() {
               {/* Lengths & Sleeves Section */}
               <section>
                 <div className="flex items-center gap-4 mb-8">
-                  <h3 className="text-2xl font-bold font-headline text-on-surface">Lengths &amp; Sleeves</h3>
+                  <h3 className="text-2xl font-bold font-headline text-on-surface">{t('measurements.lengthsAndSleeves')}</h3>
                   <div className="h-[2px] flex-1 bg-surface-container-highest" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
@@ -344,17 +347,17 @@ export default function MeasurementsPage() {
               {/* Custom Annotations Section */}
               <section>
                 <div className="flex items-center gap-4 mb-8">
-                  <h3 className="text-2xl font-bold font-headline text-on-surface">Custom Annotations</h3>
+                  <h3 className="text-2xl font-bold font-headline text-on-surface">{t('measurements.customAnnotations')}</h3>
                   <div className="h-[2px] flex-1 bg-surface-container-highest" />
                 </div>
                 <div className="space-y-1">
                   <label className="block text-secondary font-semibold uppercase tracking-wider text-[11px]">
-                    Specific Client Requirements
+                    {t('measurements.specificClientRequirements')}
                   </label>
                   <textarea
                     {...register('notes')}
                     className="w-full bg-surface-container-high border-none border-b-2 border-transparent focus:border-primary focus:outline-none rounded-t-lg p-4 text-base resize-none transition-colors"
-                    placeholder="Enter posture notes, fabric preference, or unique fit requirements..."
+                    placeholder={t('measurements.notesPlaceholder')}
                     rows={4}
                   />
                 </div>
@@ -384,7 +387,7 @@ export default function MeasurementsPage() {
                   disabled={!isDirty && !saveMessage}
                   className="px-8 py-4 text-primary font-bold tracking-wide uppercase hover:bg-primary-container/10 transition-colors rounded-md disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Reset Changes
+                  {t('measurements.resetChanges')}
                 </button>
                 <button
                   type="submit"
@@ -394,12 +397,12 @@ export default function MeasurementsPage() {
                   {isSaving ? (
                     <>
                       <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-                      Saving...
+                      {t('measurements.saving')}
                     </>
                   ) : (
                     <>
                       <span className="material-symbols-outlined text-lg">save</span>
-                      Update Record
+                      {t('measurements.updateRecord')}
                     </>
                   )}
                 </button>
@@ -437,19 +440,19 @@ export default function MeasurementsPage() {
                   {/* Stats */}
                   <div className="space-y-4">
                     <div className="flex justify-between items-center py-3 border-b border-surface-container">
-                      <span className="text-xs font-bold uppercase tracking-wider text-secondary">Phone</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-secondary">{t('measurements.profile.phone')}</span>
                       <span className="text-sm font-medium text-on-surface">
                         {customerProfile.customer.phone || '--'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center py-3 border-b border-surface-container">
-                      <span className="text-xs font-bold uppercase tracking-wider text-secondary">Total Orders</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-secondary">{t('measurements.profile.totalOrders')}</span>
                       <span className="text-sm font-medium text-on-surface">
                         {customerProfile.orderCount}
                       </span>
                     </div>
                     <div className="flex justify-between items-center py-3 border-b border-surface-container">
-                      <span className="text-xs font-bold uppercase tracking-wider text-secondary">Last Visit</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-secondary">{t('measurements.profile.lastVisit')}</span>
                       <span className="text-sm font-medium text-on-surface">
                         {customerProfile.lastVisit
                           ? format(new Date(customerProfile.lastVisit), 'MMM d, yyyy')
@@ -457,9 +460,9 @@ export default function MeasurementsPage() {
                       </span>
                     </div>
                     <div className="flex justify-between items-center py-3">
-                      <span className="text-xs font-bold uppercase tracking-wider text-secondary">Record Status</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-secondary">{t('measurements.profile.recordStatus')}</span>
                       <span className="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold uppercase tracking-widest rounded-full">
-                        Ready
+                        {t('measurements.profile.ready')}
                       </span>
                     </div>
                   </div>
@@ -468,10 +471,9 @@ export default function MeasurementsPage() {
                 {/* Helpful Tip */}
                 <div className="bg-primary-container p-8 rounded-xl text-white">
                   <span className="material-symbols-outlined mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
-                  <h5 className="text-lg font-bold font-headline mb-2 leading-tight">Measurement Guide</h5>
+                  <h5 className="text-lg font-bold font-headline mb-2 leading-tight">{t('measurements.measurementGuide')}</h5>
                   <p className="text-sm opacity-90 leading-relaxed">
-                    Ensure all measurements are taken over light undergarments. For bespoke pieces,
-                    always account for the seam allowance in the shoulder record. Use inches for all values.
+                    {t('measurements.measurementGuideDescription')}
                   </p>
                 </div>
               </>
@@ -481,7 +483,7 @@ export default function MeasurementsPage() {
                 <span className="material-symbols-outlined text-5xl text-surface-container-highest mb-3">
                   person_search
                 </span>
-                <p className="text-sm text-secondary">Client profile will appear here</p>
+                <p className="text-sm text-secondary">{t('measurements.clientProfileWillAppear')}</p>
               </div>
             )}
           </div>

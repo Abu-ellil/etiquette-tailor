@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { format, isPast, parseISO } from 'date-fns';
+import { useTranslation } from '../contexts/I18nContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -40,32 +41,25 @@ interface OrderStats {
 /* ------------------------------------------------------------------ */
 type FilterTab = 'all' | 'in_progress' | 'ready' | 'delivered' | 'late';
 
-const STATUS_MAP: Record<string, string> = {
-  intake: 'In Progress',
-  cutting: 'In Progress',
-  sewing: 'In Progress',
-  ready: 'Ready',
-  delivered: 'Delivered',
-};
-
 const DB_STATUSES_FOR_PROGRESS = ['intake', 'cutting', 'sewing'];
 
-function displayStatus(order: Order): string {
-  if (order.status === 'delivered') return 'Delivered';
-  if (order.status === 'ready') return 'Ready';
-  if (order.delivery_date && isPast(parseISO(order.delivery_date))) return 'Late';
-  return 'In Progress';
+/* Display status returns a translation key suffix; the actual label comes from t() */
+function displayStatusKey(order: Order): string {
+  if (order.status === 'delivered') return 'delivered';
+  if (order.status === 'ready') return 'ready';
+  if (order.delivery_date && isPast(parseISO(order.delivery_date))) return 'late';
+  return 'inProgress';
 }
 
-function statusChipClass(status: string): string {
-  switch (status) {
-    case 'In Progress':
+function statusChipClass(statusKey: string): string {
+  switch (statusKey) {
+    case 'inProgress':
       return 'chip chip-progress';
-    case 'Ready':
+    case 'ready':
       return 'chip chip-ready';
-    case 'Delivered':
+    case 'delivered':
       return 'chip chip-delivered';
-    case 'Late':
+    case 'late':
       return 'chip chip-late';
     default:
       return 'chip';
@@ -90,15 +84,21 @@ function StatusDropdown({
   current,
   orderId,
   onUpdated,
+  t,
 }: {
   current: string;
   orderId: number;
   onUpdated: () => void;
+  t: (key: string) => string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const key = current.replace(/ /g, '_');
+  const key = current === 'inProgress' ? 'In_Progress'
+    : current === 'ready' ? 'Ready'
+    : current === 'delivered' ? 'Delivered'
+    : current === 'late' ? 'Late'
+    : current;
   const next = NEXT_STATUS[key] || [];
 
   useEffect(() => {
@@ -121,7 +121,7 @@ function StatusDropdown({
         onClick={() => setOpen((o) => !o)}
         className={`${statusChipClass(current)} cursor-pointer`}
       >
-        {current}
+        {t(`orders.status.${current}`)}
         <span className="material-symbols-outlined text-xs ml-1 align-middle">expand_more</span>
       </button>
       {open && next.length > 0 && (
@@ -132,7 +132,7 @@ function StatusDropdown({
               onClick={() => handleSelect(s === 'ready' ? 'ready' : 'delivered')}
               className="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-high transition-colors"
             >
-              Mark as {s.replace('_', ' ')}
+              {t('orders.markAs')} {t(`orders.status.${s === 'ready' ? 'ready' : 'delivered'}`)}
             </button>
           ))}
         </div>
@@ -146,6 +146,7 @@ function StatusDropdown({
 /* ------------------------------------------------------------------ */
 export default function OrdersPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const session = JSON.parse(localStorage.getItem('session') || '{}');
   const isWorker = session.role === 'worker';
   const [orders, setOrders] = useState<Order[]>([]);
@@ -199,19 +200,19 @@ export default function OrdersPage() {
   /* Filter by tab */
   const filteredOrders = orders.filter((o) => {
     if (activeFilter === 'all') return true;
-    const display = displayStatus(o).toLowerCase().replace(' ', '_');
+    const statusKey = displayStatusKey(o);
     if (activeFilter === 'in_progress') return DB_STATUSES_FOR_PROGRESS.includes(o.status);
-    if (activeFilter === 'late') return display === 'late';
-    return display === activeFilter;
+    if (activeFilter === 'late') return statusKey === 'late';
+    return statusKey === activeFilter;
   });
 
   /* Stats badges */
   const tabs: { key: FilterTab; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: stats?.total ?? 0 },
-    { key: 'in_progress', label: 'In Progress', count: stats?.in_progress ?? 0 },
-    { key: 'ready', label: 'Ready', count: stats?.ready ?? 0 },
-    { key: 'delivered', label: 'Delivered', count: stats?.delivered ?? 0 },
-    { key: 'late', label: 'Late', count: stats?.overdue ?? 0 },
+    { key: 'all', label: t('orders.tab.all'), count: stats?.total ?? 0 },
+    { key: 'in_progress', label: t('orders.tab.inProgress'), count: stats?.in_progress ?? 0 },
+    { key: 'ready', label: t('orders.tab.ready'), count: stats?.ready ?? 0 },
+    { key: 'delivered', label: t('orders.tab.delivered'), count: stats?.delivered ?? 0 },
+    { key: 'late', label: t('orders.tab.late'), count: stats?.overdue ?? 0 },
   ];
 
   /* Helpers */
@@ -235,9 +236,9 @@ export default function OrdersPage() {
       <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h2 className="text-4xl font-bold tracking-tight text-on-surface mb-2 font-headline">
-            Orders Registry
+            {t('orders.pageTitle')}
           </h2>
-          <p className="text-secondary text-lg">Manage bespoke commissions and production status.</p>
+          <p className="text-secondary text-lg">{t('orders.pageSubtitle')}</p>
         </div>
 
         {/* Filters cluster */}
@@ -249,7 +250,7 @@ export default function OrdersPage() {
             </span>
             <input
               type="text"
-              placeholder="Search orders..."
+              placeholder={t('orders.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="h-10 pl-10 pr-4 bg-surface-container-lowest border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none w-52"
@@ -262,7 +263,7 @@ export default function OrdersPage() {
             className="btn-primary h-10 px-5 text-sm rounded-lg flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            New Order
+            {t('orders.newOrder')}
           </button>
         </div>
       </div>
@@ -298,32 +299,32 @@ export default function OrdersPage() {
         {loading ? (
           <div className="flex items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-            Loading orders...
+            {t('orders.loading')}
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined text-4xl mb-3 text-outline">shopping_bag</span>
-            <p className="font-semibold text-on-surface mb-1">No orders found</p>
-            <p className="text-sm">Try adjusting your filters or create a new order.</p>
+            <p className="font-semibold text-on-surface mb-1">{t('orders.noOrdersFound')}</p>
+            <p className="text-sm">{t('orders.noOrdersHint')}</p>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Order ID</th>
-                <th>Customer</th>
-                <th>Item Type</th>
-                {!isWorker && <th className="text-right">Price</th>}
-                {!isWorker && <th className="text-right">Paid</th>}
-                {!isWorker && <th className="text-right">Balance</th>}
-                <th>Status</th>
-                <th>Delivery</th>
-                <th className="text-center">Actions</th>
+                <th>{t('orders.table.orderId')}</th>
+                <th>{t('orders.table.customer')}</th>
+                <th>{t('orders.table.itemType')}</th>
+                {!isWorker && <th className="text-right">{t('orders.table.price')}</th>}
+                {!isWorker && <th className="text-right">{t('orders.table.paid')}</th>}
+                {!isWorker && <th className="text-right">{t('orders.table.balance')}</th>}
+                <th>{t('orders.table.status')}</th>
+                <th>{t('orders.table.delivery')}</th>
+                <th className="text-center">{t('orders.table.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders.map((order) => {
-                const dStatus = displayStatus(order);
+                const dStatus = displayStatusKey(order);
                 const balance = order.price - order.paid;
 
                 return (
@@ -344,7 +345,7 @@ export default function OrdersPage() {
                         <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-bold flex items-center justify-center shrink-0">
                           {getInitials(order.customer_name)}
                         </div>
-                        <span className="font-medium">{order.customer_name || 'Unknown'}</span>
+                        <span className="font-medium">{order.customer_name || t('common.unknown')}</span>
                       </div>
                     </td>
 
@@ -370,6 +371,7 @@ export default function OrdersPage() {
                         current={dStatus}
                         orderId={order.id}
                         onUpdated={fetchData}
+                        t={t}
                       />
                     </td>
 
@@ -386,14 +388,14 @@ export default function OrdersPage() {
                         <button
                           onClick={() => navigate(`/orders/edit/${order.id}`)}
                           className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary"
-                          title="Edit"
+                          title={t('common.edit')}
                         >
                           <span className="material-symbols-outlined text-lg">edit_square</span>
                         </button>
                         <button
                           onClick={() => navigate(`/invoice/${order.id}`)}
                           className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary"
-                          title="View Invoice"
+                          title={t('orders.viewInvoice')}
                         >
                           <span className="material-symbols-outlined text-lg">visibility</span>
                         </button>
@@ -411,14 +413,14 @@ export default function OrdersPage() {
       {!loading && filteredOrders.length > 0 && (
         <div className="flex justify-between items-center text-secondary text-sm px-2">
           <div>
-            Showing{' '}
-            <span className="font-bold text-on-surface">{filteredOrders.length}</span> of{' '}
-            <span className="font-bold text-on-surface">{stats?.total ?? 0}</span> orders
+            {t('orders.showing')}{' '}
+            <span className="font-bold text-on-surface">{filteredOrders.length}</span> {t('orders.of')}{' '}
+            <span className="font-bold text-on-surface">{stats?.total ?? 0}</span> {t('orders.ordersCount')}
           </div>
           <div className="flex gap-2">
             {!isWorker && (
               <span className="text-xs text-outline">
-                Revenue (open):{' '}
+                {t('orders.revenueOpen')}{' '}
                 <span className="font-bold text-on-surface">
                   {(stats?.revenue ?? 0).toLocaleString('en-US')} QAR
                 </span>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { format, parseISO } from 'date-fns';
+import { useTranslation } from '../contexts/I18nContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -44,11 +45,6 @@ const WORKER_TYPE_ICONS: Record<string, string> = {
   master_cutter: 'content_cut',
 };
 
-const WORKER_TYPE_LABELS: Record<string, string> = {
-  tailor: 'Tailor',
-  master_cutter: 'Master Cutter',
-};
-
 const EMPLOYMENT_BADGES: Record<string, { bg: string; text: string }> = {
   permanent: {
     bg: 'bg-tertiary-fixed',
@@ -83,13 +79,6 @@ function getInitials(name: string): string {
   return trimmed.slice(0, 2).toUpperCase();
 }
 
-function getPaymentLabel(worker: Worker): { icon: string; label: string } {
-  if (worker.base_salary > 0) {
-    return { icon: 'account_balance_wallet', label: 'Fixed Salary' };
-  }
-  return { icon: 'percent', label: 'Piece-rate' };
-}
-
 function formatDate(dateStr?: string): string {
   if (!dateStr) return '--';
   try {
@@ -104,6 +93,7 @@ function formatDate(dateStr?: string): string {
 /* ------------------------------------------------------------------ */
 
 export default function WorkersPage() {
+  const { t } = useTranslation();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -286,7 +276,7 @@ export default function WorkersPage() {
   const handleDeactivate = async (worker: Worker) => {
     if (
       !window.confirm(
-        `Deactivate worker "${worker.name}"? They will no longer appear in the active list.`,
+        t('workers.confirm.deactivate').replace('{name}', worker.name),
       )
     )
       return;
@@ -316,10 +306,10 @@ export default function WorkersPage() {
       <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
-            Workers
+            {t('workers.pageTitle')}
           </h1>
           <p className="text-secondary mt-1 text-lg">
-            Manage your artisan team and seasonal specialists.
+            {t('workers.pageSubtitle')}
           </p>
         </div>
         <button
@@ -327,7 +317,7 @@ export default function WorkersPage() {
           className="btn-primary flex items-center gap-3 py-4 px-11 text-sm shadow-xl hover:opacity-90 transition-opacity active:scale-95"
         >
           <span className="material-symbols-outlined">person_add</span>
-          Add Worker
+          {t('workers.addWorker')}
         </button>
       </div>
 
@@ -336,31 +326,31 @@ export default function WorkersPage() {
         {/* Active Force */}
         <div className="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_20px_40px_rgba(25,28,29,0.03)] flex flex-col justify-between h-40">
           <span className="text-secondary font-headline text-xs font-bold uppercase tracking-widest">
-            Active Force
+            {t('workers.stats.activeForce')}
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-5xl font-extrabold text-primary">{activeCount}</span>
-            <span className="text-secondary font-medium">Artisans</span>
+            <span className="text-secondary font-medium">{t('workers.stats.artisans')}</span>
           </div>
         </div>
 
         {/* Production Type */}
         <div className="bg-surface-container-low p-8 rounded-xl flex flex-col justify-between h-40">
           <span className="text-secondary font-headline text-xs font-bold uppercase tracking-widest">
-            Production Type
+            {t('workers.stats.productionType')}
           </span>
           <div className="flex gap-4">
             <div className="flex flex-col">
               <span className="text-2xl font-bold text-on-surface">{permanentCount}</span>
               <span className="text-[10px] text-secondary uppercase font-bold tracking-tighter">
-                Permanent
+                {t('workers.stats.permanent')}
               </span>
             </div>
             <div className="w-px h-full bg-outline-variant/30" />
             <div className="flex flex-col">
               <span className="text-2xl font-bold text-on-surface">{seasonalCount}</span>
               <span className="text-[10px] text-secondary uppercase font-bold tracking-tighter">
-                Seasonal
+                {t('workers.stats.seasonal')}
               </span>
             </div>
           </div>
@@ -370,7 +360,7 @@ export default function WorkersPage() {
         <div className="bg-primary-container p-8 rounded-xl text-white flex flex-col justify-between h-40">
           <div className="flex justify-between items-start">
             <span className="text-white/80 font-headline text-xs font-bold uppercase tracking-widest">
-              Monthly Earnings
+              {t('workers.stats.monthlyEarnings')}
             </span>
             <input
               type="month"
@@ -398,29 +388,28 @@ export default function WorkersPage() {
             <span className="material-symbols-outlined animate-spin mr-2">
               progress_activity
             </span>
-            Loading workers...
+            {t('workers.loading')}
           </div>
         ) : workers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined text-5xl mb-3 text-outline">badge</span>
-            <p className="font-headline font-bold text-on-surface text-lg">No workers found</p>
-            <p className="text-sm mt-1">Add your first worker to get started.</p>
+            <p className="font-headline font-bold text-on-surface text-lg">{t('workers.noWorkersFound')}</p>
+            <p className="text-sm mt-1">{t('workers.noWorkersHint')}</p>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Worker Name</th>
-                <th>Employment Type</th>
-                <th>Payment Structure</th>
-                <th>Monthly Earnings</th>
-                <th>Join Date</th>
-                <th className="text-right">Actions</th>
+                <th>{t('workers.table.workerName')}</th>
+                <th>{t('workers.table.employmentType')}</th>
+                <th>{t('workers.table.paymentStructure')}</th>
+                <th>{t('workers.table.monthlyEarnings')}</th>
+                <th>{t('workers.table.joinDate')}</th>
+                <th className="text-right">{t('workers.table.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {workers.map((worker) => {
-                const payment = getPaymentLabel(worker);
                 const empType = worker.base_salary > 0 ? 'permanent' : 'seasonal';
                 const badge = EMPLOYMENT_BADGES[empType];
                 const typeIcon =
@@ -439,7 +428,7 @@ export default function WorkersPage() {
                         <div>
                           <p className="font-bold text-on-surface">{worker.name}</p>
                           <p className="text-xs text-secondary">
-                            {WORKER_TYPE_LABELS[worker.worker_type || 'tailor'] || 'Worker'}
+                            {worker.worker_type === 'master_cutter' ? t('workers.workerType.masterCutter') : worker.worker_type === 'tailor' ? t('workers.workerType.tailor') : t('workers.workerType.worker')}
                           </p>
                         </div>
                       </div>
@@ -458,9 +447,9 @@ export default function WorkersPage() {
                     <td>
                       <div className="flex items-center gap-2 text-on-surface-variant font-medium">
                         <span className="material-symbols-outlined text-lg opacity-40">
-                          {payment.icon}
+                          {worker.base_salary > 0 ? 'account_balance_wallet' : 'percent'}
                         </span>
-                        {payment.label}
+                        {worker.base_salary > 0 ? t('workers.payment.fixedSalary') : t('workers.payment.pieceRate')}
                       </div>
                     </td>
 
@@ -484,20 +473,20 @@ export default function WorkersPage() {
                               </span>
                             </div>
                             <p className="text-[10px] text-secondary">
-                              {workerEarnings[worker.id]?.task_count || 0} tasks
+                              {workerEarnings[worker.id]?.task_count || 0} {t('workers.earnings.tasks')}
                             </p>
                             {expandedEarnings[worker.id] && (
                               <div className="mt-2 p-2 bg-surface-container rounded text-xs space-y-1 min-w-[160px]">
                                 <div className="flex justify-between">
-                                  <span className="text-secondary">Piece Earnings</span>
+                                  <span className="text-secondary">{t('workers.earnings.pieceEarnings')}</span>
                                   <span className="font-semibold">{(workerEarnings[worker.id]?.piece_earnings || 0).toFixed(0)} QAR</span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span className="text-secondary">Fixed Salary</span>
+                                  <span className="text-secondary">{t('workers.earnings.fixedSalary')}</span>
                                   <span className="font-semibold">{(workerEarnings[worker.id]?.fixed_salary || 0).toFixed(0)} QAR</span>
                                 </div>
                                 <div className="flex justify-between border-t border-outline-variant/20 pt-1">
-                                  <span className="font-bold">Total</span>
+                                  <span className="font-bold">{t('workers.earnings.total')}</span>
                                   <span className="font-bold text-primary">{(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR</span>
                                 </div>
                                 {/* Order-level breakdown toggle */}
@@ -509,7 +498,7 @@ export default function WorkersPage() {
                                     <span className="material-symbols-outlined text-xs">
                                       {expandedOrderDetails[worker.id] ? 'expand_less' : 'expand_more'}
                                     </span>
-                                    Order Details
+                                    {t('workers.earnings.orderDetails')}
                                   </button>
                                 </div>
                               </div>
@@ -524,7 +513,7 @@ export default function WorkersPage() {
                                   onChange={(e) => setOrderDetailDateRange((prev) => ({ ...prev, start: e.target.value }))}
                                   className="bg-surface-container-lowest text-xs px-2 py-1 rounded border-none outline-none"
                                 />
-                                <span className="text-secondary text-xs">to</span>
+                                <span className="text-secondary text-xs">{t('workers.earnings.to')}</span>
                                 <input
                                   type="date"
                                   value={orderDetailDateRange.end}
@@ -535,20 +524,20 @@ export default function WorkersPage() {
                                   onClick={() => loadOrderDetails(worker.id)}
                                   className="text-xs text-primary font-bold hover:underline"
                                 >
-                                  Apply
+                                  {t('workers.earnings.apply')}
                                 </button>
                               </div>
                               {workerOrderDetails[worker.id] ? (
                                 workerOrderDetails[worker.id].length === 0 ? (
-                                  <p className="text-xs text-secondary p-3">No completed tasks in this period.</p>
+                                  <p className="text-xs text-secondary p-3">{t('workers.earnings.noCompletedTasks')}</p>
                                 ) : (
                                   <table className="w-full text-xs">
                                     <thead>
                                       <tr className="bg-surface-container text-secondary">
-                                        <th className="px-2 py-1 text-left font-semibold">Order</th>
-                                        <th className="px-2 py-1 text-left font-semibold">Piece</th>
-                                        <th className="px-2 py-1 text-right font-semibold">Price</th>
-                                        <th className="px-2 py-1 text-right font-semibold">Wage</th>
+                                        <th className="px-2 py-1 text-left font-semibold">{t('workers.earnings.order')}</th>
+                                        <th className="px-2 py-1 text-left font-semibold">{t('workers.earnings.piece')}</th>
+                                        <th className="px-2 py-1 text-right font-semibold">{t('workers.earnings.price')}</th>
+                                        <th className="px-2 py-1 text-right font-semibold">{t('workers.earnings.wage')}</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -564,7 +553,7 @@ export default function WorkersPage() {
                                   </table>
                                 )
                               ) : (
-                                <p className="text-xs text-secondary p-3">Loading...</p>
+                                <p className="text-xs text-secondary p-3">{t('workers.earnings.loading')}</p>
                               )}
                             </div>
                           )}
@@ -616,14 +605,14 @@ export default function WorkersPage() {
                               className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2"
                             >
                               <span className="material-symbols-outlined text-base">edit</span>
-                              Edit Worker
+                              {t('workers.menu.editWorker')}
                             </button>
                             <button
                               onClick={() => handleDeactivate(worker)}
                               className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2 text-error"
                             >
                               <span className="material-symbols-outlined text-base">delete</span>
-                              Deactivate
+                              {t('workers.menu.deactivate')}
                             </button>
                           </div>
                         )}
@@ -640,7 +629,7 @@ export default function WorkersPage() {
         {workers.length > 0 && (
           <div className="px-6 py-4 border-t border-surface-container-high text-sm text-secondary flex justify-between items-center">
             <p className="text-xs font-medium uppercase tracking-widest">
-              Showing {workers.length} artisan{workers.length !== 1 ? 's' : ''}
+              {t('workers.showing').replace('{count}', String(workers.length))}
             </p>
           </div>
         )}
@@ -668,12 +657,12 @@ export default function WorkersPage() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-headline font-extrabold text-on-surface tracking-tight">
-                        {editingWorker ? 'Edit Worker' : 'New Worker'}
+                        {editingWorker ? t('workers.modal.editTitle') : t('workers.modal.newTitle')}
                       </h2>
                       <p className="text-secondary text-xs mt-0.5">
                         {editingWorker
-                          ? 'Update worker information'
-                          : 'Add an artisan to the team'}
+                          ? t('workers.modal.editSubtitle')
+                          : t('workers.modal.newSubtitle')}
                       </p>
                     </div>
                   </div>
@@ -692,7 +681,7 @@ export default function WorkersPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="material-symbols-outlined text-primary text-lg">badge</span>
                       <span className="text-xs font-headline font-bold uppercase tracking-widest text-secondary">
-                        Personal Information
+                        {t('workers.form.personalInformation')}
                       </span>
                     </div>
 
@@ -702,18 +691,18 @@ export default function WorkersPage() {
                         className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                         htmlFor="worker-name"
                       >
-                        Full Name
+                        {t('workers.form.fullName')}
                       </label>
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-4 text-outline">
                           person
                         </span>
                         <input
-                          {...register('name', { required: 'Name is required' })}
+                          {...register('name', { required: t('workers.form.nameRequired') })}
                           id="worker-name"
                           type="text"
                           className={`input-field pl-12 ${errors.name ? '!border-b-error' : ''}`}
-                          placeholder="e.g. Ahmad Ali / أحمد علي"
+                          placeholder={t('workers.form.namePlaceholder')}
                         />
                       </div>
                       {errors.name && (
@@ -728,7 +717,7 @@ export default function WorkersPage() {
                           className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                           htmlFor="worker-username"
                         >
-                          Username
+                          {t('workers.form.username')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -736,12 +725,12 @@ export default function WorkersPage() {
                           </span>
                           <input
                             {...register('username', {
-                              required: !editingWorker ? 'Username is required' : false,
+                              required: !editingWorker ? t('workers.form.usernameRequired') : false,
                             })}
                             id="worker-username"
                             type="text"
                             className={`input-field pl-12 ${errors.username ? '!border-b-error' : ''}`}
-                            placeholder="Login ID"
+                            placeholder={t('workers.form.usernamePlaceholder')}
                             disabled={!!editingWorker}
                           />
                         </div>
@@ -755,7 +744,7 @@ export default function WorkersPage() {
                           className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                           htmlFor="worker-password"
                         >
-                          {editingWorker ? 'New Password' : 'Password'}
+                          {editingWorker ? t('workers.form.newPassword') : t('workers.form.password')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -763,12 +752,12 @@ export default function WorkersPage() {
                           </span>
                           <input
                             {...register('password', {
-                              required: !editingWorker ? 'Password is required' : false,
+                              required: !editingWorker ? t('workers.form.passwordRequired') : false,
                             })}
                             id="worker-password"
                             type={showPassword ? 'text' : 'password'}
                             className={`input-field pl-12 pr-12 ${errors.password ? '!border-b-error' : ''}`}
-                            placeholder={editingWorker ? 'Leave blank to keep' : 'Min 6 characters'}
+                            placeholder={editingWorker ? t('workers.form.passwordPlaceholderEdit') : t('workers.form.passwordPlaceholderNew')}
                           />
                           <button
                             type="button"
@@ -796,7 +785,7 @@ export default function WorkersPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="material-symbols-outlined text-primary text-lg">work</span>
                       <span className="text-xs font-headline font-bold uppercase tracking-widest text-secondary">
-                        Work Details
+                        {t('workers.form.workDetails')}
                       </span>
                     </div>
 
@@ -807,7 +796,7 @@ export default function WorkersPage() {
                           className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                           htmlFor="worker-type"
                         >
-                          Specialty
+                          {t('workers.form.specialty')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -818,8 +807,8 @@ export default function WorkersPage() {
                             id="worker-type"
                             className="input-field pl-12 appearance-none"
                           >
-                            <option value="tailor">Tailor</option>
-                            <option value="master_cutter">Master Cutter</option>
+                            <option value="tailor">{t('workers.workerType.tailor')}</option>
+                            <option value="master_cutter">{t('workers.workerType.masterCutter')}</option>
                           </select>
                           <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                             expand_more
@@ -832,7 +821,7 @@ export default function WorkersPage() {
                           className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                           htmlFor="worker-branch"
                         >
-                          Branch
+                          {t('workers.form.branch')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -862,7 +851,7 @@ export default function WorkersPage() {
                         className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                         htmlFor="worker-salary"
                       >
-                        Base Salary
+                        {t('workers.form.baseSalary')}
                       </label>
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -879,7 +868,7 @@ export default function WorkersPage() {
                         />
                       </div>
                       <p className="text-on-surface-variant text-[11px] mt-1.5 ml-1">
-                        Set to 0 for piece-rate workers
+                        {t('workers.form.baseSalaryHint')}
                       </p>
                     </div>
                   </div>
@@ -891,7 +880,7 @@ export default function WorkersPage() {
                       onClick={closeModal}
                       className="px-6 py-3 text-sm font-semibold text-secondary hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-colors"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       type="submit"
@@ -904,10 +893,10 @@ export default function WorkersPage() {
                         </span>
                       )}
                       {isSubmitting
-                        ? 'Saving...'
+                        ? t('common.saving')
                         : editingWorker
-                          ? 'Update Worker'
-                          : 'Create Worker'}
+                          ? t('workers.form.updateWorker')
+                          : t('workers.form.createWorker')}
                     </button>
                   </div>
                 </form>

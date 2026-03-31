@@ -213,7 +213,7 @@ body {
   /* Table - no horizontal dividers, alternating rows */
   .data-table {
     width: 100%;
-    text-align: left;
+    text-align: start;
     border-collapse: collapse;
   }
 

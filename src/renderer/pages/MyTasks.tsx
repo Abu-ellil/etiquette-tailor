@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import StatusChip from '../components/StatusChip';
+import { useTranslation } from '../contexts/I18nContext';
 
 export default function MyTasksPage() {
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTask, setExpandedTask] = useState<number | null>(null);
@@ -46,7 +48,7 @@ export default function MyTasksPage() {
     return (
       <div className="flex items-center justify-center py-20 text-secondary">
         <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-        Loading tasks...
+        {t('myTasks.loading')}
       </div>
     );
   }
@@ -61,23 +63,23 @@ export default function MyTasksPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">My Tasks</h1>
-        <p className="text-secondary mt-1">View and manage your assigned tasks</p>
+        <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">{t('myTasks.pageTitle')}</h1>
+        <p className="text-secondary mt-1">{t('myTasks.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-surface-container-lowest rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">Pending</span>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('myTasks.pending')}</span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-4xl font-extrabold text-primary">{tasks.filter((t) => t.status === 'pending').length}</span>
-            <span className="text-secondary">tasks</span>
+            <span className="text-secondary">{t('myTasks.tasks')}</span>
           </div>
         </div>
         <div className="bg-surface-container-low rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">Completed Today</span>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('myTasks.completedToday')}</span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-4xl font-extrabold text-primary">{tasks.filter((t) => t.status === 'done' && t.completed_at?.startsWith(today)).length}</span>
-            <span className="text-secondary">tasks</span>
+            <span className="text-secondary">{t('myTasks.tasks')}</span>
           </div>
         </div>
       </div>
@@ -85,8 +87,8 @@ export default function MyTasksPage() {
       {sorted.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-secondary">
           <span className="material-symbols-outlined text-5xl mb-3 text-outline">task_alt</span>
-          <p className="font-headline font-bold text-lg">No tasks assigned</p>
-          <p className="text-sm mt-1">Tasks will appear here when assigned to you.</p>
+          <p className="font-headline font-bold text-lg">{t('myTasks.noTasksAssigned')}</p>
+          <p className="text-sm mt-1">{t('myTasks.tasksWillAppear')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -98,10 +100,10 @@ export default function MyTasksPage() {
                   <div className="flex items-center gap-4">
                     <span className="font-headline font-bold text-on-surface">{task.order_number}</span>
                     <span className="text-secondary">{task.piece_type}</span>
-                    {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">Overdue</span>}
+                    {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">{t('myTasks.overdue')}</span>}
                   </div>
                   <div className="flex items-center gap-3">
-                    {task.due_date && <span className="text-xs text-secondary">Due: {task.due_date}</span>}
+                    {task.due_date && <span className="text-xs text-secondary">{t('myTasks.due')}: {task.due_date}</span>}
                     <StatusChip status={task.status} onClick={() => handleStatusChange(task.task_id, task.status)} />
                   </div>
                 </div>
@@ -111,14 +113,14 @@ export default function MyTasksPage() {
                     onClick={() => toggleExpand(task.task_id, task.order_id)}
                     className="text-xs text-primary font-semibold hover:underline"
                   >
-                    {expandedTask === task.task_id ? 'Hide Measurements' : 'View Measurements'}
+                    {expandedTask === task.task_id ? t('myTasks.hideMeasurements') : t('myTasks.viewMeasurements')}
                   </button>
                   {task.status === 'pending' && (
                     <button
                       onClick={() => handleStatusChange(task.task_id, 'pending')}
                       className="text-xs text-primary font-semibold hover:underline"
                     >
-                      Start
+                      {t('myTasks.start')}
                     </button>
                   )}
                   {task.status === 'in_progress' && (
@@ -126,7 +128,7 @@ export default function MyTasksPage() {
                       onClick={() => handleStatusChange(task.task_id, 'in_progress')}
                       className="text-xs text-primary font-semibold hover:underline"
                     >
-                      Mark Done
+                      {t('myTasks.markDone')}
                     </button>
                   )}
                 </div>

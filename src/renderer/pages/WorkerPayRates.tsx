@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '../contexts/I18nContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -32,16 +33,12 @@ interface PieceType {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const WORKER_TYPE_LABELS: Record<string, string> = {
-  tailor: 'Tailor',
-  master_cutter: 'Master Cutter',
-};
-
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export default function WorkerPayRatesPage() {
+  const { t } = useTranslation();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<number | null>(null);
   const [rates, setRates] = useState<Record<string, WorkerRate>>({});
@@ -183,7 +180,7 @@ export default function WorkerPayRatesPage() {
     return (
       <div className="flex items-center justify-center py-20 text-secondary">
         <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-        Loading workers...
+        {t('workerRates.loading')}
       </div>
     );
   }
@@ -194,10 +191,10 @@ export default function WorkerPayRatesPage() {
       <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
-            Worker Rates
+            {t('workerRates.pageTitle')}
           </h1>
           <p className="text-secondary mt-1 text-lg">
-            Set wages per piece type — percentage or fixed amount.
+            {t('workerRates.pageSubtitle')}
           </p>
         </div>
         <div className="flex gap-3">
@@ -206,7 +203,7 @@ export default function WorkerPayRatesPage() {
             disabled={!dirty}
             className="px-5 py-3 text-sm font-semibold text-secondary hover:bg-surface-container-high rounded-lg transition-colors disabled:opacity-40"
           >
-            Discard
+            {t('workerRates.discard')}
           </button>
           <button
             onClick={handleSave}
@@ -218,7 +215,7 @@ export default function WorkerPayRatesPage() {
                 progress_activity
               </span>
             )}
-            {saving ? 'Saving...' : 'Save Rates'}
+            {saving ? t('common.saving') : t('workerRates.saveRates')}
           </button>
         </div>
       </div>
@@ -227,7 +224,7 @@ export default function WorkerPayRatesPage() {
       <div className="flex flex-wrap items-start gap-6">
         <div>
           <label className="block text-xs font-bold uppercase tracking-widest text-secondary mb-2">
-            Select Worker
+            {t('workerRates.selectWorker')}
           </label>
           <div className="relative">
             <select
@@ -254,11 +251,11 @@ export default function WorkerPayRatesPage() {
             </span>
             <span className="font-semibold text-on-surface">{selectedWorker.name}</span>
             <span className="text-xs text-secondary uppercase">
-              {WORKER_TYPE_LABELS[selectedWorker.worker_type || 'tailor'] || 'Worker'}
+              {selectedWorker.worker_type === 'master_cutter' ? t('workers.workerType.masterCutter') : selectedWorker.worker_type === 'tailor' ? t('workers.workerType.tailor') : t('workers.workerType.worker')}
             </span>
             {selectedWorker.base_salary > 0 && (
               <span className="text-xs font-semibold text-primary">
-                + {selectedWorker.base_salary} QAR salary
+                {t('workerRates.baseSalaryLabel').replace('{amount}', String(selectedWorker.base_salary))}
               </span>
             )}
           </div>
@@ -271,10 +268,10 @@ export default function WorkerPayRatesPage() {
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-secondary">calculate</span>
-              <span className="font-semibold text-on-surface">Quick Calculator</span>
+              <span className="font-semibold text-on-surface">{t('workerRates.quickCalculator')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-secondary">Piece price:</span>
+              <span className="text-sm text-secondary">{t('workerRates.piecePrice')}</span>
               <input
                 type="number"
                 min="0"
@@ -308,8 +305,8 @@ export default function WorkerPayRatesPage() {
       {workers.length === 0 ? (
         <div className="text-center py-16 text-secondary">
           <span className="material-symbols-outlined text-5xl mb-3 text-outline">badge</span>
-          <p className="font-headline font-bold text-lg">No workers yet</p>
-          <p className="text-sm mt-1">Add workers first, then set their rates.</p>
+          <p className="font-headline font-bold text-lg">{t('workerRates.noWorkersYet')}</p>
+          <p className="text-sm mt-1">{t('workerRates.noWorkersHint')}</p>
         </div>
       ) : (
         <>
@@ -320,19 +317,19 @@ export default function WorkerPayRatesPage() {
                 <thead>
                   <tr className="border-b border-outline-variant/15">
                     <th className="text-left px-6 py-4 text-xs font-bold uppercase tracking-widest text-secondary">
-                      Piece Type
+                      {t('workerRates.table.pieceType')}
                     </th>
                     <th className="text-center px-4 py-4 text-xs font-bold uppercase tracking-widest text-secondary">
-                      Wage Type
+                      {t('workerRates.table.wageType')}
                     </th>
                     <th className="text-right px-4 py-4 text-xs font-bold uppercase tracking-widest text-secondary">
-                      Rate
+                      {t('workerRates.table.rate')}
                     </th>
                     <th className="text-center px-4 py-4 text-xs font-bold uppercase tracking-widest text-secondary">
-                      Seasonal
+                      {t('workerRates.table.seasonal')}
                     </th>
                     <th className="text-right px-6 py-4 text-xs font-bold uppercase tracking-widest text-secondary">
-                      Preview
+                      {t('workerRates.table.preview')}
                     </th>
                   </tr>
                 </thead>
@@ -376,7 +373,7 @@ export default function WorkerPayRatesPage() {
                               <span className="material-symbols-outlined text-sm">
                                 {rate.wage_type === 'percentage' ? 'percent' : 'payments'}
                               </span>
-                              {rate.wage_type === 'percentage' ? 'Percentage' : 'Fixed'}
+                              {rate.wage_type === 'percentage' ? t('workerRates.percentage') : t('workerRates.fixed')}
                             </button>
                           </td>
 
@@ -419,7 +416,7 @@ export default function WorkerPayRatesPage() {
                                 }}
                                 className="w-4 h-4 rounded accent-primary"
                               />
-                              <span className="text-xs text-secondary">Season</span>
+                              <span className="text-xs text-secondary">{t('workerRates.season')}</span>
                             </label>
                           </td>
 
@@ -436,7 +433,7 @@ export default function WorkerPayRatesPage() {
                           <tr className={`${isEven ? 'bg-surface' : 'bg-surface-container-lowest'}`}>
                             <td colSpan={5} className="px-6 py-3">
                               <div className="flex items-center gap-3 ml-auto justify-end">
-                                <span className="text-xs text-secondary">From</span>
+                                <span className="text-xs text-secondary">{t('workerRates.from')}</span>
                                 <input
                                   type="date"
                                   value={rate.season_start || ''}
@@ -445,7 +442,7 @@ export default function WorkerPayRatesPage() {
                                   }
                                   className="h-8 px-3 text-sm bg-surface-container-high rounded-lg border-none focus:ring-2 focus:ring-primary/30 outline-none"
                                 />
-                                <span className="text-xs text-secondary">To</span>
+                                <span className="text-xs text-secondary">{t('workerRates.to')}</span>
                                 <input
                                   type="date"
                                   value={rate.season_end || ''}
@@ -462,7 +459,7 @@ export default function WorkerPayRatesPage() {
                                     }}
                                     className="text-xs text-error hover:underline"
                                   >
-                                    Clear
+                                    {t('workerRates.clear')}
                                   </button>
                                 )}
                               </div>
@@ -478,8 +475,8 @@ export default function WorkerPayRatesPage() {
 
             {/* Table footer */}
             <div className="px-6 py-3 border-t border-outline-variant/10 flex justify-between items-center text-xs text-secondary">
-              <span>{configuredCount} of {pieceTypes.length} rates configured</span>
-              <span>Previewing at {calcPrice} QAR per piece</span>
+              <span>{t('workerRates.ratesConfigured').replace('{count}', String(configuredCount)).replace('{total}', String(pieceTypes.length))}</span>
+              <span>{t('workerRates.previewingAt').replace('{price}', String(calcPrice))}</span>
             </div>
           </div>
         </>

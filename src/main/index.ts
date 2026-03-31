@@ -43,6 +43,7 @@ import {
   getPieceTypes,
   recalculateTaskWages,
 } from '../db';
+import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 
 let currentSession: {
   userId: number;
@@ -247,6 +248,27 @@ function registerIpcHandlers() {
 
   ipcMain.handle('branches:create', async (_event, data: any) => {
     return createBranch(data);
+  });
+
+  // Backup & Restore
+  ipcMain.handle('backup:create', async () => {
+    return createBackup(mainWindow ?? undefined);
+  });
+
+  ipcMain.handle('backup:restore', async () => {
+    return restoreBackup(mainWindow ?? undefined);
+  });
+
+  ipcMain.handle('backup:list', async () => {
+    return listLocalBackups();
+  });
+
+  ipcMain.handle('backup:lastDate', async () => {
+    return getLastBackupDate();
+  });
+
+  ipcMain.handle('backup:dbSize', async () => {
+    return getDbFileSize();
   });
 
   ipcMain.handle('window:minimize', () => mainWindow?.minimize());

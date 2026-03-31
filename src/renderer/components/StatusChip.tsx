@@ -1,3 +1,5 @@
+import { useTranslation } from '../contexts/I18nContext';
+
 interface StatusChipProps {
   status: string;
   onClick?: () => void;
@@ -9,13 +11,15 @@ const STATUS_STYLES: Record<string, string> = {
   done: 'bg-tertiary-fixed text-on-tertiary-fixed',
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  in_progress: 'In Progress',
-  done: 'Done',
-};
-
 export default function StatusChip({ status, onClick }: StatusChipProps) {
+  const { t } = useTranslation();
+
+  const STATUS_LABELS: Record<string, string> = {
+    pending: t('status.pending'),
+    in_progress: t('status.inProgress'),
+    done: t('status.done'),
+  };
+
   const style = STATUS_STYLES[status] || 'bg-surface-container-high text-on-surface-variant';
   const label = STATUS_LABELS[status] || status;
 

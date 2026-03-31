@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../contexts/I18nContext';
 
 export default function TitleBar() {
+  const { t } = useTranslation();
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
@@ -28,13 +30,13 @@ export default function TitleBar() {
           straighten
         </span>
         <span className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-tight">
-          V1.0.0
+          {t('titleBar.version')}
         </span>
       </div>
 
       <div className="flex-1 text-center">
         <h1 className="text-xs font-bold text-on-surface font-headline">
-          Etiquette Tailor
+          {t('titleBar.appName')}
         </h1>
       </div>
 

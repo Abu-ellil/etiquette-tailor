@@ -176,6 +176,12 @@ export function initializeSchema() {
     seedSettings();
   }
 
+  // Migration: Ensure locale is set
+  const localeSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('locale') as { value: string } | undefined;
+  if (!localeSetting) {
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('locale', 'en');
+  }
+
   // Migrations: add missing columns to existing tables
   migrateColumns();
 
@@ -369,6 +375,7 @@ function seedDatabase() {
 
 function seedSettings() {
   const insertSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)');
+  insertSetting.run('locale', 'en');
   insertSetting.run('shop_name_ar', 'إتيكيت خياط');
   insertSetting.run('shop_name_en', 'Etiquette Tailor');
   insertSetting.run('shop_phone', '');
