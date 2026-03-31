@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { format, parseISO } from 'date-fns';
+import { useTranslation } from '../contexts/I18nContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -11,7 +12,7 @@ interface Worker {
   name: string;
   username: string;
   role: string;
-  worker_type?: 'tailor' | 'cutter' | 'designer' | null;
+  worker_type?: 'tailor' | 'master_cutter' | null;
   branch_id: number;
   base_salary: number;
   active: number;
@@ -41,14 +42,7 @@ const AVATAR_COLORS = [
 
 const WORKER_TYPE_ICONS: Record<string, string> = {
   tailor: 'styler',
-  cutter: 'content_cut',
-  designer: 'palette',
-};
-
-const WORKER_TYPE_LABELS: Record<string, string> = {
-  tailor: 'Tailor',
-  cutter: 'Cutter',
-  designer: 'Designer',
+  master_cutter: 'content_cut',
 };
 
 const EMPLOYMENT_BADGES: Record<string, { bg: string; text: string }> = {
@@ -85,13 +79,6 @@ function getInitials(name: string): string {
   return trimmed.slice(0, 2).toUpperCase();
 }
 
-function getPaymentLabel(worker: Worker): { icon: string; label: string } {
-  if (worker.base_salary > 0) {
-    return { icon: 'account_balance_wallet', label: 'Fixed Salary' };
-  }
-  return { icon: 'percent', label: 'Piece-rate' };
-}
-
 function formatDate(dateStr?: string): string {
   if (!dateStr) return '--';
   try {
@@ -106,12 +93,14 @@ function formatDate(dateStr?: string): string {
 /* ------------------------------------------------------------------ */
 
 export default function WorkersPage() {
+  const { t } = useTranslation();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
+  const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number; up: boolean } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
@@ -119,6 +108,17 @@ export default function WorkersPage() {
   });
   const [workerEarnings, setWorkerEarnings] = useState<Record<number, any>>({});
   const [expandedEarnings, setExpandedEarnings] = useState<Record<number, boolean>>({});
+  const [expandedOrderDetails, setExpandedOrderDetails] = useState<Record<number, boolean>>({});
+  const [orderDetailDateRange, setOrderDetailDateRange] = useState<{ start: string; end: string }>(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+    };
+  });
+  const [workerOrderDetails, setWorkerOrderDetails] = useState<Record<number, any[]>>({});
 
   const {
     register,
@@ -164,6 +164,29 @@ export default function WorkersPage() {
     }
     if (workers.length > 0) loadEarnings();
   }, [workers, selectedMonth]);
+
+  /* ---- Order detail breakdown loading ---- */
+
+  const loadOrderDetails = useCallback(async (workerId: number) => {
+    try {
+      const data = await window.electronAPI.workers.getWorkerOrderDetails(
+        workerId,
+        orderDetailDateRange.start,
+        orderDetailDateRange.end + 'T23:59:59',
+      );
+      setWorkerOrderDetails((prev) => ({ ...prev, [workerId]: data || [] }));
+    } catch (err) {
+      console.error('Failed to load order details:', err);
+    }
+  }, [orderDetailDateRange]);
+
+  const toggleOrderDetails = (workerId: number) => {
+    const nextExpanded = !expandedOrderDetails[workerId];
+    setExpandedOrderDetails((prev) => ({ ...prev, [workerId]: nextExpanded }));
+    if (nextExpanded && !workerOrderDetails[workerId]) {
+      loadOrderDetails(workerId);
+    }
+  };
 
   /* ---- Derived stats ---- */
 
@@ -253,7 +276,7 @@ export default function WorkersPage() {
   const handleDeactivate = async (worker: Worker) => {
     if (
       !window.confirm(
-        `Deactivate worker "${worker.name}"? They will no longer appear in the active list.`,
+        t('workers.confirm.deactivate').replace('{name}', worker.name),
       )
     )
       return;
@@ -283,10 +306,10 @@ export default function WorkersPage() {
       <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
-            Workers
+            {t('workers.pageTitle')}
           </h1>
           <p className="text-secondary mt-1 text-lg">
-            Manage your artisan team and seasonal specialists.
+            {t('workers.pageSubtitle')}
           </p>
         </div>
         <button
@@ -294,7 +317,7 @@ export default function WorkersPage() {
           className="btn-primary flex items-center gap-3 py-4 px-11 text-sm shadow-xl hover:opacity-90 transition-opacity active:scale-95"
         >
           <span className="material-symbols-outlined">person_add</span>
-          Add Worker
+          {t('workers.addWorker')}
         </button>
       </div>
 
@@ -303,31 +326,31 @@ export default function WorkersPage() {
         {/* Active Force */}
         <div className="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_20px_40px_rgba(25,28,29,0.03)] flex flex-col justify-between h-40">
           <span className="text-secondary font-headline text-xs font-bold uppercase tracking-widest">
-            Active Force
+            {t('workers.stats.activeForce')}
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-5xl font-extrabold text-primary">{activeCount}</span>
-            <span className="text-secondary font-medium">Artisans</span>
+            <span className="text-secondary font-medium">{t('workers.stats.artisans')}</span>
           </div>
         </div>
 
         {/* Production Type */}
         <div className="bg-surface-container-low p-8 rounded-xl flex flex-col justify-between h-40">
           <span className="text-secondary font-headline text-xs font-bold uppercase tracking-widest">
-            Production Type
+            {t('workers.stats.productionType')}
           </span>
           <div className="flex gap-4">
             <div className="flex flex-col">
               <span className="text-2xl font-bold text-on-surface">{permanentCount}</span>
               <span className="text-[10px] text-secondary uppercase font-bold tracking-tighter">
-                Permanent
+                {t('workers.stats.permanent')}
               </span>
             </div>
             <div className="w-px h-full bg-outline-variant/30" />
             <div className="flex flex-col">
               <span className="text-2xl font-bold text-on-surface">{seasonalCount}</span>
               <span className="text-[10px] text-secondary uppercase font-bold tracking-tighter">
-                Seasonal
+                {t('workers.stats.seasonal')}
               </span>
             </div>
           </div>
@@ -337,13 +360,13 @@ export default function WorkersPage() {
         <div className="bg-primary-container p-8 rounded-xl text-white flex flex-col justify-between h-40">
           <div className="flex justify-between items-start">
             <span className="text-white/80 font-headline text-xs font-bold uppercase tracking-widest">
-              Monthly Earnings
+              {t('workers.stats.monthlyEarnings')}
             </span>
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-white/20 text-white text-xs px-2 py-1 rounded border-none outline-none cursor-pointer"
+              className="bg-surface-container-lowest/20 text-white text-xs px-2 py-1 rounded border-none outline-none cursor-pointer"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -365,29 +388,28 @@ export default function WorkersPage() {
             <span className="material-symbols-outlined animate-spin mr-2">
               progress_activity
             </span>
-            Loading workers...
+            {t('workers.loading')}
           </div>
         ) : workers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined text-5xl mb-3 text-outline">badge</span>
-            <p className="font-headline font-bold text-on-surface text-lg">No workers found</p>
-            <p className="text-sm mt-1">Add your first worker to get started.</p>
+            <p className="font-headline font-bold text-on-surface text-lg">{t('workers.noWorkersFound')}</p>
+            <p className="text-sm mt-1">{t('workers.noWorkersHint')}</p>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Worker Name</th>
-                <th>Employment Type</th>
-                <th>Payment Structure</th>
-                <th>Monthly Earnings</th>
-                <th>Join Date</th>
-                <th className="text-right">Actions</th>
+                <th>{t('workers.table.workerName')}</th>
+                <th>{t('workers.table.employmentType')}</th>
+                <th>{t('workers.table.paymentStructure')}</th>
+                <th>{t('workers.table.monthlyEarnings')}</th>
+                <th>{t('workers.table.joinDate')}</th>
+                <th className="text-right">{t('workers.table.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {workers.map((worker) => {
-                const payment = getPaymentLabel(worker);
                 const empType = worker.base_salary > 0 ? 'permanent' : 'seasonal';
                 const badge = EMPLOYMENT_BADGES[empType];
                 const typeIcon =
@@ -406,7 +428,7 @@ export default function WorkersPage() {
                         <div>
                           <p className="font-bold text-on-surface">{worker.name}</p>
                           <p className="text-xs text-secondary">
-                            {WORKER_TYPE_LABELS[worker.worker_type || 'tailor'] || 'Worker'}
+                            {worker.worker_type === 'master_cutter' ? t('workers.workerType.masterCutter') : worker.worker_type === 'tailor' ? t('workers.workerType.tailor') : t('workers.workerType.worker')}
                           </p>
                         </div>
                       </div>
@@ -425,47 +447,117 @@ export default function WorkersPage() {
                     <td>
                       <div className="flex items-center gap-2 text-on-surface-variant font-medium">
                         <span className="material-symbols-outlined text-lg opacity-40">
-                          {payment.icon}
+                          {worker.base_salary > 0 ? 'account_balance_wallet' : 'percent'}
                         </span>
-                        {payment.label}
+                        {worker.base_salary > 0 ? t('workers.payment.fixedSalary') : t('workers.payment.pieceRate')}
                       </div>
                     </td>
 
                     {/* Monthly Earnings */}
                     <td>
                       {workerEarnings[worker.id] && (
-                        <button
-                          onClick={() => setExpandedEarnings((prev) => ({ ...prev, [worker.id]: !prev[worker.id] }))}
-                          className="text-left"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-primary">
-                              {(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR
-                            </span>
-                            <span className="material-symbols-outlined text-xs text-secondary">
-                              {expandedEarnings[worker.id] ? 'expand_less' : 'expand_more'}
-                            </span>
+                        <div>
+                          <div
+                            onClick={() => setExpandedEarnings((prev) => ({ ...prev, [worker.id]: !prev[worker.id] }))}
+                            className="text-left cursor-pointer"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpandedEarnings((prev) => ({ ...prev, [worker.id]: !prev[worker.id] })); }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-primary">
+                                {(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR
+                              </span>
+                              <span className="material-symbols-outlined text-xs text-secondary">
+                                {expandedEarnings[worker.id] ? 'expand_less' : 'expand_more'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-secondary">
+                              {workerEarnings[worker.id]?.task_count || 0} {t('workers.earnings.tasks')}
+                            </p>
+                            {expandedEarnings[worker.id] && (
+                              <div className="mt-2 p-2 bg-surface-container rounded text-xs space-y-1 min-w-[160px]">
+                                <div className="flex justify-between">
+                                  <span className="text-secondary">{t('workers.earnings.pieceEarnings')}</span>
+                                  <span className="font-semibold">{(workerEarnings[worker.id]?.piece_earnings || 0).toFixed(0)} QAR</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-secondary">{t('workers.earnings.fixedSalary')}</span>
+                                  <span className="font-semibold">{(workerEarnings[worker.id]?.fixed_salary || 0).toFixed(0)} QAR</span>
+                                </div>
+                                <div className="flex justify-between border-t border-outline-variant/20 pt-1">
+                                  <span className="font-bold">{t('workers.earnings.total')}</span>
+                                  <span className="font-bold text-primary">{(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR</span>
+                                </div>
+                                {/* Order-level breakdown toggle */}
+                                <div className="border-t border-outline-variant/20 pt-1 mt-1">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); toggleOrderDetails(worker.id); }}
+                                    className="flex items-center gap-1 text-primary font-semibold hover:underline text-[10px]"
+                                  >
+                                    <span className="material-symbols-outlined text-xs">
+                                      {expandedOrderDetails[worker.id] ? 'expand_less' : 'expand_more'}
+                                    </span>
+                                    {t('workers.earnings.orderDetails')}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <p className="text-[10px] text-secondary">
-                            {workerEarnings[worker.id]?.task_count || 0} tasks
-                          </p>
-                          {expandedEarnings[worker.id] && (
-                            <div className="mt-2 p-2 bg-surface-container rounded text-xs space-y-1 min-w-[160px]">
-                              <div className="flex justify-between">
-                                <span className="text-secondary">Piece Earnings</span>
-                                <span className="font-semibold">{(workerEarnings[worker.id]?.piece_earnings || 0).toFixed(0)} QAR</span>
+                          {expandedOrderDetails[worker.id] && expandedEarnings[worker.id] && (
+                            <div className="mt-2 border border-outline-variant/20 rounded-lg overflow-hidden">
+                              <div className="flex items-center gap-2 p-2 bg-surface-container-high">
+                                <input
+                                  type="date"
+                                  value={orderDetailDateRange.start}
+                                  onChange={(e) => setOrderDetailDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                                  className="bg-surface-container-lowest text-xs px-2 py-1 rounded border-none outline-none"
+                                />
+                                <span className="text-secondary text-xs">{t('workers.earnings.to')}</span>
+                                <input
+                                  type="date"
+                                  value={orderDetailDateRange.end}
+                                  onChange={(e) => setOrderDetailDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                                  className="bg-surface-container-lowest text-xs px-2 py-1 rounded border-none outline-none"
+                                />
+                                <button
+                                  onClick={() => loadOrderDetails(worker.id)}
+                                  className="text-xs text-primary font-bold hover:underline"
+                                >
+                                  {t('workers.earnings.apply')}
+                                </button>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-secondary">Fixed Salary</span>
-                                <span className="font-semibold">{(workerEarnings[worker.id]?.fixed_salary || 0).toFixed(0)} QAR</span>
-                              </div>
-                              <div className="flex justify-between border-t border-outline-variant/20 pt-1">
-                                <span className="font-bold">Total</span>
-                                <span className="font-bold text-primary">{(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} QAR</span>
-                              </div>
+                              {workerOrderDetails[worker.id] ? (
+                                workerOrderDetails[worker.id].length === 0 ? (
+                                  <p className="text-xs text-secondary p-3">{t('workers.earnings.noCompletedTasks')}</p>
+                                ) : (
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="bg-surface-container text-secondary">
+                                        <th className="px-2 py-1 text-left font-semibold">{t('workers.earnings.order')}</th>
+                                        <th className="px-2 py-1 text-left font-semibold">{t('workers.earnings.piece')}</th>
+                                        <th className="px-2 py-1 text-right font-semibold">{t('workers.earnings.price')}</th>
+                                        <th className="px-2 py-1 text-right font-semibold">{t('workers.earnings.wage')}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {workerOrderDetails[worker.id].map((d: any) => (
+                                        <tr key={d.task_id} className="border-t border-outline-variant/10">
+                                          <td className="px-2 py-1 font-semibold">{d.order_number}</td>
+                                          <td className="px-2 py-1 text-secondary">{d.piece_type}</td>
+                                          <td className="px-2 py-1 text-right">{Number(d.price).toFixed(0)} QAR</td>
+                                          <td className="px-2 py-1 text-right font-semibold text-primary">{Number(d.wage_amount).toFixed(0)} QAR</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )
+                              ) : (
+                                <p className="text-xs text-secondary p-3">{t('workers.earnings.loading')}</p>
+                              )}
                             </div>
                           )}
-                        </button>
+                        </div>
                       )}
                     </td>
 
@@ -480,30 +572,47 @@ export default function WorkersPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActionMenuId(
-                              actionMenuId === worker.id ? null : worker.id,
-                            );
+                            if (actionMenuId === worker.id) {
+                              setActionMenuId(null);
+                              setActionMenuPos(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const up = window.innerHeight - rect.bottom < 120;
+                              setActionMenuPos({
+                                top: up ? rect.top - 4 : rect.bottom + 4,
+                                right: window.innerWidth - rect.right,
+                                up,
+                              });
+                              setActionMenuId(worker.id);
+                            }
                           }}
                           className="text-outline hover:text-primary transition-colors p-1"
                         >
                           <span className="material-symbols-outlined">more_vert</span>
                         </button>
 
-                        {actionMenuId === worker.id && (
-                          <div className="absolute right-0 top-full mt-1 bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/20 z-50 min-w-[160px] py-1">
+                        {actionMenuId === worker.id && actionMenuPos && (
+                          <div
+                            className="fixed bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/20 z-50 min-w-[160px] py-1"
+                            style={{
+                              top: actionMenuPos.top,
+                              right: actionMenuPos.right,
+                              transform: actionMenuPos.up ? 'translateY(-100%)' : undefined,
+                            }}
+                          >
                             <button
                               onClick={() => openEditModal(worker)}
                               className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2"
                             >
                               <span className="material-symbols-outlined text-base">edit</span>
-                              Edit Worker
+                              {t('workers.menu.editWorker')}
                             </button>
                             <button
                               onClick={() => handleDeactivate(worker)}
                               className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2 text-error"
                             >
                               <span className="material-symbols-outlined text-base">delete</span>
-                              Deactivate
+                              {t('workers.menu.deactivate')}
                             </button>
                           </div>
                         )}
@@ -520,7 +629,7 @@ export default function WorkersPage() {
         {workers.length > 0 && (
           <div className="px-6 py-4 border-t border-surface-container-high text-sm text-secondary flex justify-between items-center">
             <p className="text-xs font-medium uppercase tracking-widest">
-              Showing {workers.length} artisan{workers.length !== 1 ? 's' : ''}
+              {t('workers.showing').replace('{count}', String(workers.length))}
             </p>
           </div>
         )}
@@ -548,12 +657,12 @@ export default function WorkersPage() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-headline font-extrabold text-on-surface tracking-tight">
-                        {editingWorker ? 'Edit Worker' : 'New Worker'}
+                        {editingWorker ? t('workers.modal.editTitle') : t('workers.modal.newTitle')}
                       </h2>
                       <p className="text-secondary text-xs mt-0.5">
                         {editingWorker
-                          ? 'Update worker information'
-                          : 'Add an artisan to the team'}
+                          ? t('workers.modal.editSubtitle')
+                          : t('workers.modal.newSubtitle')}
                       </p>
                     </div>
                   </div>
@@ -572,7 +681,7 @@ export default function WorkersPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="material-symbols-outlined text-primary text-lg">badge</span>
                       <span className="text-xs font-headline font-bold uppercase tracking-widest text-secondary">
-                        Personal Information
+                        {t('workers.form.personalInformation')}
                       </span>
                     </div>
 
@@ -582,18 +691,18 @@ export default function WorkersPage() {
                         className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                         htmlFor="worker-name"
                       >
-                        Full Name
+                        {t('workers.form.fullName')}
                       </label>
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-4 text-outline">
                           person
                         </span>
                         <input
-                          {...register('name', { required: 'Name is required' })}
+                          {...register('name', { required: t('workers.form.nameRequired') })}
                           id="worker-name"
                           type="text"
                           className={`input-field pl-12 ${errors.name ? '!border-b-error' : ''}`}
-                          placeholder="e.g. Ahmad Ali / أحمد علي"
+                          placeholder={t('workers.form.namePlaceholder')}
                         />
                       </div>
                       {errors.name && (
@@ -608,7 +717,7 @@ export default function WorkersPage() {
                           className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                           htmlFor="worker-username"
                         >
-                          Username
+                          {t('workers.form.username')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -616,12 +725,12 @@ export default function WorkersPage() {
                           </span>
                           <input
                             {...register('username', {
-                              required: !editingWorker ? 'Username is required' : false,
+                              required: !editingWorker ? t('workers.form.usernameRequired') : false,
                             })}
                             id="worker-username"
                             type="text"
                             className={`input-field pl-12 ${errors.username ? '!border-b-error' : ''}`}
-                            placeholder="Login ID"
+                            placeholder={t('workers.form.usernamePlaceholder')}
                             disabled={!!editingWorker}
                           />
                         </div>
@@ -635,7 +744,7 @@ export default function WorkersPage() {
                           className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                           htmlFor="worker-password"
                         >
-                          {editingWorker ? 'New Password' : 'Password'}
+                          {editingWorker ? t('workers.form.newPassword') : t('workers.form.password')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -643,12 +752,12 @@ export default function WorkersPage() {
                           </span>
                           <input
                             {...register('password', {
-                              required: !editingWorker ? 'Password is required' : false,
+                              required: !editingWorker ? t('workers.form.passwordRequired') : false,
                             })}
                             id="worker-password"
                             type={showPassword ? 'text' : 'password'}
                             className={`input-field pl-12 pr-12 ${errors.password ? '!border-b-error' : ''}`}
-                            placeholder={editingWorker ? 'Leave blank to keep' : 'Min 6 characters'}
+                            placeholder={editingWorker ? t('workers.form.passwordPlaceholderEdit') : t('workers.form.passwordPlaceholderNew')}
                           />
                           <button
                             type="button"
@@ -676,7 +785,7 @@ export default function WorkersPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="material-symbols-outlined text-primary text-lg">work</span>
                       <span className="text-xs font-headline font-bold uppercase tracking-widest text-secondary">
-                        Work Details
+                        {t('workers.form.workDetails')}
                       </span>
                     </div>
 
@@ -687,7 +796,7 @@ export default function WorkersPage() {
                           className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                           htmlFor="worker-type"
                         >
-                          Specialty
+                          {t('workers.form.specialty')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -698,9 +807,8 @@ export default function WorkersPage() {
                             id="worker-type"
                             className="input-field pl-12 appearance-none"
                           >
-                            <option value="tailor">Tailor</option>
-                            <option value="cutter">Cutter</option>
-                            <option value="designer">Designer</option>
+                            <option value="tailor">{t('workers.workerType.tailor')}</option>
+                            <option value="master_cutter">{t('workers.workerType.masterCutter')}</option>
                           </select>
                           <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                             expand_more
@@ -713,7 +821,7 @@ export default function WorkersPage() {
                           className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                           htmlFor="worker-branch"
                         >
-                          Branch
+                          {t('workers.form.branch')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -743,7 +851,7 @@ export default function WorkersPage() {
                         className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                         htmlFor="worker-salary"
                       >
-                        Base Salary
+                        {t('workers.form.baseSalary')}
                       </label>
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-4 text-outline">
@@ -760,7 +868,7 @@ export default function WorkersPage() {
                         />
                       </div>
                       <p className="text-on-surface-variant text-[11px] mt-1.5 ml-1">
-                        Set to 0 for piece-rate workers
+                        {t('workers.form.baseSalaryHint')}
                       </p>
                     </div>
                   </div>
@@ -772,7 +880,7 @@ export default function WorkersPage() {
                       onClick={closeModal}
                       className="px-6 py-3 text-sm font-semibold text-secondary hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-colors"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       type="submit"
@@ -785,10 +893,10 @@ export default function WorkersPage() {
                         </span>
                       )}
                       {isSubmitting
-                        ? 'Saving...'
+                        ? t('common.saving')
                         : editingWorker
-                          ? 'Update Worker'
-                          : 'Create Worker'}
+                          ? t('workers.form.updateWorker')
+                          : t('workers.form.createWorker')}
                     </button>
                   </div>
                 </form>

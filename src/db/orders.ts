@@ -112,7 +112,7 @@ export function createOrder(order: Omit<Order, 'id' | 'balance'>, measurements?:
       INSERT INTO orders (
         order_number, branch_id, customer_id, piece_type, details,
         price, paid, payment_method, status, receive_date, delivery_date, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = orderStmt.run(

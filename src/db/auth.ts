@@ -7,7 +7,7 @@ export interface User {
   username: string;
   password_hash: string;
   role: 'admin' | 'manager' | 'reception' | 'worker';
-  worker_type?: 'tailor' | 'cutter' | 'designer' | null;
+  worker_type?: 'tailor' | 'master_cutter' | null;
   branch_id: number;
   base_salary: number;
   active: number;

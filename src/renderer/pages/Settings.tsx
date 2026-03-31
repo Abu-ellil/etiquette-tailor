@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../contexts/I18nContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -46,10 +48,10 @@ interface BranchFormValues {
 /* ------------------------------------------------------------------ */
 
 const TABS = [
-  { id: 'shop', label: 'Shop Info', icon: 'storefront' },
-  { id: 'users', label: 'Users', icon: 'group' },
-  { id: 'branches', label: 'Branches', icon: 'store' },
-  { id: 'preferences', label: 'Preferences', icon: 'tune' },
+  { id: 'shop', label: 'settings.tabs.shopInfo', icon: 'storefront' },
+  { id: 'users', label: 'settings.tabs.users', icon: 'group' },
+  { id: 'branches', label: 'settings.tabs.branches', icon: 'store' },
+  { id: 'preferences', label: 'settings.tabs.preferences', icon: 'tune' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -74,6 +76,8 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('shop');
+  const { theme, setTheme } = useTheme();
+  const { t, locale, setLocale } = useTranslation();
   const [settings, setSettingsState] = useState<Record<string, string>>({});
   const [users, setUsers] = useState<User[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -85,6 +89,7 @@ export default function SettingsPage() {
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
+  const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number; up: boolean } | null>(null);
 
   const {
     register,
@@ -245,7 +250,7 @@ export default function SettingsPage() {
   };
 
   const handleDeactivateUser = async (user: User) => {
-    if (!window.confirm(`Deactivate user "${user.name}"?`)) return;
+    if (!window.confirm(t('settings.users.confirm.deactivate').replace('{name}', user.name))) return;
     try {
       await window.electronAPI.users.deactivate(user.id);
       await loadData();
@@ -311,7 +316,7 @@ export default function SettingsPage() {
     return (
       <div className="flex items-center justify-center py-20 text-secondary">
         <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-        Loading settings...
+        {t('settings.loading')}
       </div>
     );
   }
@@ -321,10 +326,10 @@ export default function SettingsPage() {
       {/* Header */}
       <header className="mb-10">
         <h1 className="text-5xl font-headline font-extrabold text-on-surface tracking-tight mb-3">
-          Settings
+          {t('settings.pageTitle')}
         </h1>
         <p className="text-lg text-secondary max-w-2xl leading-relaxed">
-          Manage your shop info, user accounts, branches, and system preferences.
+          {t('settings.pageSubtitle')}
         </p>
       </header>
 
@@ -341,7 +346,7 @@ export default function SettingsPage() {
             }`}
           >
             <span className="material-symbols-outlined text-lg">{tab.icon}</span>
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </div>
@@ -352,13 +357,13 @@ export default function SettingsPage() {
           <div className="bg-surface-container-lowest rounded-2xl p-8 space-y-6">
             <div className="flex items-center gap-3 mb-2">
               <span className="material-symbols-outlined text-primary text-xl">storefront</span>
-              <h3 className="font-headline font-bold text-lg text-on-surface">Shop Details</h3>
+              <h3 className="font-headline font-bold text-lg text-on-surface">{t('settings.shop.shopDetails')}</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                  Shop Name (Arabic)
+                  {t('settings.shop.shopNameArabic')}
                 </label>
                 <input
                   name="shop_name_ar"
@@ -370,7 +375,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                  Shop Name (English)
+                  {t('settings.shop.shopNameEnglish')}
                 </label>
                 <input
                   name="shop_name_en"
@@ -383,7 +388,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                Phone Number
+                {t('settings.shop.phoneNumber')}
               </label>
               <div className="relative flex items-center">
                 <span className="material-symbols-outlined absolute left-4 text-outline">phone</span>
@@ -407,7 +412,7 @@ export default function SettingsPage() {
               {saving && (
                 <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
               )}
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('common.saving') : t('settings.saveChanges')}
             </button>
           </div>
         </form>
@@ -421,7 +426,7 @@ export default function SettingsPage() {
               className="btn-primary flex items-center gap-3 py-3 px-8 text-sm shadow-xl hover:opacity-90 active:scale-95"
             >
               <span className="material-symbols-outlined">person_add</span>
-              Add User
+              {t('settings.users.addUser')}
             </button>
           </div>
 
@@ -429,18 +434,18 @@ export default function SettingsPage() {
             {users.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-secondary">
                 <span className="material-symbols-outlined text-5xl mb-3 text-outline">group</span>
-                <p className="font-headline font-bold text-on-surface text-lg">No users found</p>
+                <p className="font-headline font-bold text-on-surface text-lg">{t('settings.users.noUsersFound')}</p>
               </div>
             ) : (
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Branch</th>
-                    <th>Status</th>
-                    <th className="text-right">Actions</th>
+                    <th>{t('settings.users.table.name')}</th>
+                    <th>{t('settings.users.table.username')}</th>
+                    <th>{t('settings.users.table.role')}</th>
+                    <th>{t('settings.users.table.branch')}</th>
+                    <th>{t('settings.users.table.status')}</th>
+                    <th className="text-right">{t('settings.users.table.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -452,8 +457,8 @@ export default function SettingsPage() {
                         <td>
                           <span className="font-bold text-on-surface">{user.name}</span>
                           {user.role === 'worker' && user.worker_type && (
-                            <span className="text-xs text-secondary ml-2 capitalize">
-                              ({user.worker_type})
+                            <span className="text-xs text-secondary ml-2">
+                              ({user.worker_type === 'master_cutter' ? 'Master Cutter' : user.worker_type === 'tailor' ? 'Tailor' : user.worker_type})
                             </span>
                           )}
                         </td>
@@ -474,7 +479,7 @@ export default function SettingsPage() {
                                 : 'bg-surface-container-high text-on-surface-variant'
                             }`}
                           >
-                            {user.active ? 'Active' : 'Inactive'}
+                            {user.active ? t('common.active') : t('common.inactive')}
                           </span>
                         </td>
                         <td className="text-right">
@@ -482,20 +487,39 @@ export default function SettingsPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActionMenuId(actionMenuId === user.id ? null : user.id);
+                                if (actionMenuId === user.id) {
+                                  setActionMenuId(null);
+                                  setActionMenuPos(null);
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const up = window.innerHeight - rect.bottom < 120;
+                                  setActionMenuPos({
+                                    top: up ? rect.top - 4 : rect.bottom + 4,
+                                    right: window.innerWidth - rect.right,
+                                    up,
+                                  });
+                                  setActionMenuId(user.id);
+                                }
                               }}
                               className="text-outline hover:text-primary transition-colors p-1"
                             >
                               <span className="material-symbols-outlined">more_vert</span>
                             </button>
-                            {actionMenuId === user.id && (
-                              <div className="absolute right-0 top-full mt-1 bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/20 z-50 min-w-[160px] py-1">
+                            {actionMenuId === user.id && actionMenuPos && (
+                              <div
+                                className="fixed bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/20 z-50 min-w-[160px] py-1"
+                                style={{
+                                  top: actionMenuPos.top,
+                                  right: actionMenuPos.right,
+                                  transform: actionMenuPos.up ? 'translateY(-100%)' : undefined,
+                                }}
+                              >
                                 <button
                                   onClick={() => openEditUser(user)}
                                   className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2"
                                 >
                                   <span className="material-symbols-outlined text-base">edit</span>
-                                  Edit User
+                                  {t('settings.users.menu.editUser')}
                                 </button>
                                 {user.active && (
                                   <button
@@ -503,7 +527,7 @@ export default function SettingsPage() {
                                     className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2 text-error"
                                   >
                                     <span className="material-symbols-outlined text-base">person_remove</span>
-                                    Deactivate
+                                    {t('settings.users.menu.deactivate')}
                                   </button>
                                 )}
                               </div>
@@ -518,7 +542,7 @@ export default function SettingsPage() {
             )}
             {users.length > 0 && (
               <div className="px-6 py-4 border-t border-surface-container-high text-xs font-medium uppercase tracking-widest text-secondary">
-                {users.length} user{users.length !== 1 ? 's' : ''}
+                {users.length} {t('settings.users.showingUsers')}
               </div>
             )}
           </div>
@@ -533,7 +557,7 @@ export default function SettingsPage() {
               className="btn-primary flex items-center gap-3 py-3 px-8 text-sm shadow-xl hover:opacity-90 active:scale-95"
             >
               <span className="material-symbols-outlined">add_business</span>
-              Add Branch
+              {t('settings.branches.addBranch')}
             </button>
           </div>
 
@@ -570,7 +594,7 @@ export default function SettingsPage() {
                 <div className="space-y-2 mb-6">
                   <div className="flex items-center gap-2 text-sm text-secondary">
                     <span className="material-symbols-outlined text-base">location_on</span>
-                    {branch.address || 'No address set'}
+                    {branch.address || t('settings.branches.noAddressSet')}
                   </div>
                 </div>
 
@@ -579,7 +603,7 @@ export default function SettingsPage() {
                   className="text-primary font-headline font-bold text-xs uppercase tracking-widest hover:underline flex items-center gap-1"
                 >
                   <span className="material-symbols-outlined text-base">edit</span>
-                  Edit Branch
+                  {t('settings.branches.editBranch')}
                 </button>
               </div>
             ))}
@@ -592,13 +616,57 @@ export default function SettingsPage() {
           <div className="bg-surface-container-lowest rounded-2xl p-8 space-y-6">
             <div className="flex items-center gap-3 mb-2">
               <span className="material-symbols-outlined text-primary text-xl">tune</span>
-              <h3 className="font-headline font-bold text-lg text-on-surface">System Preferences</h3>
+              <h3 className="font-headline font-bold text-lg text-on-surface">{t('settings.preferences.systemPreferences')}</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                  Currency
+                  {t('settings.preferences.theme')}
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-4 text-outline">
+                    {theme === 'dark' ? 'dark_mode' : 'light_mode'}
+                  </span>
+                  <select
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+                    className="input-field pl-12 appearance-none"
+                  >
+                    <option value="light">{t('settings.preferences.themeLight')}</option>
+                    <option value="dark">{t('settings.preferences.themeDark')}</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
+                    expand_more
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                  {t('settings.preferences.language')}
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-4 text-outline">
+                    translate
+                  </span>
+                  <select
+                    value={locale}
+                    onChange={(e) => setLocale(e.target.value as 'en' | 'ar')}
+                    className="input-field pl-12 appearance-none"
+                  >
+                    <option value="en">{t('settings.preferences.languageEn')}</option>
+                    <option value="ar">{t('settings.preferences.languageAr')}</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
+                    expand_more
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                  {t('settings.preferences.currency')}
                 </label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-4 text-outline">paid</span>
@@ -620,7 +688,7 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                  Tax Rate (%)
+                  {t('settings.preferences.taxRate')}
                 </label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-4 text-outline">percent</span>
@@ -639,7 +707,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                Receipt / Invoice Footer Text
+                {t('settings.preferences.receiptFooter')}
               </label>
               <textarea
                 name="receipt_footer"
@@ -660,7 +728,7 @@ export default function SettingsPage() {
               {saving && (
                 <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
               )}
-              {saving ? 'Saving...' : 'Save Preferences'}
+              {saving ? t('common.saving') : t('settings.preferences.savePreferences')}
             </button>
           </div>
         </form>
@@ -688,10 +756,10 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-headline font-extrabold text-on-surface tracking-tight">
-                        {editingUser ? 'Edit User' : 'New User'}
+                        {editingUser ? t('settings.userModal.editTitle') : t('settings.userModal.newTitle')}
                       </h2>
                       <p className="text-secondary text-xs mt-0.5">
-                        {editingUser ? 'Update user information' : 'Create a new user account'}
+                        {editingUser ? t('settings.userModal.editSubtitle') : t('settings.userModal.newSubtitle')}
                       </p>
                     </div>
                   </div>
@@ -710,13 +778,13 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="material-symbols-outlined text-primary text-lg">badge</span>
                       <span className="text-xs font-headline font-bold uppercase tracking-widest text-secondary">
-                        Account Information
+                        {t('settings.userModal.accountInformation')}
                       </span>
                     </div>
 
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                        Full Name
+                        {t('settings.userModal.fullName')}
                       </label>
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-4 text-outline">person</span>
@@ -735,7 +803,7 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                          Username
+                          {t('settings.userModal.username')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">alternate_email</span>
@@ -755,7 +823,7 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                          {editingUser ? 'New Password' : 'Password'}
+                          {editingUser ? t('settings.userModal.newPassword') : t('settings.userModal.password')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">lock</span>
@@ -792,14 +860,14 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="material-symbols-outlined text-primary text-lg">admin_panel_settings</span>
                       <span className="text-xs font-headline font-bold uppercase tracking-widest text-secondary">
-                        Role & Assignment
+                        {t('settings.userModal.roleAndAssignment')}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                          Role
+                          {t('settings.userModal.role')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">shield</span>
@@ -819,7 +887,7 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                          Branch
+                          {t('settings.userModal.branch')}
                         </label>
                         <div className="relative flex items-center">
                           <span className="material-symbols-outlined absolute left-4 text-outline">store</span>
@@ -845,7 +913,7 @@ export default function SettingsPage() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                            Worker Specialty
+                            {t('settings.userModal.workerSpecialty')}
                           </label>
                           <div className="relative flex items-center">
                             <span className="material-symbols-outlined absolute left-4 text-outline">styler</span>
@@ -854,8 +922,7 @@ export default function SettingsPage() {
                               className="input-field pl-12 appearance-none"
                             >
                               <option value="tailor">Tailor</option>
-                              <option value="cutter">Cutter</option>
-                              <option value="designer">Designer</option>
+                              <option value="master_cutter">Master Cutter</option>
                             </select>
                             <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                               expand_more
@@ -864,7 +931,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                            Base Salary
+                            {t('settings.userModal.baseSalary')}
                           </label>
                           <div className="relative flex items-center">
                             <span className="material-symbols-outlined absolute left-4 text-outline">payments</span>
@@ -889,7 +956,7 @@ export default function SettingsPage() {
                       onClick={closeUserModal}
                       className="px-6 py-3 text-sm font-semibold text-secondary hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-colors"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       type="submit"
@@ -899,7 +966,7 @@ export default function SettingsPage() {
                       {isSubmitting && (
                         <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
                       )}
-                      {isSubmitting ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
+                      {isSubmitting ? t('common.saving') : editingUser ? t('settings.userModal.updateUser') : t('settings.userModal.createUser')}
                     </button>
                   </div>
                 </form>
@@ -930,10 +997,10 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-headline font-extrabold text-on-surface tracking-tight">
-                        {editingBranch ? 'Edit Branch' : 'New Branch'}
+                        {editingBranch ? t('settings.branchModal.editTitle') : t('settings.branchModal.newTitle')}
                       </h2>
                       <p className="text-secondary text-xs mt-0.5">
-                        {editingBranch ? 'Update branch details' : 'Add a new workshop location'}
+                        {editingBranch ? t('settings.branchModal.editSubtitle') : t('settings.branchModal.newSubtitle')}
                       </p>
                     </div>
                   </div>
@@ -948,7 +1015,7 @@ export default function SettingsPage() {
                 <form onSubmit={submitBranch(onBranchSubmit)} className="space-y-5">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                      Branch Name (Arabic)
+                      {t('settings.branchModal.branchNameArabic')}
                     </label>
                     <input
                       {...regBranch('name_ar', { required: 'Arabic name is required' })}
@@ -964,7 +1031,7 @@ export default function SettingsPage() {
 
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                      Branch Name (English)
+                      {t('settings.branchModal.branchNameEnglish')}
                     </label>
                     <input
                       {...regBranch('name_en', { required: 'English name is required' })}
@@ -979,7 +1046,7 @@ export default function SettingsPage() {
 
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                      Order Prefix
+                      {t('settings.branchModal.orderPrefix')}
                     </label>
                     <div className="relative flex items-center">
                       <span className="material-symbols-outlined absolute left-4 text-outline">tag</span>
@@ -995,13 +1062,13 @@ export default function SettingsPage() {
                       <p className="text-error text-xs mt-1 ml-1">{branchErrors.prefix.message}</p>
                     )}
                     <p className="text-on-surface-variant text-[11px] mt-1.5 ml-1">
-                      Orders will be numbered {editingBranch?.prefix || 'C'}-001, {editingBranch?.prefix || 'C'}-002...
+                      {t('settings.branchModal.orderNumbering', { prefix: editingBranch?.prefix || 'C' })}
                     </p>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                      Address
+                      {t('settings.branchModal.address')}
                     </label>
                     <input
                       {...regBranch('address')}
@@ -1017,7 +1084,7 @@ export default function SettingsPage() {
                       onClick={closeBranchModal}
                       className="px-6 py-3 text-sm font-semibold text-secondary hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-colors"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       type="submit"
@@ -1027,7 +1094,7 @@ export default function SettingsPage() {
                       {branchSubmitting && (
                         <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
                       )}
-                      {branchSubmitting ? 'Saving...' : editingBranch ? 'Update Branch' : 'Create Branch'}
+                      {branchSubmitting ? t('common.saving') : editingBranch ? t('settings.branchModal.updateBranch') : t('settings.branchModal.createBranch')}
                     </button>
                   </div>
                 </form>

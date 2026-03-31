@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from '../contexts/I18nContext';
+import { useTheme } from '../contexts/ThemeContext';
 import type { Session } from '../App';
 import TitleBar from '../components/TitleBar';
 
@@ -13,6 +15,8 @@ interface LoginProps {
 }
 
 export default function LoginPage({ onLogin }: LoginProps) {
+  const { t, locale, setLocale } = useTranslation();
+  const { theme, setTheme } = useTheme();
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const {
@@ -31,39 +35,54 @@ export default function LoginPage({ onLogin }: LoginProps) {
       if (session) {
         onLogin(session);
       } else {
-        setError('Invalid username or password');
+        setError(t('login.error.invalidCredentials'));
       }
     } catch {
-      setError('Login failed. Please try again.');
+      setError(t('login.error.loginFailed'));
     }
   };
 
   return (
-    <div className="flex flex-col h-screen"
-      style={{
-        backgroundColor: '#f8f9fa',
-      }}
-    >
+    <div className="flex flex-col h-screen bg-surface">
       <TitleBar />
+      <div className="absolute top-10 right-4 flex items-center gap-2 z-50">
+        <button
+          type="button"
+          onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors text-sm font-medium text-on-surface"
+        >
+          <span className="material-symbols-outlined text-base">{locale === 'en' ? 'language' : 'translate'}</span>
+          {locale === 'en' ? 'عربي' : 'English'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          className="flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors text-on-surface"
+        >
+          <span className="material-symbols-outlined text-base">
+            {theme === 'light' ? 'dark_mode' : 'light_mode'}
+          </span>
+        </button>
+      </div>
       <div className="flex-1 flex items-center justify-center p-6"
         style={{
-          backgroundImage: 'radial-gradient(#d1c2d2 0.5px, transparent 0.5px)',
+          backgroundImage: 'radial-gradient(var(--color-outline-variant) 0.5px, transparent 0.5px)',
           backgroundSize: '24px 24px',
         }}
       >
       <main className="w-full max-w-md">
         {/* Brand Identity Section */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white shadow-[0px_20px_40px_rgba(25,28,29,0.06)] mb-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-container-lowest shadow-[0px_20px_40px_rgba(25,28,29,0.06)] mb-6">
             <span className="material-symbols-outlined text-primary" style={{ fontSize: '2.5rem' }}>
               straighten
             </span>
           </div>
           <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface mb-2">
-            Etiquette Tailor
+            {t('login.brandName')}
           </h1>
           <p className="text-secondary text-sm tracking-wide">
-            Bespoke Studio
+            {t('login.brandTagline')}
           </p>
         </div>
 
@@ -82,18 +101,18 @@ export default function LoginPage({ onLogin }: LoginProps) {
                 className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                 htmlFor="username"
               >
-                Username
+                {t('login.username')}
               </label>
               <div className="relative flex items-center">
                 <span className="material-symbols-outlined absolute left-4 text-outline">
                   person
                 </span>
                 <input
-                  {...register('username', { required: 'Username is required' })}
+                  {...register('username', { required: t('login.usernameRequired') })}
                   id="username"
                   type="text"
                   className="input-field pl-12"
-                  placeholder="Workshop ID or Email"
+                  placeholder={t('login.usernamePlaceholder')}
                   autoComplete="username"
                 />
               </div>
@@ -106,7 +125,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
                   className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary"
                   htmlFor="password"
                 >
-                  Password
+                  {t('login.password')}
                 </label>
               </div>
               <div className="relative flex items-center">
@@ -114,11 +133,11 @@ export default function LoginPage({ onLogin }: LoginProps) {
                   lock
                 </span>
                 <input
-                  {...register('password', { required: 'Password is required' })}
+                  {...register('password', { required: t('login.passwordRequired') })}
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   className="input-field pl-12 pr-12"
-                  placeholder="Enter your password"
+                  placeholder={t('login.passwordPlaceholder')}
                   autoComplete="current-password"
                 />
                 <button
@@ -141,7 +160,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
                 disabled={isSubmitting}
                 className="btn-primary w-full h-14 rounded-lg font-headline font-bold text-lg flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {isSubmitting ? 'Signing in...' : 'Sign In'}
+                {isSubmitting ? t('login.signingIn') : t('login.signIn')}
                 {!isSubmitting && (
                   <span className="material-symbols-outlined">arrow_forward</span>
                 )}
@@ -155,12 +174,12 @@ export default function LoginPage({ onLogin }: LoginProps) {
           <div className="flex items-center justify-center gap-6 mb-4">
             <span className="h-px w-8 bg-outline-variant/40" />
             <p className="text-[10px] font-bold uppercase tracking-widest text-outline/60">
-              Bespoke Security Standards
+              {t('login.securityStandards')}
             </p>
             <span className="h-px w-8 bg-outline-variant/40" />
           </div>
           <p className="text-[11px] text-secondary/60 font-medium">
-            &copy; 2026 Etiquette Tailor System. All rights reserved.
+            {t('login.copyright')}
           </p>
         </footer>
       </main>

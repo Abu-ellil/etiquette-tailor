@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import StatusChip from '../components/StatusChip';
+import { useTranslation } from '../contexts/I18nContext';
 
 const TASK_TYPE_ICONS: Record<string, string> = {
   cutting: 'content_cut',
@@ -8,6 +9,7 @@ const TASK_TYPE_ICONS: Record<string, string> = {
 };
 
 export default function TaskBoardPage() {
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<any[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
@@ -53,7 +55,7 @@ export default function TaskBoardPage() {
     return (
       <div className="flex items-center justify-center py-20 text-secondary">
         <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-        Loading task board...
+        {t('taskBoard.loading')}
       </div>
     );
   }
@@ -61,26 +63,26 @@ export default function TaskBoardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">Task Board</h1>
-        <p className="text-secondary mt-1">Production overview across all orders</p>
+        <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">{t('taskBoard.pageTitle')}</h1>
+        <p className="text-secondary mt-1">{t('taskBoard.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-4 gap-6">
         <div className="bg-surface-container-lowest rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">Pending</span>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('taskBoard.pending')}</span>
           <div className="text-3xl font-extrabold text-on-surface mt-2">{pendingCount}</div>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">In Progress</span>
-          <div className="text-3xl font-extrabold text-blue-600 mt-2">{inProgressCount}</div>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('taskBoard.inProgress')}</span>
+          <div className="text-3xl font-extrabold text-primary mt-2">{inProgressCount}</div>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">Done</span>
-          <div className="text-3xl font-extrabold text-emerald-600 mt-2">{doneCount}</div>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('taskBoard.done')}</span>
+          <div className="text-3xl font-extrabold text-primary mt-2">{doneCount}</div>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">Overdue</span>
-          <div className="text-3xl font-extrabold text-red-600 mt-2">{overdueCount}</div>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('taskBoard.overdue')}</span>
+          <div className="text-3xl font-extrabold text-error mt-2">{overdueCount}</div>
         </div>
       </div>
 
@@ -91,7 +93,7 @@ export default function TaskBoardPage() {
             onChange={(e) => setFilters({ ...filters, branchId: e.target.value ? Number(e.target.value) : undefined })}
             className="input-field appearance-none min-w-[160px]"
           >
-            <option value="">All Branches</option>
+            <option value="">{t('taskBoard.allBranches')}</option>
             {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name_en || b.name_ar}</option>)}
           </select>
         )}
@@ -100,7 +102,7 @@ export default function TaskBoardPage() {
           onChange={(e) => setFilters({ ...filters, workerId: e.target.value ? Number(e.target.value) : undefined })}
           className="input-field appearance-none min-w-[160px]"
         >
-          <option value="">All Workers</option>
+          <option value="">{t('taskBoard.allWorkers')}</option>
           {workers.map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
         </select>
         <select
@@ -108,32 +110,31 @@ export default function TaskBoardPage() {
           onChange={(e) => setFilters({ ...filters, taskType: e.target.value || undefined })}
           className="input-field appearance-none min-w-[160px]"
         >
-          <option value="">All Types</option>
-          <option value="cutting">Cutting</option>
-          <option value="sewing">Sewing</option>
-          <option value="design">Design</option>
+          <option value="">{t('taskBoard.allTypes')}</option>
+          <option value="cutting">{t('taskBoard.cutting')}</option>
+          <option value="sewing">{t('taskBoard.sewing')}</option>
         </select>
       </div>
 
       {tasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-secondary">
           <span className="material-symbols-outlined text-5xl mb-3 text-outline">view_kanban</span>
-          <p className="font-headline font-bold text-lg">No tasks found</p>
-          <p className="text-sm mt-1">Create orders and assign tasks to see them here.</p>
+          <p className="font-headline font-bold text-lg">{t('taskBoard.noTasksFound')}</p>
+          <p className="text-sm mt-1">{t('taskBoard.createTasksHint')}</p>
         </div>
       ) : (
         <div className="bg-surface-container-lowest rounded-2xl overflow-hidden">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Order</th>
-                <th>Customer</th>
-                <th>Piece</th>
-                <th>Type</th>
-                <th>Worker</th>
-                <th>Due Date</th>
-                {isAdmin && <th>Wage</th>}
-                <th>Status</th>
+                <th>{t('taskBoard.order')}</th>
+                <th>{t('taskBoard.customer')}</th>
+                <th>{t('taskBoard.piece')}</th>
+                <th>{t('taskBoard.type')}</th>
+                <th>{t('taskBoard.worker')}</th>
+                <th>{t('taskBoard.dueDate')}</th>
+                {isAdmin && <th>{t('taskBoard.wage')}</th>}
+                <th>{t('taskBoard.status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -150,11 +151,11 @@ export default function TaskBoardPage() {
                         <span className="capitalize">{task.task_type}</span>
                       </div>
                     </td>
-                    <td>{task.worker_name || 'Unassigned'}</td>
+                    <td>{task.worker_name || t('taskBoard.unassigned')}</td>
                     <td>
                       <div className="flex items-center gap-2">
                         <span>{task.due_date || '--'}</span>
-                        {isOverdue && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">Overdue</span>}
+                        {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">{t('taskBoard.overdue')}</span>}
                       </div>
                     </td>
                     {isAdmin && <td className="font-semibold">{Number(task.wage_amount || 0).toFixed(2)} QAR</td>}
@@ -168,7 +169,7 @@ export default function TaskBoardPage() {
           </table>
           <div className="px-6 py-4 border-t border-surface-container-high text-sm text-secondary flex justify-between items-center">
             <p className="text-xs font-medium uppercase tracking-widest">
-              Showing {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+              {t('taskBoard.showing')} {tasks.length} {tasks.length !== 1 ? t('taskBoard.tasksPlural') : t('taskBoard.taskSingular')}
             </p>
           </div>
         </div>

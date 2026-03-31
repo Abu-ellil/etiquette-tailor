@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from '../contexts/I18nContext';
 
 // --- Mock data ---
 const METRICS = [
   {
-    label: 'Total Orders',
+    labelKey: 'reports.totalOrders',
     value: '184',
     change: '+12%',
     changeType: 'positive' as const,
@@ -12,7 +13,7 @@ const METRICS = [
     iconColor: 'text-primary-container',
   },
   {
-    label: 'Revenue',
+    labelKey: 'reports.revenue',
     value: 'QAR 42,920',
     change: '+8.4%',
     changeType: 'positive' as const,
@@ -21,7 +22,7 @@ const METRICS = [
     iconColor: 'text-secondary',
   },
   {
-    label: 'Workers Cost',
+    labelKey: 'reports.workersCost',
     value: 'QAR 11,450',
     change: '-2.1%',
     changeType: 'negative' as const,
@@ -30,7 +31,7 @@ const METRICS = [
     iconColor: 'text-on-tertiary-container',
   },
   {
-    label: 'Net Profit',
+    labelKey: 'reports.netProfit',
     value: 'QAR 31,470',
     change: '+14.2%',
     changeType: 'positive' as const,
@@ -62,6 +63,7 @@ const RECENT_ORDERS = [
 type TimePeriod = 'daily' | 'weekly' | 'monthly';
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<TimePeriod>('weekly');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -71,10 +73,10 @@ export default function ReportsPage() {
       <header className="flex flex-wrap justify-between items-end gap-4 mb-16">
         <div>
           <h2 className="text-5xl font-headline font-extrabold text-on-surface tracking-tight mb-2">
-            Performance Reports
+            {t('reports.pageTitle')}
           </h2>
           <p className="text-secondary text-lg">
-            Detailed analytical overview of your bespoke atelier operations.
+            {t('reports.subtitle')}
           </p>
         </div>
 
@@ -90,7 +92,7 @@ export default function ReportsPage() {
                   : 'text-secondary hover:text-on-surface'
               }`}
             >
-              {p}
+              {t(`reports.${p}`)}
             </button>
           ))}
         </div>
@@ -102,7 +104,7 @@ export default function ReportsPage() {
           m.highlight ? (
             // Highlighted card (Net Profit)
             <div
-              key={m.label}
+              key={m.labelKey}
               className="bg-primary text-white p-6 rounded-xl flex flex-col justify-between shadow-lg hover:translate-y-[-4px] transition-all duration-300 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -114,19 +116,19 @@ export default function ReportsPage() {
                     {m.icon}
                   </span>
                 </div>
-                <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-full backdrop-blur-md">
+                <span className="text-xs font-bold bg-surface-container-lowest/20 px-3 py-1 rounded-full backdrop-blur-md">
                   {m.change}
                 </span>
               </div>
               <div className="z-10">
-                <p className="text-primary-fixed text-xs uppercase tracking-widest mb-1">{m.label}</p>
+                <p className="text-primary-fixed text-xs uppercase tracking-widest mb-1">{t(m.labelKey)}</p>
                 <p className="text-3xl 2xl:text-4xl font-headline font-bold whitespace-nowrap tracking-tight">{m.value}</p>
               </div>
             </div>
           ) : (
             // Standard metric card
             <div
-              key={m.label}
+              key={m.labelKey}
               className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between group hover:translate-y-[-4px] transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-6">
@@ -146,7 +148,7 @@ export default function ReportsPage() {
                 </span>
               </div>
               <div>
-                <p className="text-secondary text-xs uppercase tracking-widest mb-1">{m.label}</p>
+                <p className="text-secondary text-xs uppercase tracking-widest mb-1">{t(m.labelKey)}</p>
                 <p className="text-3xl 2xl:text-4xl font-headline font-bold text-on-surface whitespace-nowrap tracking-tight">{m.value}</p>
               </div>
             </div>
@@ -158,7 +160,7 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
         {/* Payment Methods Card */}
         <div className="lg:col-span-1 bg-surface-container-low p-8 rounded-2xl">
-          <h3 className="font-headline font-bold text-xl mb-8">Payment Methods</h3>
+          <h3 className="font-headline font-bold text-xl mb-8">{t('reports.paymentMethods')}</h3>
 
           {/* Simple CSS doughnut representation */}
           <div className="relative h-64 flex items-center justify-center">
@@ -168,7 +170,7 @@ export default function ReportsPage() {
             >
               <div className="text-center">
                 <p className="text-3xl font-bold font-headline">{PAYMENT_SPLIT.card}%</p>
-                <p className="text-[10px] uppercase font-bold text-secondary">Card Share</p>
+                <p className="text-[10px] uppercase font-bold text-secondary">{t('reports.cardShare')}</p>
               </div>
             </div>
           </div>
@@ -178,14 +180,14 @@ export default function ReportsPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-primary" />
-                <span className="text-sm font-medium">Card Payments</span>
+                <span className="text-sm font-medium">{t('reports.cardPayments')}</span>
               </div>
               <span className="text-sm font-bold">{PAYMENT_SPLIT.cardAmount}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-secondary-container" />
-                <span className="text-sm font-medium">Cash Payments</span>
+                <span className="text-sm font-medium">{t('reports.cashPayments')}</span>
               </div>
               <span className="text-sm font-bold">{PAYMENT_SPLIT.cashAmount}</span>
             </div>
@@ -195,9 +197,9 @@ export default function ReportsPage() {
         {/* Monthly Trends (simple bar chart) */}
         <div className="lg:col-span-2 bg-surface-container-lowest p-8 rounded-2xl">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="font-headline font-bold text-xl">Monthly Revenue Trend</h3>
+            <h3 className="font-headline font-bold text-xl">{t('reports.monthlyRevenueTrend')}</h3>
             <span className="text-xs font-bold text-tertiary bg-tertiary-fixed px-3 py-1 rounded-full uppercase">
-              Last 6 Months
+              {t('reports.last6Months')}
             </span>
           </div>
 
@@ -226,7 +228,7 @@ export default function ReportsPage() {
       {/* Orders Summary Table */}
       <section className="bg-surface-container-lowest rounded-2xl overflow-hidden">
         <div className="p-8 border-b border-surface-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h3 className="font-headline font-bold text-2xl">Orders Summary</h3>
+          <h3 className="font-headline font-bold text-2xl">{t('reports.ordersSummary')}</h3>
           <div className="flex gap-4">
             {/* Search */}
             <div className="relative">
@@ -235,7 +237,7 @@ export default function ReportsPage() {
               </span>
               <input
                 className="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/20 w-64"
-                placeholder="Search orders..."
+                placeholder={t('reports.searchOrders')}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -244,7 +246,7 @@ export default function ReportsPage() {
             {/* Filter */}
             <button className="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-lg text-sm font-bold text-secondary hover:text-on-surface transition-colors">
               <span className="material-symbols-outlined text-sm">filter_list</span>
-              Filter
+              {t('reports.filter')}
             </button>
           </div>
         </div>
@@ -254,11 +256,11 @@ export default function ReportsPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Order ID</th>
-                <th>Customer</th>
-                <th>Service Type</th>
-                <th>Status</th>
-                <th className="text-right">Value</th>
+                <th>{t('reports.orderId')}</th>
+                <th>{t('reports.customer')}</th>
+                <th>{t('reports.serviceType')}</th>
+                <th>{t('reports.status')}</th>
+                <th className="text-right">{t('reports.value')}</th>
               </tr>
             </thead>
             <tbody>
@@ -295,7 +297,7 @@ export default function ReportsPage() {
         {/* Footer */}
         <div className="p-6 bg-surface border-t border-surface-container flex justify-center">
           <button className="text-primary font-headline font-bold text-xs uppercase tracking-widest hover:underline">
-            View All Historical Orders
+            {t('reports.viewAllHistoricalOrders')}
           </button>
         </div>
       </section>

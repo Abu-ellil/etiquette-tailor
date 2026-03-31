@@ -43,7 +43,7 @@ export function initializeSchema() {
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL CHECK(role IN ('admin','manager','reception','worker')),
-      worker_type TEXT CHECK(worker_type IN ('tailor','cutter','designer',NULL)),
+      worker_type TEXT CHECK(worker_type IN ('tailor','master_cutter',NULL)),
       branch_id INTEGER REFERENCES branches(id),
       base_salary REAL DEFAULT 0,
       active INTEGER DEFAULT 1,
@@ -176,6 +176,12 @@ export function initializeSchema() {
     seedSettings();
   }
 
+  // Migration: Ensure locale is set
+  const localeSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('locale') as { value: string } | undefined;
+  if (!localeSetting) {
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('locale', 'en');
+  }
+
   // Migrations: add missing columns to existing tables
   migrateColumns();
 
@@ -186,6 +192,10 @@ export function initializeSchema() {
 }
 
 function migrateColumns() {
+  // Clean up any stale migration temp tables
+  try { db.exec('DROP TABLE IF EXISTS orders_new'); } catch { /* ignore cleanup errors */ }
+  try { db.exec('DROP TABLE IF EXISTS users_new'); } catch { /* ignore cleanup errors */ }
+
   const tables: Record<string, string[]> = {};
 
   // Get existing columns for each table
@@ -194,11 +204,35 @@ function migrateColumns() {
     tables[table] = cols.map((c) => c.name);
   }
 
+  if (!tables.orders?.includes('branch_id')) {
+    console.log('Migrating: adding branch_id to orders');
+    db.exec('ALTER TABLE orders ADD COLUMN branch_id INTEGER REFERENCES branches(id)');
+
+    const defaultBranch = db.prepare('SELECT id FROM branches ORDER BY id LIMIT 1').get() as { id: number } | undefined;
+    if (defaultBranch) {
+      db.exec(`
+        UPDATE orders
+        SET branch_id = COALESCE(
+          (
+            SELECT customers.branch_id
+            FROM customers
+            WHERE customers.id = orders.customer_id
+          ),
+          ${defaultBranch.id}
+        )
+        WHERE branch_id IS NULL
+      `);
+    }
+
+    tables.orders.push('branch_id');
+  }
+
   // Add missing columns
   const migrations: [string, string, string][] = [
     ['orders', 'receive_date', 'DATE'],
     ['orders', 'delivery_date', 'DATE'],
     ['orders', 'created_by', 'INTEGER REFERENCES users(id)'],
+    ['orders', 'details', 'TEXT'],
   ];
 
   for (const [table, column, def] of migrations) {
@@ -233,12 +267,77 @@ function migrateColumns() {
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      db.exec(`INSERT INTO orders_new SELECT * FROM orders`);
+      db.exec(`
+        INSERT INTO orders_new (
+          id, order_number, branch_id, customer_id, piece_type, details,
+          price, paid, payment_method, status, receive_date, delivery_date,
+          created_by, created_at
+        )
+        SELECT
+          id,
+          order_number,
+          COALESCE(branch_id, (SELECT id FROM branches ORDER BY id LIMIT 1)),
+          customer_id,
+          piece_type,
+          details,
+          price,
+          paid,
+          payment_method,
+          status,
+          receive_date,
+          delivery_date,
+          created_by,
+          created_at
+        FROM orders
+      `);
       db.exec(`DROP TABLE orders`);
       db.exec(`ALTER TABLE orders_new RENAME TO orders`);
     }
   } catch (e) {
     console.log('orders migration skipped or already applied:', (e as Error).message);
+  }
+
+  // Migrate worker_type: cutter → master_cutter, NULLify designer
+  try {
+    const hasOldCutter = db.prepare("SELECT COUNT(*) as count FROM users WHERE worker_type = 'cutter'").get() as { count: number };
+    if (hasOldCutter.count > 0) {
+      console.log('Migrating: renaming worker_type cutter → master_cutter');
+      db.exec("UPDATE users SET worker_type = 'master_cutter' WHERE worker_type = 'cutter'");
+    }
+    const hasDesigner = db.prepare("SELECT COUNT(*) as count FROM users WHERE worker_type = 'designer'").get() as { count: number };
+    if (hasDesigner.count > 0) {
+      console.log('Migrating: NULLifying worker_type designer');
+      db.exec("UPDATE users SET worker_type = NULL WHERE worker_type = 'designer'");
+    }
+  } catch (e) {
+    console.log('worker_type migration skipped:', (e as Error).message);
+  }
+
+  // Migrate users table CHECK constraint if it still references old worker_type values
+  try {
+    const usersDef = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get() as { sql: string } | undefined;
+    if (usersDef?.sql?.includes("'cutter'") || usersDef?.sql?.includes("'designer'")) {
+      console.log('Migrating: updating users CHECK constraint for worker_type');
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('admin','manager','reception','worker')),
+          worker_type TEXT CHECK(worker_type IN ('tailor','master_cutter',NULL)),
+          branch_id INTEGER REFERENCES branches(id),
+          base_salary REAL DEFAULT 0,
+          active INTEGER DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      db.exec(`INSERT INTO users_new SELECT * FROM users`);
+      db.exec(`DROP TABLE users`);
+      db.exec(`ALTER TABLE users_new RENAME TO users`);
+    }
+  } catch (e) {
+    console.log('users constraint migration skipped:', (e as Error).message);
   }
 }
 
@@ -276,6 +375,7 @@ function seedDatabase() {
 
 function seedSettings() {
   const insertSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)');
+  insertSetting.run('locale', 'en');
   insertSetting.run('shop_name_ar', 'إتيكيت خياط');
   insertSetting.run('shop_name_en', 'Etiquette Tailor');
   insertSetting.run('shop_phone', '');

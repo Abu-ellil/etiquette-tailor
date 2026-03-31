@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useTranslation } from './contexts/I18nContext';
 import LoginPage from './pages/Login';
 import DashboardPage from './pages/Dashboard';
 import CustomersPage from './pages/Customers';
@@ -47,16 +48,21 @@ function ProtectedRoute({
   let allowed = ROLE_ROUTES[session.role] || [];
   if (session.role === 'worker') {
     const tailorRoutes = ['/dashboard', '/my-tasks'];
-    const cutterRoutes = ['/dashboard', '/cutting-queue'];
-    allowed = session.worker_type === 'cutter' ? cutterRoutes : tailorRoutes;
+    const masterCutterRoutes = ['/dashboard', '/cutting-queue'];
+    allowed = session.worker_type === 'master_cutter' ? masterCutterRoutes : tailorRoutes;
   }
   if (!allowed.includes(path)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
 export default function App() {
+  const { t, isRTL } = useTranslation();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+  }, [isRTL]);
 
   useEffect(() => {
     window.electronAPI
@@ -69,7 +75,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-surface">
-        <div className="text-on-surface-variant text-lg">Loading...</div>
+        <div className="text-on-surface-variant text-lg">{t('app.loading')}</div>
       </div>
     );
   }

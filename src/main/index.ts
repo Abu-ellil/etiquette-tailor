@@ -35,12 +35,15 @@ import {
   getAllTasks,
   getWorkerTasks,
   getMonthlyEarnings,
+  getWorkerOrderDetails,
   getAllSettings,
   setSettings,
   updateBranch,
   createBranch,
   getPieceTypes,
+  recalculateTaskWages,
 } from '../db';
+import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 
 let currentSession: {
   userId: number;
@@ -145,6 +148,10 @@ function registerIpcHandlers() {
     return getMonthlyEarnings(userId, month);
   });
 
+  ipcMain.handle('workers:getWorkerOrderDetails', async (_event, userId: number, startDate: string, endDate: string) => {
+    return getWorkerOrderDetails(userId, startDate, endDate);
+  });
+
   ipcMain.handle('customers:getAll', async (_event, branchId?: number) => {
     return getAllCustomers(branchId);
   });
@@ -221,6 +228,10 @@ function registerIpcHandlers() {
     return getAllTasks(filters);
   });
 
+  ipcMain.handle('orders:recalculateTaskWages', async (_event, orderId: number, newPrice: number) => {
+    return recalculateTaskWages(orderId, newPrice);
+  });
+
   // Settings
   ipcMain.handle('settings:getAll', async () => {
     return getAllSettings();
@@ -237,6 +248,27 @@ function registerIpcHandlers() {
 
   ipcMain.handle('branches:create', async (_event, data: any) => {
     return createBranch(data);
+  });
+
+  // Backup & Restore
+  ipcMain.handle('backup:create', async () => {
+    return createBackup(mainWindow ?? undefined);
+  });
+
+  ipcMain.handle('backup:restore', async () => {
+    return restoreBackup(mainWindow ?? undefined);
+  });
+
+  ipcMain.handle('backup:list', async () => {
+    return listLocalBackups();
+  });
+
+  ipcMain.handle('backup:lastDate', async () => {
+    return getLastBackupDate();
+  });
+
+  ipcMain.handle('backup:dbSize', async () => {
+    return getDbFileSize();
   });
 
   ipcMain.handle('window:minimize', () => mainWindow?.minimize());

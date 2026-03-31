@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { format, parseISO, isPast } from 'date-fns';
+import { useTranslation } from '../contexts/I18nContext';
 
 interface OrderStats {
   total: number;
@@ -31,17 +32,17 @@ function getInitials(name?: string): string {
   return parts[0].substring(0, 2).toUpperCase();
 }
 
-function getStatusChip(status: string, isLate: boolean) {
+function getStatusChip(status: string, isLate: boolean, t: (key: string) => string) {
   if (isLate) {
-    return <span className="chip chip-late">Late</span>;
+    return <span className="chip chip-late">{t('status.late')}</span>;
   }
   switch (status) {
     case 'ready':
-      return <span className="chip chip-ready">Ready</span>;
+      return <span className="chip chip-ready">{t('status.ready')}</span>;
     case 'delivered':
-      return <span className="chip chip-delivered">Delivered</span>;
+      return <span className="chip chip-delivered">{t('status.delivered')}</span>;
     default:
-      return <span className="chip chip-progress">In Progress</span>;
+      return <span className="chip chip-progress">{t('status.inProgress')}</span>;
   }
 }
 
@@ -77,12 +78,12 @@ function formatDate(dateStr?: string): string {
 
 // Color rotation for avatar circles
 const AVATAR_COLORS = [
-  { bg: 'bg-purple-100', text: 'text-purple-700' },
-  { bg: 'bg-slate-200', text: 'text-slate-700' },
-  { bg: 'bg-rose-100', text: 'text-rose-700' },
-  { bg: 'bg-blue-100', text: 'text-blue-700' },
-  { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  { bg: 'bg-amber-100', text: 'text-amber-700' },
+  { bg: 'bg-primary-fixed', text: 'text-on-primary-fixed' },
+  { bg: 'bg-surface-container-high', text: 'text-on-surface-variant' },
+  { bg: 'bg-error-container', text: 'text-on-error-container' },
+  { bg: 'bg-secondary-container', text: 'text-on-secondary' },
+  { bg: 'bg-tertiary-fixed', text: 'text-on-tertiary-fixed' },
+  { bg: 'bg-surface-container-highest', text: 'text-on-surface-variant' },
 ];
 
 function getAvatarColor(index: number) {
@@ -90,6 +91,7 @@ function getAvatarColor(index: number) {
 }
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +109,7 @@ export default function DashboardPage() {
 
   const isWorker = session.role === 'worker';
   const isTailor = isWorker && session.worker_type === 'tailor';
-  const isCutter = isWorker && session.worker_type === 'cutter';
+  const isCutter = isWorker && session.worker_type === 'master_cutter';
   const isManager = session.role === 'manager';
 
   useEffect(() => {
@@ -119,14 +121,15 @@ export default function DashboardPage() {
           const tasks = await window.electronAPI.workers.getWorkerTasks(session.userId);
           setWorkerTasks(tasks || []);
         } else {
+          const branchFilter = isManager ? session.branch_id : undefined;
           const [statsData, ordersData] = await Promise.all([
-            window.electronAPI.orders.getStats(),
-            window.electronAPI.orders.getAll(),
+            window.electronAPI.orders.getStats(branchFilter),
+            window.electronAPI.orders.getAll(branchFilter),
           ]);
           setStats(statsData);
           setOrders((ordersData || []).slice(0, 5));
 
-          const tasks = await window.electronAPI.orders.getAllTasks({});
+          const tasks = await window.electronAPI.orders.getAllTasks(isManager ? { branchId: session.branch_id } : {});
           setAllTasks(tasks || []);
         }
       } catch (err: unknown) {
@@ -152,12 +155,12 @@ export default function DashboardPage() {
               className="bg-surface-container-lowest p-6 rounded-xl h-40 animate-pulse"
             >
               <div className="flex justify-between items-start">
-                <div className="w-6 h-6 bg-slate-200 rounded" />
-                <div className="w-20 h-3 bg-slate-200 rounded" />
+                <div className="w-6 h-6 bg-surface-container-high rounded" />
+                <div className="w-20 h-3 bg-surface-container-high rounded" />
               </div>
               <div className="mt-4">
-                <div className="w-16 h-8 bg-slate-200 rounded" />
-                <div className="w-24 h-3 bg-slate-200 rounded mt-2" />
+                <div className="w-16 h-8 bg-surface-container-high rounded" />
+                <div className="w-24 h-3 bg-surface-container-high rounded mt-2" />
               </div>
             </div>
           ))}
@@ -165,12 +168,12 @@ export default function DashboardPage() {
         {/* Table skeleton */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-4 space-y-4">
-            <div className="h-6 w-40 bg-slate-200 rounded animate-pulse" />
+            <div className="h-6 w-40 bg-surface-container-high rounded animate-pulse" />
             <div className="h-32 bg-surface-container-lowest rounded-lg animate-pulse" />
             <div className="h-32 bg-surface-container-lowest rounded-lg animate-pulse" />
           </div>
           <div className="lg:col-span-8">
-            <div className="h-6 w-40 bg-slate-200 rounded mb-8 animate-pulse" />
+            <div className="h-6 w-40 bg-surface-container-high rounded mb-8 animate-pulse" />
             <div className="h-64 bg-surface-container-lowest rounded-xl animate-pulse" />
           </div>
         </section>
@@ -187,7 +190,7 @@ export default function DashboardPage() {
           onClick={() => window.location.reload()}
           className="btn-primary text-sm"
         >
-          Retry
+          {t('common.retry')}
         </button>
       </div>
     );
@@ -216,7 +219,7 @@ export default function DashboardPage() {
               assignment
             </span>
             <span className="text-[10px] font-bold uppercase tracking-widest text-secondary group-hover:text-white/60 transition-colors">
-              Total Orders
+              {t('dashboard.totalOrders')}
             </span>
           </div>
           <div className="mt-4">
@@ -224,7 +227,7 @@ export default function DashboardPage() {
               {formatNumber(safeStats.total)}
             </span>
             <p className="text-xs text-secondary group-hover:text-white/80 transition-colors mt-1">
-              All time orders
+              {t('dashboard.allTimeOrders')}
             </p>
           </div>
         </div>
@@ -239,7 +242,7 @@ export default function DashboardPage() {
               watch_later
             </span>
             <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-              In Progress
+              {t('dashboard.inProgress')}
             </span>
           </div>
           <div className="mt-4">
@@ -248,7 +251,7 @@ export default function DashboardPage() {
             </span>
             <div className="flex items-center gap-2 mt-1">
               <span className="w-2 h-2 rounded-full bg-primary-fixed" />
-              <p className="text-xs text-secondary">Active on floor</p>
+              <p className="text-xs text-secondary">{t('dashboard.activeOnFloor')}</p>
             </div>
           </div>
         </div>
@@ -263,7 +266,7 @@ export default function DashboardPage() {
               check_circle
             </span>
             <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-              Ready
+              {t('dashboard.ready')}
             </span>
           </div>
           <div className="mt-4">
@@ -272,7 +275,7 @@ export default function DashboardPage() {
             </span>
             <div className="flex items-center gap-2 mt-1">
               <span className="w-2 h-2 rounded-full bg-tertiary-fixed" />
-              <p className="text-xs text-secondary">Awaiting pickup</p>
+              <p className="text-xs text-secondary">{t('dashboard.awaitingPickup')}</p>
             </div>
           </div>
         </div>
@@ -287,20 +290,20 @@ export default function DashboardPage() {
               local_shipping
             </span>
             <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-              Delivered
+              {t('dashboard.delivered')}
             </span>
           </div>
           <div className="mt-4">
             <span className="text-4xl font-headline font-extrabold text-on-surface">
               {formatNumber(safeStats.delivered)}
             </span>
-            <p className="text-xs text-secondary mt-1">Total fulfilled</p>
+            <p className="text-xs text-secondary mt-1">{t('dashboard.totalFulfilled')}</p>
           </div>
         </div>
 
         {/* Revenue */}
         {!isManager && (
-          <div className="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-primary/20 flex flex-col justify-between h-40 bg-gradient-to-br from-white to-slate-50">
+          <div className="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-primary/20 flex flex-col justify-between h-40">
             <div className="flex justify-between items-start">
               <span
                 className="material-symbols-outlined text-primary"
@@ -309,14 +312,14 @@ export default function DashboardPage() {
                 payments
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-                Revenue
+                {t('dashboard.revenue')}
               </span>
             </div>
             <div className="mt-4">
               <span className="text-3xl font-headline font-extrabold text-on-surface">
                 {formatRevenue(safeStats.revenue)}
               </span>
-              <p className="text-xs text-secondary mt-1">Open order value</p>
+              <p className="text-xs text-secondary mt-1">{t('dashboard.openOrderValue')}</p>
             </div>
           </div>
         )}
@@ -327,14 +330,14 @@ export default function DashboardPage() {
                 task_alt
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-                Tasks Done
+                {t('dashboard.tasksDone')}
               </span>
             </div>
             <div className="mt-4">
               <span className="text-4xl font-headline font-extrabold text-on-surface">
                 {formatNumber(taskCounts.done)}
               </span>
-              <p className="text-xs text-secondary mt-1">Completed tasks</p>
+              <p className="text-xs text-secondary mt-1">{t('dashboard.completedTasks')}</p>
             </div>
           </div>
         )}
@@ -343,19 +346,19 @@ export default function DashboardPage() {
       {/* Production Summary (Admin/Manager) */}
       {allTasks.length > 0 && (
         <section className="bg-surface-container-lowest rounded-xl p-8">
-          <h3 className="text-xl font-headline font-bold text-slate-800 mb-6">Production Summary</h3>
+          <h3 className="text-xl font-headline font-bold text-on-surface mb-6">{t('dashboard.productionSummary')}</h3>
           <div className="grid grid-cols-3 gap-6">
             <div className="bg-surface rounded-lg p-5 text-center">
               <span className="text-3xl font-headline font-bold text-on-surface">{taskCounts.pending}</span>
-              <p className="text-xs text-secondary mt-1 uppercase font-bold tracking-wider">Pending</p>
+              <p className="text-xs text-secondary mt-1 uppercase font-bold tracking-wider">{t('dashboard.pending')}</p>
             </div>
             <div className="bg-primary-fixed rounded-lg p-5 text-center">
               <span className="text-3xl font-headline font-bold text-on-primary-fixed">{taskCounts.in_progress}</span>
-              <p className="text-xs text-on-primary-fixed-variant mt-1 uppercase font-bold tracking-wider">In Progress</p>
+              <p className="text-xs text-on-primary-fixed-variant mt-1 uppercase font-bold tracking-wider">{t('dashboard.inProgress')}</p>
             </div>
             <div className="bg-tertiary-fixed rounded-lg p-5 text-center">
               <span className="text-3xl font-headline font-bold text-on-tertiary-fixed">{taskCounts.done}</span>
-              <p className="text-xs text-on-tertiary-fixed-variant mt-1 uppercase font-bold tracking-wider">Done</p>
+              <p className="text-xs text-on-tertiary-fixed-variant mt-1 uppercase font-bold tracking-wider">{t('status.done')}</p>
             </div>
           </div>
         </section>
@@ -366,12 +369,12 @@ export default function DashboardPage() {
         {/* Alerts Section */}
         <div className="lg:col-span-4 space-y-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xl font-headline font-bold text-slate-800">
-              Critical Alerts
+            <h3 className="text-xl font-headline font-bold text-on-surface">
+              {t('dashboard.criticalAlerts')}
             </h3>
             {safeStats.overdue > 0 && (
               <span className="px-2 py-1 bg-error-container text-on-error-container text-[10px] font-bold rounded uppercase">
-                Action Required
+                {t('dashboard.actionRequired')}
               </span>
             )}
           </div>
@@ -382,12 +385,12 @@ export default function DashboardPage() {
               className={`p-5 rounded-lg border-l-4 flex gap-4 ${
                 safeStats.overdue > 0
                   ? 'bg-error-container/30 border-error'
-                  : 'bg-surface-container-low border-slate-300'
+                  : 'bg-surface-container-low border-outline-variant'
               }`}
             >
               <span
                 className={`material-symbols-outlined ${
-                  safeStats.overdue > 0 ? 'text-error' : 'text-slate-400'
+                  safeStats.overdue > 0 ? 'text-error' : 'text-on-surface-variant'
                 }`}
               >
                 warning
@@ -395,13 +398,13 @@ export default function DashboardPage() {
               <div>
                 <h4 className="font-bold text-on-error-container text-sm">
                   {safeStats.overdue > 0
-                    ? `${safeStats.overdue} Late Order${safeStats.overdue !== 1 ? 's' : ''}`
-                    : 'No Late Orders'}
+                    ? `${safeStats.overdue} ${t('dashboard.lateOrders')}`
+                    : t('dashboard.noLateOrders')}
                 </h4>
                 <p className="text-xs text-on-error-container/80 mt-1">
                   {safeStats.overdue > 0
-                    ? 'Overdue delivery dates. Immediate attention required.'
-                    : 'All orders are on schedule.'}
+                    ? t('dashboard.overdueDeliveryDescription')
+                    : t('dashboard.allOnSchedule')}
                 </p>
               </div>
             </div>
@@ -411,12 +414,12 @@ export default function DashboardPage() {
               className={`p-5 rounded-lg border-l-4 flex gap-4 ${
                 safeStats.ready > 0
                   ? 'bg-tertiary-fixed/30 border-tertiary'
-                  : 'bg-surface-container-low border-slate-300'
+                  : 'bg-surface-container-low border-outline-variant'
               }`}
             >
               <span
                 className={`material-symbols-outlined ${
-                  safeStats.ready > 0 ? 'text-tertiary' : 'text-slate-400'
+                  safeStats.ready > 0 ? 'text-tertiary' : 'text-on-surface-variant'
                 }`}
               >
                 notifications_active
@@ -424,13 +427,13 @@ export default function DashboardPage() {
               <div>
                 <h4 className="font-bold text-on-tertiary-container text-sm">
                   {safeStats.ready > 0
-                    ? `${safeStats.ready} Ready for Pickup`
-                    : 'No Ready Orders'}
+                    ? `${safeStats.ready} ${t('dashboard.readyForPickup')}`
+                    : t('dashboard.noReadyOrders')}
                 </h4>
                 <p className="text-xs text-on-tertiary-container/80 mt-1">
                   {safeStats.ready > 0
-                    ? 'Orders awaiting customer collection.'
-                    : 'All ready orders have been picked up.'}
+                    ? t('dashboard.ordersAwaitingCollection')
+                    : t('dashboard.allReadyPickedUp')}
                 </p>
               </div>
             </div>
@@ -440,13 +443,13 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined text-4xl text-primary">
                 insights
               </span>
-              <h4 className="font-headline font-bold text-slate-800">
-                Workshop Summary
+              <h4 className="font-headline font-bold text-on-surface">
+                {t('dashboard.workshopSummary')}
               </h4>
               <p className="text-xs text-secondary max-w-[200px]">
                 {safeStats.total > 0
-                  ? `${formatNumber(safeStats.in_progress)} in progress, ${formatNumber(safeStats.ready)} ready, ${formatNumber(safeStats.delivered)} delivered.`
-                  : 'No orders yet. Create your first order to get started.'}
+                  ? `${formatNumber(safeStats.in_progress)} ${t('dashboard.inProgress').toLowerCase()}, ${formatNumber(safeStats.ready)} ${t('dashboard.ready').toLowerCase()}, ${formatNumber(safeStats.delivered)} ${t('dashboard.delivered').toLowerCase()}.`
+                  : `${t('dashboard.noOrdersYetTitle')}. ${t('dashboard.noOrdersYetDescription')}`}
               </p>
             </div>
           </div>
@@ -455,21 +458,21 @@ export default function DashboardPage() {
         {/* Latest Orders Table */}
         <div className="lg:col-span-8">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-headline font-bold text-slate-800">
-              Latest Orders
+            <h3 className="text-xl font-headline font-bold text-on-surface">
+              {t('dashboard.latestOrders')}
             </h3>
           </div>
 
           {orders.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-xl p-12 flex flex-col items-center justify-center text-center space-y-3">
-              <span className="material-symbols-outlined text-5xl text-slate-300">
+              <span className="material-symbols-outlined text-5xl text-on-surface-variant">
                 inbox
               </span>
-              <h4 className="font-headline font-bold text-slate-400">
-                No Orders Yet
+              <h4 className="font-headline font-bold text-on-surface-variant">
+                {t('dashboard.noOrdersYetTitle')}
               </h4>
               <p className="text-xs text-secondary max-w-[260px]">
-                Orders will appear here once created. Use the "New Order" button to get started.
+                {t('dashboard.noOrdersYetDescription')}
               </p>
             </div>
           ) : (
@@ -477,11 +480,11 @@ export default function DashboardPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Item</th>
-                    <th>Status</th>
-                    <th>Delivery</th>
+                    <th>{t('dashboard.table.orderId')}</th>
+                    <th>{t('dashboard.table.customer')}</th>
+                    <th>{t('dashboard.table.item')}</th>
+                    <th>{t('dashboard.table.status')}</th>
+                    <th>{t('dashboard.table.delivery')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -501,14 +504,14 @@ export default function DashboardPage() {
                               {getInitials(order.customer_name)}
                             </div>
                             <span className="text-sm font-semibold text-on-surface">
-                              {order.customer_name || 'Unknown'}
+                              {order.customer_name || t('common.unknown')}
                             </span>
                           </div>
                         </td>
                         <td className="text-sm text-secondary">
                           {order.piece_type}
                         </td>
-                        <td>{getStatusChip(order.status, late)}</td>
+                        <td>{getStatusChip(order.status, late, t)}</td>
                         <td
                           className={`text-sm ${
                             late ? 'text-error font-medium' : 'text-secondary'
@@ -530,6 +533,48 @@ export default function DashboardPage() {
 }
 
 function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter: boolean; loading: boolean }) {
+  const { t } = useTranslation();
+  const session = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('session') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [earnings, setEarnings] = useState<any>(null);
+  const [branchName, setBranchName] = useState<string>('--');
+
+  // Load earnings for selected month
+  React.useEffect(() => {
+    async function load() {
+      if (!session.userId) return;
+      try {
+        const data = await window.electronAPI.workers.getMonthlyEarnings(session.userId, selectedMonth);
+        setEarnings(data);
+      } catch {
+        setEarnings({ task_count: 0, piece_earnings: 0, fixed_salary: 0, total_earnings: 0 });
+      }
+    }
+    load();
+  }, [session.userId, selectedMonth]);
+
+  // Load branch name
+  React.useEffect(() => {
+    async function load() {
+      if (!session.branch_id) return;
+      try {
+        const branch = await window.electronAPI.branches.getById(session.branch_id);
+        if (branch) setBranchName(branch.name_en || branch.name_ar || '--');
+      } catch {}
+    }
+    load();
+  }, [session.branch_id]);
+
   const filtered = isCutter
     ? tasks.filter((t) => t.task_type === 'cutting')
     : tasks;
@@ -541,9 +586,12 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
     return new Date(t.completed_at).toDateString() === new Date().toDateString();
   }).length;
 
+  const workerTypeLabel = session.worker_type === 'master_cutter' ? t('dashboard.worker.masterCutter') : t('dashboard.worker.tailor');
+
   if (loading) {
     return (
       <div className="space-y-8">
+        <div className="bg-surface-container-lowest p-8 rounded-xl h-40 animate-pulse" />
         <div className="grid grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="bg-surface-container-lowest p-6 rounded-xl h-32 animate-pulse" />
@@ -555,65 +603,121 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-headline font-extrabold text-on-surface tracking-tight">
-          {isCutter ? 'Cutting Queue' : 'My Tasks'}
-        </h2>
-        <p className="text-secondary mt-1">
-          {isCutter ? 'Your cutting tasks sorted by delivery date.' : 'Your assigned production tasks.'}
-        </p>
+      {/* Profile Card */}
+      <div className="bg-surface-container-lowest p-8 rounded-xl flex items-center gap-6">
+        <div className="w-16 h-16 rounded-full bg-primary-fixed text-on-primary-fixed flex items-center justify-center font-bold text-xl shrink-0">
+          {getInitials(session.name)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-2xl font-headline font-extrabold text-on-surface truncate">{session.name}</h2>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-secondary">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-base">{isCutter ? 'content_cut' : 'styler'}</span>
+              {workerTypeLabel}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-base">store</span>
+              {branchName}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-base">payments</span>
+              {(earnings?.fixed_salary || 0).toLocaleString()} {t('dashboard.worker.baseLabel')}
+            </span>
+          </div>
+        </div>
       </div>
 
+      {/* Task Stats */}
       <div className="grid grid-cols-3 gap-6">
         <div className="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-primary/20 flex flex-col justify-between h-32">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">Pending</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('dashboard.pending')}</span>
           <span className="text-4xl font-headline font-extrabold text-on-surface">{pendingCount}</span>
         </div>
         <div className="bg-primary-fixed p-6 rounded-xl flex flex-col justify-between h-32">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-on-primary-fixed-variant">In Progress</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-on-primary-fixed-variant">{t('dashboard.inProgress')}</span>
           <span className="text-4xl font-headline font-extrabold text-on-primary-fixed">{inProgressCount}</span>
         </div>
         <div className="bg-tertiary-fixed p-6 rounded-xl flex flex-col justify-between h-32">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-on-tertiary-fixed-variant">Done Today</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-on-tertiary-fixed-variant">{t('dashboard.worker.doneToday')}</span>
           <span className="text-4xl font-headline font-extrabold text-on-tertiary-fixed">{doneToday}</span>
         </div>
       </div>
 
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-secondary">
-            <span className="material-symbols-outlined text-5xl mb-3 text-outline">{isCutter ? 'content_cut' : 'checklist'}</span>
-            <p className="font-semibold text-on-surface">No tasks assigned</p>
-            <p className="text-sm mt-1">Tasks will appear here when assigned to you.</p>
-          </div>
-        ) : (
-          filtered
-            .sort((a, b) => {
-              const order: Record<string, number> = { in_progress: 0, pending: 1, done: 2 };
-              return (order[a.status] ?? 3) - (order[b.status] ?? 3);
-            })
-            .map((task) => (
-              <div key={task.task_id} className="bg-surface-container-lowest rounded-xl p-5 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    task.status === 'done' ? 'bg-emerald-100 text-emerald-700'
-                    : task.status === 'in_progress' ? 'bg-blue-100 text-blue-700'
-                    : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {task.status === 'in_progress' ? 'In Progress' : task.status === 'done' ? 'Done' : 'Pending'}
-                  </span>
-                  <div>
-                    <span className="font-bold text-on-surface">{task.order_number}</span>
-                    <span className="text-secondary mx-2">·</span>
-                    <span className="text-sm text-secondary">{task.piece_type}</span>
-                  </div>
-                </div>
-                <div className="text-sm text-secondary">
-                  {task.due_date ? `Due: ${formatDate(task.due_date)}` : ''}
-                </div>
+      {/* Earnings + Task List */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Monthly Earnings */}
+        <div className="lg:col-span-4">
+          <div className="bg-surface-container-lowest rounded-xl p-6 space-y-5">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-headline font-bold text-on-surface">{t('dashboard.worker.earnings')}</h3>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-surface-container-high text-xs px-2 py-1 rounded border-none outline-none cursor-pointer"
+              />
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-secondary">{t('dashboard.worker.pieceEarnings')}</span>
+                <span className="font-semibold">{(earnings?.piece_earnings || 0).toLocaleString()} QAR</span>
               </div>
-            ))
-        )}
+              <div className="flex justify-between text-sm">
+                <span className="text-secondary">{t('dashboard.worker.baseSalary')}</span>
+                <span className="font-semibold">{(earnings?.fixed_salary || 0).toLocaleString()} QAR</span>
+              </div>
+              <div className="h-px bg-outline-variant/20" />
+              <div className="flex justify-between">
+                <span className="font-bold">{t('dashboard.worker.total')}</span>
+                <span className="font-bold text-primary text-lg">{(earnings?.total_earnings || 0).toLocaleString()} QAR</span>
+              </div>
+            </div>
+            <p className="text-xs text-secondary">{earnings?.task_count || 0} {t('dashboard.worker.completedTasks')}</p>
+          </div>
+        </div>
+
+        {/* Task List */}
+        <div className="lg:col-span-8">
+          <h3 className="text-lg font-headline font-bold text-on-surface mb-4">
+            {isCutter ? t('dashboard.worker.cuttingQueue') : t('dashboard.worker.myTasks')}
+          </h3>
+          <div className="space-y-3">
+            {filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-secondary">
+                <span className="material-symbols-outlined text-5xl mb-3 text-outline">{isCutter ? 'content_cut' : 'checklist'}</span>
+                <p className="font-semibold text-on-surface">{t('dashboard.worker.noTasksAssigned')}</p>
+                <p className="text-sm mt-1">{t('dashboard.worker.tasksWillAppear')}</p>
+              </div>
+            ) : (
+              filtered
+                .sort((a, b) => {
+                  const order: Record<string, number> = { in_progress: 0, pending: 1, done: 2 };
+                  return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+                })
+                .map((task) => (
+                  <div key={task.task_id} className="bg-surface-container-lowest rounded-xl p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        task.status === 'done' ? 'bg-tertiary-fixed text-on-tertiary-fixed'
+                        : task.status === 'in_progress' ? 'bg-primary-fixed text-on-primary-fixed'
+                        : 'bg-surface-container-high text-on-surface-variant'
+                      }`}>
+                        {task.status === 'in_progress' ? t('status.inProgress') : task.status === 'done' ? t('status.done') : t('dashboard.pending')}
+                      </span>
+                      <div>
+                        <span className="font-bold text-on-surface">{task.order_number}</span>
+                        <span className="text-secondary mx-2">·</span>
+                        <span className="text-sm text-secondary">{task.piece_type}</span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-secondary">
+                      {task.due_date ? `${t('dashboard.worker.due')} ${formatDate(task.due_date)}` : ''}
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

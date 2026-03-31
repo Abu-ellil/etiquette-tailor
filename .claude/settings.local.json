@@ -20,7 +20,17 @@
       "Bash(npx tsc:*)",
       "Bash(npm run:*)",
       "Bash(npx electron-vite:*)",
-      "mcp__zai-mcp-server__analyze_image"
+      "mcp__zai-mcp-server__analyze_image",
+      "Read(//d/DEV2/etiquette-tailor/$HOME/AppData/Roaming/**)",
+      "Bash(sqlite3 \"$APPDATA/Etiquette Tailor/app.db\" \".schema orders\")",
+      "Bash(rm -f \"$APPDATA/etiquette-tailor/app.db\" \"$APPDATA/etiquette-tailor/app.db-wal\" \"$APPDATA/etiquette-tailor/app.db-shm\")",
+      "Bash(sqlite3:*)",
+      "Bash(node:*)",
+      "Bash(npx --yes better-sqlite3-cli \"C:/Users/MAS/AppData/Roaming/etiquette-tailor/app.db\" \"SELECT sql FROM sqlite_master WHERE name=''orders''\")",
+      "Bash(npx electron:*)",
+      "Bash(python3 -c \"import sqlite3; conn=sqlite3.connect\\(''C:/Users/MAS/AppData/Roaming/etiquette-tailor/app.db''\\); print\\(conn.execute\\(''SELECT sql FROM sqlite_master WHERE name=\"\"orders\"\"''\\).fetchone\\(\\)\\); conn.close\\(\\)\")",
+      "Bash(python3:*)",
+      "Bash(xxd)"
     ]
   }
 }

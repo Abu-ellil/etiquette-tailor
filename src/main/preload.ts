@@ -33,6 +33,7 @@ export interface ElectronAPI {
     getActiveRate: (workerId: number, pieceType: string) => Promise<any>;
     getWorkerTasks: (userId: number) => Promise<any[]>;
     getMonthlyEarnings: (userId: number, month: string) => Promise<any>;
+    getWorkerOrderDetails: (userId: number, startDate: string, endDate: string) => Promise<any[]>;
   };
 
   customers: {
@@ -44,7 +45,7 @@ export interface ElectronAPI {
   };
 
   orders: {
-    getAll: () => Promise<any[]>;
+    getAll: (branchId?: number, status?: string) => Promise<any[]>;
     get: (id: number) => Promise<any>;
     search: (query: string) => Promise<any[]>;
     create: (data: any) => Promise<any>;
@@ -56,8 +57,9 @@ export interface ElectronAPI {
     createTask: (data: any) => Promise<any>;
     updateTaskStatus: (taskId: number, status: string) => Promise<any>;
     reassignTask: (taskId: number, workerId: number, wageType: string, wageRate: number, wageAmount: number) => Promise<any>;
-    getStats: () => Promise<any>;
+    getStats: (branchId?: number) => Promise<any>;
     getAllTasks: (filters?: { branchId?: number; workerId?: number; taskType?: string }) => Promise<any[]>;
+    recalculateTaskWages: (orderId: number, newPrice: number) => Promise<number>;
   };
 
   window: {
@@ -69,6 +71,14 @@ export interface ElectronAPI {
 
   pieceTypes: {
     getAll: () => Promise<any[]>;
+  };
+
+  backup: {
+    create: () => Promise<{ success: boolean; path?: string; error?: string }>;
+    restore: () => Promise<{ success: boolean; error?: string }>;
+    list: () => Promise<any[]>;
+    lastDate: () => Promise<string | null>;
+    dbSize: () => Promise<{ usedBytes: number; label: string }>;
   };
 }
 
@@ -105,6 +115,7 @@ const api: ElectronAPI = {
     getActiveRate: (workerId, pieceType) => ipcRenderer.invoke('workers:getActiveRate', workerId, pieceType),
     getWorkerTasks: (userId) => ipcRenderer.invoke('workers:getWorkerTasks', userId),
     getMonthlyEarnings: (userId, month) => ipcRenderer.invoke('workers:getMonthlyEarnings', userId, month),
+    getWorkerOrderDetails: (userId, startDate, endDate) => ipcRenderer.invoke('workers:getWorkerOrderDetails', userId, startDate, endDate),
   },
 
   customers: {
@@ -116,7 +127,7 @@ const api: ElectronAPI = {
   },
 
   orders: {
-    getAll: () => ipcRenderer.invoke('orders:getAll'),
+    getAll: (branchId?: number, status?: string) => ipcRenderer.invoke('orders:getAll', branchId, status),
     get: (id) => ipcRenderer.invoke('orders:get', id),
     search: (query) => ipcRenderer.invoke('orders:search', query),
     create: (data) => ipcRenderer.invoke('orders:create', data),
@@ -128,8 +139,9 @@ const api: ElectronAPI = {
     createTask: (data) => ipcRenderer.invoke('orders:createTask', data),
     updateTaskStatus: (taskId, status) => ipcRenderer.invoke('orders:updateTaskStatus', taskId, status),
     reassignTask: (taskId, workerId, wageType, wageRate, wageAmount) => ipcRenderer.invoke('orders:reassignTask', taskId, workerId, wageType, wageRate, wageAmount),
-    getStats: () => ipcRenderer.invoke('orders:getStats'),
+    getStats: (branchId?: number) => ipcRenderer.invoke('orders:getStats', branchId),
     getAllTasks: (filters) => ipcRenderer.invoke('orders:getAllTasks', filters),
+    recalculateTaskWages: (orderId, newPrice) => ipcRenderer.invoke('orders:recalculateTaskWages', orderId, newPrice),
   },
 
   window: {
@@ -141,6 +153,14 @@ const api: ElectronAPI = {
 
   pieceTypes: {
     getAll: () => ipcRenderer.invoke('pieceTypes:getAll'),
+  },
+
+  backup: {
+    create: () => ipcRenderer.invoke('backup:create'),
+    restore: () => ipcRenderer.invoke('backup:restore'),
+    list: () => ipcRenderer.invoke('backup:list'),
+    lastDate: () => ipcRenderer.invoke('backup:lastDate'),
+    dbSize: () => ipcRenderer.invoke('backup:dbSize'),
   },
 };
 

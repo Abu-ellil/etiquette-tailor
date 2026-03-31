@@ -57,7 +57,7 @@
 - [X] T014 [US1] Implement task status controls — clicking status chip cycles through pending → in_progress → done via `electronAPI.orders.updateTaskStatus`, update timestamps display
 - [X] T015 [US1] Implement task reassignment — click worker name on a task to show worker dropdown, on change recalculate wage via `electronAPI.workers.getActiveRate` and call `electronAPI.orders.reassignTask`, reset status to pending
 - [X] T016 [US1] Add order edit mode — "Edit Order" button toggles editable fields (piece type, details, price, paid, due date, status, payment method), save calls `electronAPI.orders.update`, balance auto-recalculates on price/paid change
-- [ ] T017 [US1] Add role-based visibility — hide price, paid, balance, wage_type, wage_rate, wage_amount columns from Tailor and Cutter roles (check session.role)
+- [X] T017 [US1] Add role-based visibility — hide price, paid, balance, wage_type, wage_rate, wage_amount columns from Tailor and Cutter roles (check session.role)
 - [X] T018 [US1] Update `src/renderer/pages/Orders.tsx` — make order numbers clickable links navigating to `/orders/:id`
 
 **Checkpoint**: Order Detail page is fully functional — can view, edit orders and manage tasks.
@@ -158,7 +158,7 @@
 - [X] T041 [P] Add error states to all new pages — display error message with retry button if API calls fail
 - [X] T042 Add "No rate configured" warning in OrderDetail task creation — if `getActiveRate` returns undefined for a worker+pieceType, show warning and disable save
 - [X] T043 [P] Ensure consistent status chip styling across all pages (OrderDetail tasks, MyTasks, CuttingQueue, TaskBoard) — extract a shared `StatusChip` component in `src/renderer/components/`
-- [ ] T044 Add price change recalculation prompt in OrderDetail — when order price is edited and tasks exist, show "Recalculate task wages?" confirmation; on confirm, recalculate all non-done task wages
+- [X] T044 Add price change recalculation prompt in OrderDetail — when order price is edited and tasks exist, show "Recalculate task wages?" confirmation; on confirm, recalculate all non-done task wages
 - [ ] T045 Verify role isolation — login as each role (admin, manager, tailor, cutter) and verify: Tailor/Cutter see zero price/wage data, Manager sees branch-scoped data only, all sidebar links match ROLE_ROUTES
 - [ ] T046 Run quickstart.md validation — walk through all 6 test scenarios in quickstart.md and verify each passes
 
