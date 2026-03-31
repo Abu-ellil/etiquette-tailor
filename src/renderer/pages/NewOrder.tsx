@@ -232,15 +232,15 @@ export default function NewOrderPage() {
   /* ---- Submit order ---- */
   const onSubmit = async (data: OrderFormData) => {
     if (!data.customer_id) {
-      alert(t('newOrder.alert.selectCustomer'));
+      alert(t('Please select a customer.'));
       return;
     }
     if (!data.worker_id) {
-      alert(t('newOrder.alert.assignWorker'));
+      alert(t('Please assign a worker.'));
       return;
     }
     if (!data.delivery_date) {
-      alert(t('newOrder.alert.deliveryDate'));
+      alert(t('Please set a delivery date.'));
       return;
     }
 
@@ -281,7 +281,7 @@ export default function NewOrderPage() {
       navigate('/orders');
     } catch (err) {
       console.error('Failed to create order:', err);
-      alert(t('newOrder.alert.failedCreate'));
+      alert(t('Failed to create order. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -296,14 +296,14 @@ export default function NewOrderPage() {
       <header className="max-w-4xl mx-auto mb-8 md:mb-12 flex flex-wrap justify-between items-end gap-4">
         <div>
           <h2 className="text-secondary text-sm uppercase tracking-[0.2em] font-semibold mb-2">
-            {t('newOrder.sectionTitle')}
+            {t('Order Management')}
           </h2>
           <h1 className="text-5xl font-extrabold tracking-tight text-on-background font-headline">
-            {t('newOrder.pageTitle')}
+            {t('New Order')}
           </h1>
         </div>
         <div className="flex flex-col items-end">
-          <span className="text-xs uppercase tracking-widest text-outline">{t('newOrder.currentDate')}</span>
+          <span className="text-xs uppercase tracking-widest text-outline">{t('TODAY')}</span>
           <span className="text-lg text-secondary font-medium">{today}</span>
         </div>
       </header>
@@ -317,7 +317,7 @@ export default function NewOrderPage() {
               {/* Branch */}
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                  {t('newOrder.branchLabel')}
+                  {t('Workshop Branch')}
                 </label>
                 <div className="flex gap-2">
                   {branches.map((br) => (
@@ -329,7 +329,8 @@ export default function NewOrderPage() {
                         {...register('branch_id', { valueAsNumber: true })}
                       />
                       <div className="py-4 text-center rounded-lg border-2 border-transparent bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary-fixed peer-checked:text-primary transition-all font-bold">
-                        {t('newOrder.branch')} {br.prefix}
+                        <span className="text-[11px] text-outline block">{br.name_ar}</span>
+                        {t('Branch')} {br.prefix}
                       </div>
                     </label>
                   ))}
@@ -339,7 +340,7 @@ export default function NewOrderPage() {
               {/* Payment method */}
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                  {t('newOrder.paymentMethod')}
+                  {t('Payment Method')}
                 </label>
                 <div className="flex gap-2 p-1 bg-surface-container-low rounded-xl">
                   {(['cash', 'card'] as const).map((method) => (
@@ -363,7 +364,7 @@ export default function NewOrderPage() {
             {/* ---- Customer Search ---- */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                {t('newOrder.customerSearch')}
+                {t('Customer Search & Selection')}
               </label>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">
@@ -372,7 +373,7 @@ export default function NewOrderPage() {
                 <input
                   type="text"
                   className="input-field pl-12"
-                  placeholder={t('newOrder.customerSearchPlaceholder')}
+                  placeholder={t('Type to search or click to see all customers...')}
                   value={customerSearch}
                   onChange={(e) => {
                     setCustomerSearch(e.target.value);
@@ -389,7 +390,7 @@ export default function NewOrderPage() {
                 <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {customers.length === 0 ? (
                     <div className="px-4 py-3 text-sm text-secondary text-center">
-                      {t('newOrder.noCustomersFound')}
+                      {t('No customers found. Create a new one below.')}
                     </div>
                   ) : (
                     customers.map((c) => (
@@ -424,7 +425,7 @@ export default function NewOrderPage() {
               {/* Selected customer indicator */}
               {watchedValues.customer_id > 0 && (
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="chip chip-progress">{t('newOrder.customerSelected')}</span>
+                  <span className="chip chip-progress">{t('Customer selected')}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -435,7 +436,7 @@ export default function NewOrderPage() {
                     }}
                     className="text-xs text-error hover:underline"
                   >
-                    {t('newOrder.clear')}
+                    {t('Clear')}
                   </button>
                 </div>
               )}
@@ -447,7 +448,7 @@ export default function NewOrderPage() {
                   onClick={() => setShowNewCustomer(true)}
                   className="text-xs text-primary font-semibold hover:underline mt-1 ml-1"
                 >
-                  {t('newOrder.createNewCustomer')}
+                  {t('+ Create new customer')}
                 </button>
               )}
 
@@ -455,19 +456,19 @@ export default function NewOrderPage() {
               {showNewCustomer && (
                 <div className="mt-3 p-4 bg-surface-container-high rounded-xl space-y-3">
                   <p className="text-xs font-semibold uppercase tracking-widest text-secondary">
-                    {t('newOrder.newCustomer')}
+                    {t('New Customer')}
                   </p>
                   <input
                     type="text"
                     className="input-field"
-                    placeholder={t('newOrder.customerNamePlaceholder')}
+                    placeholder={t('Customer name')}
                     value={newCustomerName}
                     onChange={(e) => setNewCustomerName(e.target.value)}
                   />
                   <input
                     type="text"
                     className="input-field"
-                    placeholder={t('newOrder.phonePlaceholder')}
+                    placeholder={t('Phone number (optional)')}
                     value={newCustomerPhone}
                     onChange={(e) => setNewCustomerPhone(e.target.value)}
                   />
@@ -477,14 +478,14 @@ export default function NewOrderPage() {
                       onClick={handleCreateCustomer}
                       className="btn-primary px-4 py-2 text-sm rounded-lg"
                     >
-                      {t('newOrder.saveCustomer')}
+                      {t('Save Customer')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowNewCustomer(false)}
                       className="px-4 py-2 text-sm text-secondary hover:bg-surface-container-high rounded-lg transition-colors"
                     >
-                      {t('newOrder.cancel')}
+                      {t('Cancel')}
                     </button>
                   </div>
                 </div>
@@ -495,7 +496,7 @@ export default function NewOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12">
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                  {t('newOrder.garmentType')}
+                  {t('Garment Type')}
                 </label>
                 <select className="input-field" {...register('piece_type')}>
                   {(() => {
@@ -519,11 +520,11 @@ export default function NewOrderPage() {
             {/* Description */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                {t('newOrder.description')}
+                {t('Detailed Description & Special Instructions')}
               </label>
               <textarea
                 className="input-field h-28 pt-4"
-                placeholder={t('newOrder.descriptionPlaceholder')}
+                placeholder={t('Enter fabric details, embroidery patterns, sizing notes...')}
                 {...register('details')}
               />
             </div>
@@ -531,24 +532,24 @@ export default function NewOrderPage() {
             {/* ---- Worker Assignment ---- */}
             <div className="space-y-6 pt-6 border-t border-surface-container-high">
               <h3 className="text-lg font-bold text-on-surface uppercase tracking-tight font-headline">
-                {t('newOrder.workerAssignment')}
+                {t('Worker Assignment')}
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12">
                 {/* Worker select */}
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                    {t('newOrder.worker')}
+                    {t('Worker')}
                   </label>
                   <select
                     className="input-field"
                     {...register('worker_id', { valueAsNumber: true })}
                   >
-                    <option value={0}>{t('newOrder.selectWorker')}</option>
+                    <option value={0}>{t('Select Worker...')}</option>
                     {workers.map((w) => (
                       <option key={w.id} value={w.id}>
                         {w.name}
-                        {w.worker_type === 'master_cutter' ? ` ${t('newOrder.masterCutter')}` : w.worker_type === 'tailor' ? ` ${t('newOrder.tailor')}` : ''}
+                        {w.worker_type === 'master_cutter' ? ` ${t('(Master Cutter)')}` : w.worker_type === 'tailor' ? ` ${t('(Tailor)')}` : ''}
                       </option>
                     ))}
                   </select>
@@ -557,7 +558,7 @@ export default function NewOrderPage() {
                 {/* Wage type toggle */}
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                    {t('newOrder.paymentType')}
+                    {t('Payment Type')}
                   </label>
                   <div className="flex gap-2 p-1 bg-surface-container-low rounded-xl">
                     <label className="flex-1 cursor-pointer">
@@ -568,7 +569,7 @@ export default function NewOrderPage() {
                         {...register('wage_type')}
                       />
                       <div className="py-3 text-center rounded-lg bg-transparent text-secondary font-semibold peer-checked:bg-surface-container-lowest peer-checked:shadow-sm peer-checked:text-primary transition-all">
-                        {t('newOrder.percentage')}
+                        {t('Percentage')}
                       </div>
                     </label>
                     <label className="flex-1 cursor-pointer">
@@ -579,7 +580,7 @@ export default function NewOrderPage() {
                         {...register('wage_type')}
                       />
                       <div className="py-3 text-center rounded-lg bg-transparent text-secondary font-semibold peer-checked:bg-surface-container-lowest peer-checked:shadow-sm peer-checked:text-primary transition-all">
-                        {t('newOrder.fixedAmount')}
+                        {t('Fixed Amount')}
                       </div>
                     </label>
                   </div>
@@ -590,7 +591,7 @@ export default function NewOrderPage() {
                 {/* Rate / Amount */}
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                    {t('newOrder.amountRate')}
+                    {t('Amount / Rate')}
                   </label>
                   <input
                     type="number"
@@ -601,15 +602,15 @@ export default function NewOrderPage() {
                   />
                   <p className="text-[11px] text-outline ml-1">
                     {selectedWorkerRate
-                      ? t('newOrder.rateAutoLoaded')
-                      : t('newOrder.rateAutoCalculated')}
+                      ? t('Auto-loaded from worker rate card')
+                      : t('Worker payment is calculated automatically')}
                   </p>
                 </div>
 
                 {/* Calculated wage display */}
                 <div className="bg-primary-container/10 border-2 border-primary-container/30 rounded-xl p-4 flex flex-col justify-center">
                   <span className="text-[10px] uppercase tracking-[0.15em] text-primary font-bold mb-1">
-                    {t('newOrder.calculatedWorkerPayment')}
+                    {t('Calculated Worker Payment')}
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-xl font-extrabold text-primary">
@@ -621,7 +622,7 @@ export default function NewOrderPage() {
                     </span>
                     {wageType === 'percentage' && wageRate > 0 && (
                       <span className="text-xs text-outline italic">
-                        {t('newOrder.workerPay')}: {price.toLocaleString()} x {wageRate}% ={' '}
+                        {t('Worker Pay')}: {price.toLocaleString()} x {wageRate}% ={' '}
                         {calculatedWage.toFixed(2)}
                       </span>
                     )}
@@ -634,7 +635,7 @@ export default function NewOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 bg-surface-container-low rounded-2xl">
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('newOrder.totalPrice')}
+                  {t('Total Price (QAR)')}
                 </label>
                 <input
                   type="number"
@@ -645,7 +646,7 @@ export default function NewOrderPage() {
               </div>
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('newOrder.amountPaid')}
+                  {t('Amount Paid (QAR)')}
                 </label>
                 <input
                   type="number"
@@ -656,7 +657,7 @@ export default function NewOrderPage() {
               </div>
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('newOrder.balanceDue')}
+                  {t('Balance Due (QAR)')}
                 </label>
                 <div
                   className={`w-full h-14 bg-surface-container-high border-b-2 font-bold text-xl px-4 rounded-t-lg flex items-center ${
@@ -677,7 +678,7 @@ export default function NewOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12">
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                  {t('newOrder.receivedDate')}
+                  {t('Received Date')}
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline">
@@ -688,7 +689,7 @@ export default function NewOrderPage() {
               </div>
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
-                  {t('newOrder.estimatedDeliveryDate')}
+                  {t('Estimated Delivery Date')}
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline">
@@ -697,7 +698,7 @@ export default function NewOrderPage() {
                   <input
                     type="date"
                     className="input-field pr-12 border-b-primary"
-                    {...register('delivery_date', { required: t('newOrder.alert.deliveryDateRequired') })}
+                    {...register('delivery_date', { required: t('Delivery date is required') })}
                   />
                 </div>
                 {errors.delivery_date && (
@@ -722,14 +723,14 @@ export default function NewOrderPage() {
                 >
                   verified
                 </span>
-                {submitting ? t('newOrder.creating') : t('newOrder.createOrder')}
+                {submitting ? t('Creating...') : t('Create Order')}
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/orders')}
                 className="px-12 h-20 bg-surface-container-high text-secondary rounded-xl font-headline font-bold hover:bg-surface-container-highest transition-all"
               >
-                {t('newOrder.cancel')}
+                {t('Cancel')}
               </button>
             </div>
           </form>
@@ -738,27 +739,27 @@ export default function NewOrderPage() {
         {/* ---- Context Cards ---- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
           <div className="bg-surface-container-low p-6 rounded-xl border-l-4 border-tertiary-container">
-            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('newOrder.branches')}</p>
-            <p className="font-bold text-on-surface">{branches.length} {t('newOrder.active')}</p>
+            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Branches')}</p>
+            <p className="font-bold text-on-surface">{branches.length} {t('Active')}</p>
             <p className="text-sm text-outline">
-              {branches.map((b) => `${t('newOrder.branch')} ${b.prefix}`).join(' & ')}
+              {branches.map((b) => `${t('Branch')} ${b.prefix}`).join(' & ')}
             </p>
           </div>
           <div className="bg-surface-container-low p-6 rounded-xl border-l-4 border-primary">
-            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('newOrder.workers')}</p>
-            <p className="font-bold text-on-surface">{workers.length} {t('newOrder.available')}</p>
+            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Workers')}</p>
+            <p className="font-bold text-on-surface">{workers.length} {t('Available')}</p>
             <p className="text-sm text-outline">
               {workers
                 .slice(0, 3)
                 .map((w) => w.name)
                 .join(', ')}
-              {workers.length > 3 ? ` +${workers.length - 3} ${t('newOrder.more')}` : ''}
+              {workers.length > 3 ? ` +${workers.length - 3} ${t('more')}` : ''}
             </p>
           </div>
           <div className="bg-surface-container-low p-6 rounded-xl border-l-4 border-secondary">
-            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('newOrder.quickNote')}</p>
-            <p className="font-bold text-on-surface">{t('newOrder.balanceAutoCalculated')}</p>
-            <p className="text-sm text-outline">{t('newOrder.balanceFormula')}</p>
+            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Quick Note')}</p>
+            <p className="font-bold text-on-surface">{t('Balance Auto-Calculated')}</p>
+            <p className="text-sm text-outline">{t('Balance = Price - Paid')}</p>
           </div>
         </div>
       </section>

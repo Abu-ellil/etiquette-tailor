@@ -36,12 +36,19 @@ import {
   getWorkerTasks,
   getMonthlyEarnings,
   getWorkerOrderDetails,
+  getWorkerAccount,
+  addWorkerPayment,
+  getWorkerPayments,
   getAllSettings,
   setSettings,
   updateBranch,
   createBranch,
   getPieceTypes,
   recalculateTaskWages,
+  getReportStats,
+  getPaymentSplit,
+  getMonthlyRevenue,
+  getRecentOrders,
 } from '../db';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 
@@ -152,6 +159,18 @@ function registerIpcHandlers() {
     return getWorkerOrderDetails(userId, startDate, endDate);
   });
 
+  ipcMain.handle('workers:getAccount', async (_event, userId: number) => {
+    return getWorkerAccount(userId);
+  });
+
+  ipcMain.handle('workers:addPayment', async (_event, userId: number, amount: number, note: string | null) => {
+    return addWorkerPayment(userId, amount, note, currentSession?.userId ?? null);
+  });
+
+  ipcMain.handle('workers:getPayments', async (_event, userId: number) => {
+    return getWorkerPayments(userId);
+  });
+
   ipcMain.handle('customers:getAll', async (_event, branchId?: number) => {
     return getAllCustomers(branchId);
   });
@@ -222,6 +241,22 @@ function registerIpcHandlers() {
 
   ipcMain.handle('orders:getStats', async (_event, branchId?: number) => {
     return getOrderStats(branchId);
+  });
+
+  ipcMain.handle('reports:getStats', async (_event, branchId?: number) => {
+    return getReportStats(branchId);
+  });
+
+  ipcMain.handle('reports:getPaymentSplit', async (_event, branchId?: number) => {
+    return getPaymentSplit(branchId);
+  });
+
+  ipcMain.handle('reports:getMonthlyRevenue', async (_event, months?: number, branchId?: number) => {
+    return getMonthlyRevenue(months, branchId);
+  });
+
+  ipcMain.handle('reports:getRecentOrders', async (_event, limit?: number, branchId?: number) => {
+    return getRecentOrders(limit, branchId);
   });
 
   ipcMain.handle('orders:getAllTasks', async (_event, filters?: { branchId?: number; workerId?: number; taskType?: string }) => {

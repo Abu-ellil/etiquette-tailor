@@ -19,24 +19,24 @@ interface AppLayoutProps {
 }
 
 const SIDEBAR_ITEMS = [
-  { path: '/dashboard', labelKey: 'nav.dashboard', icon: 'dashboard' },
-  { path: '/customers', labelKey: 'nav.customers', icon: 'group' },
-  { path: '/measurements', labelKey: 'nav.measurements', icon: 'straighten' },
-  { path: '/orders', labelKey: 'nav.orders', icon: 'shopping_bag' },
-  { path: '/workers', labelKey: 'nav.workers', icon: 'badge' },
-  { path: '/worker-rates', labelKey: 'nav.workerRates', icon: 'payments' },
-  { path: '/task-board', labelKey: 'nav.taskBoard', icon: 'view_kanban', roles: ['admin', 'manager'] },
-  { path: '/my-tasks', labelKey: 'nav.myTasks', icon: 'task_alt', workerTypes: ['tailor'] },
-  { path: '/cutting-queue', labelKey: 'nav.cuttingQueue', icon: 'content_cut', workerTypes: ['master_cutter'] },
-  { path: '/reports', labelKey: 'nav.reports', icon: 'assessment' },
-  { path: '/backup', labelKey: 'nav.backup', icon: 'settings_backup_restore' },
-  { path: '/settings', labelKey: 'nav.settings', icon: 'settings', roles: ['admin'] },
+  { path: '/dashboard', labelKey: 'Dashboard', icon: 'dashboard' },
+  { path: '/customers', labelKey: 'Customers', icon: 'group' },
+  { path: '/orders', labelKey: 'Orders', icon: 'shopping_bag' },
+  { path: '/measurements', labelKey: 'Measurements', icon: 'straighten' },
+  { path: '/workers', labelKey: 'Workers', icon: 'badge' },
+  { path: '/worker-rates', labelKey: 'Worker Rates', icon: 'payments' },
+  { path: '/task-board', labelKey: 'Task Board', icon: 'view_kanban', roles: ['admin', 'manager'] },
+  { path: '/my-tasks', labelKey: 'My Tasks', icon: 'task_alt', workerTypes: ['tailor'] },
+  { path: '/cutting-queue', labelKey: 'Cutting Queue', icon: 'content_cut', workerTypes: ['master_cutter'] },
+  { path: '/reports', labelKey: 'Reports', icon: 'assessment' },
+  { path: '/backup', labelKey: 'Backup', icon: 'settings_backup_restore' },
+  { path: '/settings', labelKey: 'Settings', icon: 'settings', roles: ['admin'] },
 ];
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/task-board', '/reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/task-board', '/reports'],
-  reception: ['/dashboard', '/customers', '/measurements', '/orders'],
+  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/reports', '/backup', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/reports'],
+  reception: ['/dashboard', '/customers', '/orders', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };
 
@@ -105,10 +105,10 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
               </div>
               <div className="whitespace-nowrap">
                 <h1 className="text-lg font-bold text-on-surface leading-tight font-headline">
-                  {t('layout.brandName')}
+                  {t('Etiquette Tailor')}
                 </h1>
                 <p className="text-[10px] font-headline font-semibold tracking-widest uppercase text-secondary">
-                  {t('layout.brandTagline')}
+                  {t('Bespoke Studio')}
                 </p>
               </div>
             </div>
@@ -141,19 +141,19 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
             {showNewOrder && (
               <button
                 onClick={() => handleNav('/orders/new')}
-                title={t('nav.newOrder')}
+                title={t('New Order')}
                 className="btn-primary w-full py-3 lg:py-4 text-sm tracking-wide flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-sm shrink-0">add_circle</span>
-                <span className="whitespace-nowrap">{t('nav.newOrder')}</span>
+                <span className="whitespace-nowrap">{t('New Order')}</span>
               </button>
             )}
             <button
               onClick={handleLogout}
-              title={t('nav.logout')}
+              title={t('Logout')}
               className="w-full py-2.5 text-on-surface-variant hover:bg-surface-container/50 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
-              <span className="whitespace-nowrap">{t('nav.logout')}</span>
+              <span className="whitespace-nowrap">{t('Logout')}</span>
             </button>
           </div>
         </aside>
@@ -167,7 +167,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="lg:hidden p-2 -ms-2 rounded-lg hover:bg-surface-container transition-colors"
-                title={t('layout.toggleMenu')}
+                title={t('Toggle menu')}
               >
                 <span className="material-symbols-outlined text-on-surface-variant">menu</span>
               </button>
@@ -180,7 +180,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
               <button
                 onClick={() => setTheme(isDark ? 'light' : 'dark')}
                 className="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
-                title={isDark ? t('layout.switchToLight') : t('layout.switchToDark')}
+                title={isDark ? t('Switch to light mode') : t('Switch to dark mode')}
               >
                 <span className="material-symbols-outlined">
                   {isDark ? 'light_mode' : 'dark_mode'}

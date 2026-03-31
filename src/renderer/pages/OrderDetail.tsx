@@ -67,7 +67,7 @@ export default function OrderDetailPage() {
         const nonDoneTasks = tasks.filter((t: any) => t.status !== 'done');
         if (nonDoneTasks.length > 0) {
           const recalc = window.confirm(
-            t('orderDetail.confirmRecalc', {
+            t('Price changed from {oldPrice} QAR to {newPrice} QAR. This will recalculate wages for {count} task(s). Proceed?', {
               oldPrice: originalPrice.toFixed(2),
               newPrice: newPrice.toFixed(2),
               count: nonDoneTasks.length,
@@ -100,7 +100,7 @@ export default function OrderDetailPage() {
     try {
       const rate = await window.electronAPI.workers.getActiveRate(newTask.assigned_to, order.piece_type);
       if (!rate) {
-        alert(t('orderDetail.alert.noRateConfigured'));
+        alert(t('No rate configured for this worker and piece type. Please set the rate in Worker Rates first.'));
         return;
       }
       const wageAmount = rate.wage_type === 'percentage'
@@ -143,7 +143,7 @@ export default function OrderDetailPage() {
     return (
       <div className="flex items-center justify-center py-20 text-secondary">
         <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-        {t('orderDetail.loading')}
+        {t('Loading order...')}
       </div>
     );
   }
@@ -152,8 +152,8 @@ export default function OrderDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-secondary">
         <span className="material-symbols-outlined text-5xl mb-3 text-outline">error</span>
-        <p className="font-headline font-bold text-lg">{t('orderDetail.notFound')}</p>
-        <button onClick={() => navigate('/orders')} className="btn-primary mt-4 px-6 py-2 text-sm">{t('orderDetail.backToOrders')}</button>
+        <p className="font-headline font-bold text-lg">{t('Order not found')}</p>
+        <button onClick={() => navigate('/orders')} className="btn-primary mt-4 px-6 py-2 text-sm">{t('Back to Orders')}</button>
       </div>
     );
   }
@@ -171,7 +171,7 @@ export default function OrderDetailPage() {
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
-            {t('orderDetail.orderTitle', { number: order.order_number })}
+            {t('Order #{number}', { number: order.order_number })}
           </h1>
           <p className="text-secondary mt-1">
             {order.customer_name} {order.customer_phone && `· ${order.customer_phone}`}
@@ -182,18 +182,18 @@ export default function OrderDetailPage() {
             !editing ? (
               <button onClick={() => { setEditing(true); setOriginalPrice(Number(order.price)); }} className="btn-primary px-6 py-3 text-sm flex items-center gap-2">
                 <span className="material-symbols-outlined text-base">edit</span>
-                {t('orderDetail.editOrder')}
+                {t('Edit Order')}
               </button>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => { setEditing(false); loadOrder(); }} className="px-6 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg">{t('orderDetail.cancel')}</button>
-                <button onClick={handleSaveOrder} className="btn-primary px-6 py-3 text-sm">{t('orderDetail.save')}</button>
+                <button onClick={() => { setEditing(false); loadOrder(); }} className="px-6 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg">{t('Cancel')}</button>
+                <button onClick={handleSaveOrder} className="btn-primary px-6 py-3 text-sm">{t('Save')}</button>
               </div>
             )
           )}
           <button onClick={() => navigate('/orders')} className="px-4 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg flex items-center gap-1">
             <span className="material-symbols-outlined text-base">arrow_back</span>
-            {t('orderDetail.back')}
+            {t('Back')}
           </button>
         </div>
       </div>
@@ -201,78 +201,78 @@ export default function OrderDetailPage() {
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <div className="bg-surface-container-lowest rounded-xl p-6">
-            <h3 className="text-lg font-headline font-bold mb-4">{t('orderDetail.orderDetails')}</h3>
+            <h3 className="text-lg font-headline font-bold mb-4">{t('Order Details')}</h3>
             {editing ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.pieceType')}</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Piece Type')}</label>
                   <input value={order.piece_type} onChange={(e) => setOrder({...order, piece_type: e.target.value})} className="input-field w-full" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.status')}</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Status')}</label>
                   <select value={order.status} onChange={(e) => setOrder({...order, status: e.target.value})} className="input-field w-full appearance-none">
-                    <option value="intake">{t('orderDetail.statusIntake')}</option>
-                    <option value="cutting">{t('orderDetail.statusCutting')}</option>
-                    <option value="sewing">{t('orderDetail.statusSewing')}</option>
-                    <option value="ready">{t('orderDetail.statusReady')}</option>
-                    <option value="delivered">{t('orderDetail.statusDelivered')}</option>
+                    <option value="intake">{t('Intake')}</option>
+                    <option value="cutting">{t('Cutting')}</option>
+                    <option value="sewing">{t('Sewing')}</option>
+                    <option value="ready">{t('Ready')}</option>
+                    <option value="delivered">{t('Delivered')}</option>
                   </select>
                 </div>
                 {!isWorker && (
                   <>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.priceQar')}</label>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Price (QAR)')}</label>
                       <input type="number" value={order.price} onChange={(e) => setOrder({...order, price: e.target.value})} className="input-field w-full" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.paidQar')}</label>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Paid (QAR)')}</label>
                       <input type="number" value={order.paid} onChange={(e) => setOrder({...order, paid: e.target.value})} className="input-field w-full" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.balance')}</label>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Balance')}</label>
                       <input readOnly value={balance.toFixed(2)} className="input-field w-full opacity-60" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.payment')}</label>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Payment')}</label>
                       <select value={order.payment_method} onChange={(e) => setOrder({...order, payment_method: e.target.value})} className="input-field w-full appearance-none">
-                        <option value="cash">{t('orderDetail.cash')}</option>
-                        <option value="card">{t('orderDetail.card')}</option>
+                        <option value="cash">{t('Cash')}</option>
+                        <option value="card">{t('Card')}</option>
                       </select>
                     </div>
                   </>
                 )}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.dueDate')}</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Due Date')}</label>
                   <input type="date" value={order.delivery_date || ''} onChange={(e) => setOrder({...order, delivery_date: e.target.value})} className="input-field w-full" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.details')}</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Details')}</label>
                   <textarea value={order.details || ''} onChange={(e) => setOrder({...order, details: e.target.value})} className="input-field w-full min-h-[80px]" />
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-                <div><span className="text-secondary">{t('orderDetail.pieceType')}:</span> <span className="font-semibold">{order.piece_type}</span></div>
-                <div><span className="text-secondary">{t('orderDetail.status')}:</span> <StatusChip status={order.status} /></div>
+                <div><span className="text-secondary">{t('Piece Type')}:</span> <span className="font-semibold">{order.piece_type}</span></div>
+                <div><span className="text-secondary">{t('Status')}:</span> <StatusChip status={order.status} /></div>
                 {!isWorker && (<>
-                  <div><span className="text-secondary">{t('orderDetail.price')}:</span> <span className="font-semibold">{Number(order.price).toFixed(2)} QAR</span></div>
-                  <div><span className="text-secondary">{t('orderDetail.paid')}:</span> <span className="font-semibold">{Number(order.paid).toFixed(2)} QAR</span></div>
-                  <div><span className="text-secondary">{t('orderDetail.balance')}:</span> <span className="font-semibold text-primary">{balance.toFixed(2)} QAR</span></div>
-                  <div><span className="text-secondary">{t('orderDetail.payment')}:</span> <span className="font-semibold capitalize">{order.payment_method}</span></div>
+                  <div><span className="text-secondary">{t('Price')}:</span> <span className="font-semibold">{Number(order.price).toFixed(2)} QAR</span></div>
+                  <div><span className="text-secondary">{t('Paid')}:</span> <span className="font-semibold">{Number(order.paid).toFixed(2)} QAR</span></div>
+                  <div><span className="text-secondary">{t('Balance')}:</span> <span className="font-semibold text-primary">{balance.toFixed(2)} QAR</span></div>
+                  <div><span className="text-secondary">{t('Payment')}:</span> <span className="font-semibold capitalize">{order.payment_method}</span></div>
                 </>)}
-                <div><span className="text-secondary">{t('orderDetail.dueDate')}:</span> <span className="font-semibold">{order.delivery_date || '--'}</span></div>
-                <div><span className="text-secondary">{t('orderDetail.details')}:</span> <span className="font-semibold">{order.details || '--'}</span></div>
+                <div><span className="text-secondary">{t('Due Date')}:</span> <span className="font-semibold">{order.delivery_date || '--'}</span></div>
+                <div><span className="text-secondary">{t('Details')}:</span> <span className="font-semibold">{order.details || '--'}</span></div>
               </div>
             )}
           </div>
 
           <div className="bg-surface-container-lowest rounded-xl p-6">
-            <h3 className="text-lg font-headline font-bold mb-4">{t('orderDetail.measurements')}</h3>
+            <h3 className="text-lg font-headline font-bold mb-4">{t('Measurements')}</h3>
             {measurements ? (
               <div className="grid grid-cols-3 gap-4">
                 {['chest', 'waist', 'hips', 'length', 'sleeve', 'shoulder'].map((field) => (
                   <div key={field}>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t(`orderDetail.measurement.${field}`)}</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t(`${field.charAt(0).toUpperCase() + field.slice(1)}`)}</label>
                     <input
                       type="number"
                       step="0.1"
@@ -284,25 +284,25 @@ export default function OrderDetailPage() {
                   </div>
                 ))}
                 <div className="col-span-3">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.notes')}</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Notes')}</label>
                   <textarea value={measurements.notes || ''} onChange={(e) => setMeasurements({...measurements, notes: e.target.value})} className="input-field w-full min-h-[60px]" />
                 </div>
                 <div className="col-span-3 flex justify-end">
-                  <button onClick={handleSaveMeasurements} className="btn-primary px-6 py-2 text-sm">{t('orderDetail.saveMeasurements')}</button>
+                  <button onClick={handleSaveMeasurements} className="btn-primary px-6 py-2 text-sm">{t('Save Measurements')}</button>
                 </div>
               </div>
             ) : (
-              <p className="text-secondary text-sm">{t('orderDetail.noMeasurements')}</p>
+              <p className="text-secondary text-sm">{t('No measurements recorded for this order.')}</p>
             )}
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="bg-surface-container-lowest rounded-xl p-6">
-            <h3 className="text-lg font-headline font-bold mb-3">{t('orderDetail.tasks')}</h3>
+            <h3 className="text-lg font-headline font-bold mb-3">{t('Tasks')}</h3>
             <div className="space-y-2">
               {tasks.length === 0 ? (
-                <p className="text-secondary text-sm py-4">{t('orderDetail.noTasks')}</p>
+                <p className="text-secondary text-sm py-4">{t('No tasks assigned yet.')}</p>
               ) : tasks.map((task: any) => (
                 <div key={task.id} className="bg-surface rounded-lg p-4 space-y-2">
                   <div className="flex justify-between items-center">
@@ -310,17 +310,17 @@ export default function OrderDetailPage() {
                     <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
                   </div>
                   <div className="flex justify-between items-center text-xs text-secondary">
-                    <span>{t('orderDetail.worker')}: {task.worker_name || t('orderDetail.unassigned')}</span>
-                    {!isWorker && <span>{t('orderDetail.wage')}: {Number(task.wage_amount || 0).toFixed(2)} QAR</span>}
+                    <span>{t('Worker:')}: {task.worker_name || t('Unassigned')}</span>
+                    {!isWorker && <span>{t('Wage:')} {Number(task.wage_amount || 0).toFixed(2)} QAR</span>}
                   </div>
-                  {task.started_at && <div className="text-xs text-secondary">{t('orderDetail.started')}: {new Date(task.started_at).toLocaleString()}</div>}
-                  {task.completed_at && <div className="text-xs text-secondary">{t('orderDetail.completed')}: {new Date(task.completed_at).toLocaleString()}</div>}
+                  {task.started_at && <div className="text-xs text-secondary">{t('Started:')} {new Date(task.started_at).toLocaleString()}</div>}
+                  {task.completed_at && <div className="text-xs text-secondary">{t('Completed:')} {new Date(task.completed_at).toLocaleString()}</div>}
                 </div>
               ))}
             </div>
             <button onClick={() => setShowAddTask(true)} className="mt-4 w-full py-2 text-sm font-semibold text-primary hover:bg-primary/10 rounded-lg flex items-center justify-center gap-1">
               <span className="material-symbols-outlined text-base">add</span>
-              {t('orderDetail.addTask')}
+              {t('Add Task')}
             </button>
           </div>
         </div>
@@ -331,26 +331,26 @@ export default function OrderDetailPage() {
           <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content w-full max-w-md" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-6">
-                <h2 className="text-xl font-headline font-bold mb-4">{t('orderDetail.addTask')}</h2>
+                <h2 className="text-xl font-headline font-bold mb-4">{t('Add Task')}</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.taskType')}</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Task Type')}</label>
                     <select value={newTask.task_type} onChange={(e) => setNewTask({...newTask, task_type: e.target.value})} className="input-field w-full appearance-none">
-                      <option value="cutting">{t('orderDetail.cutting')}</option>
-                      <option value="sewing">{t('orderDetail.sewing')}</option>
+                      <option value="cutting">{t('Cutting')}</option>
+                      <option value="sewing">{t('Sewing')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('orderDetail.assignWorker')}</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Assign Worker')}</label>
                     <select value={newTask.assigned_to || ''} onChange={(e) => setNewTask({...newTask, assigned_to: e.target.value ? Number(e.target.value) : null})} className="input-field w-full appearance-none">
-                      <option value="">{t('orderDetail.selectWorker')}</option>
+                      <option value="">{t('Select worker...')}</option>
                       {workers.map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="flex justify-end gap-3 mt-6">
-                  <button onClick={() => setShowAddTask(false)} className="px-4 py-2 text-sm text-secondary">{t('orderDetail.cancel')}</button>
-                  <button onClick={handleAddTask} disabled={!newTask.assigned_to} className="btn-primary px-6 py-2 text-sm disabled:opacity-50">{t('orderDetail.addTask')}</button>
+                  <button onClick={() => setShowAddTask(false)} className="px-4 py-2 text-sm text-secondary">{t('Cancel')}</button>
+                  <button onClick={handleAddTask} disabled={!newTask.assigned_to} className="btn-primary px-6 py-2 text-sm disabled:opacity-50">{t('Add Task')}</button>
                 </div>
               </div>
             </div>

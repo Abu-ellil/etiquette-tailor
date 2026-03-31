@@ -282,3 +282,62 @@ export function recalculateTaskWages(orderId: number, newPrice: number): number 
 
   return txn();
 }
+
+// ── Worker Account / Payments ────────────────────────────────────────────
+
+export interface WorkerPayment {
+  id: number;
+  user_id: number;
+  amount: number;
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface WorkerAccount {
+  total_earnings: number;   // all-time piece earnings from completed tasks
+  total_paid: number;       // all-time payments disbursed to worker
+  balance: number;          // total_earnings - total_paid (what's owed)
+  task_count: number;       // all-time completed task count
+}
+
+export function getWorkerAccount(userId: number): WorkerAccount {
+  const earnings = db.prepare(`
+    SELECT
+      COALESCE(SUM(wage_amount), 0) as total_earnings,
+      COUNT(*) as task_count
+    FROM order_tasks
+    WHERE assigned_to = ? AND status = 'done'
+  `).get(userId) as { total_earnings: number; task_count: number };
+
+  const paid = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total_paid
+    FROM worker_payments
+    WHERE user_id = ?
+  `).get(userId) as { total_paid: number };
+
+  const totalEarnings = earnings?.total_earnings || 0;
+  const totalPaid = paid?.total_paid || 0;
+
+  return {
+    total_earnings: totalEarnings,
+    total_paid: totalPaid,
+    balance: totalEarnings - totalPaid,
+    task_count: earnings?.task_count || 0,
+  };
+}
+
+export function addWorkerPayment(userId: number, amount: number, note: string | null, createdBy: number | null): number {
+  const stmt = db.prepare(
+    'INSERT INTO worker_payments (user_id, amount, note, created_by) VALUES (?, ?, ?, ?)'
+  );
+  const result = stmt.run(userId, amount, note, createdBy);
+  return result.lastInsertRowid as number;
+}
+
+export function getWorkerPayments(userId: number): WorkerPayment[] {
+  const stmt = db.prepare(
+    'SELECT * FROM worker_payments WHERE user_id = ? ORDER BY created_at DESC'
+  );
+  return stmt.all(userId) as WorkerPayment[];
+}

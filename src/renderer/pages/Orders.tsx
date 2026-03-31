@@ -121,7 +121,7 @@ function StatusDropdown({
         onClick={() => setOpen((o) => !o)}
         className={`${statusChipClass(current)} cursor-pointer`}
       >
-        {t(`orders.status.${current}`)}
+        {t(`status.${current}`)}
         <span className="material-symbols-outlined text-xs ml-1 align-middle">expand_more</span>
       </button>
       {open && next.length > 0 && (
@@ -132,7 +132,7 @@ function StatusDropdown({
               onClick={() => handleSelect(s === 'ready' ? 'ready' : 'delivered')}
               className="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-high transition-colors"
             >
-              {t('orders.markAs')} {t(`orders.status.${s === 'ready' ? 'ready' : 'delivered'}`)}
+              {t('Mark as')} {t(`status.${s === 'ready' ? 'ready' : 'delivered'}`)}
             </button>
           ))}
         </div>
@@ -208,11 +208,11 @@ export default function OrdersPage() {
 
   /* Stats badges */
   const tabs: { key: FilterTab; label: string; count: number }[] = [
-    { key: 'all', label: t('orders.tab.all'), count: stats?.total ?? 0 },
-    { key: 'in_progress', label: t('orders.tab.inProgress'), count: stats?.in_progress ?? 0 },
-    { key: 'ready', label: t('orders.tab.ready'), count: stats?.ready ?? 0 },
-    { key: 'delivered', label: t('orders.tab.delivered'), count: stats?.delivered ?? 0 },
-    { key: 'late', label: t('orders.tab.late'), count: stats?.overdue ?? 0 },
+    { key: 'all', label: t('All'), count: stats?.total ?? 0 },
+    { key: 'in_progress', label: t('In Progress'), count: stats?.in_progress ?? 0 },
+    { key: 'ready', label: t('Ready'), count: stats?.ready ?? 0 },
+    { key: 'delivered', label: t('Delivered'), count: stats?.delivered ?? 0 },
+    { key: 'late', label: t('Late'), count: stats?.overdue ?? 0 },
   ];
 
   /* Helpers */
@@ -236,9 +236,9 @@ export default function OrdersPage() {
       <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h2 className="text-4xl font-bold tracking-tight text-on-surface mb-2 font-headline">
-            {t('orders.pageTitle')}
+            {t('Orders Registry')}
           </h2>
-          <p className="text-secondary text-lg">{t('orders.pageSubtitle')}</p>
+          <p className="text-secondary text-lg">{t('Manage bespoke commissions and production status.')}</p>
         </div>
 
         {/* Filters cluster */}
@@ -250,7 +250,7 @@ export default function OrdersPage() {
             </span>
             <input
               type="text"
-              placeholder={t('orders.searchPlaceholder')}
+              placeholder={t('Search orders...')}
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="h-10 pl-10 pr-4 bg-surface-container-lowest border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none w-52"
@@ -263,7 +263,7 @@ export default function OrdersPage() {
             className="btn-primary h-10 px-5 text-sm rounded-lg flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            {t('orders.newOrder')}
+            {t('New Order')}
           </button>
         </div>
       </div>
@@ -299,27 +299,27 @@ export default function OrdersPage() {
         {loading ? (
           <div className="flex items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-            {t('orders.loading')}
+            {t('Loading orders...')}
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined text-4xl mb-3 text-outline">shopping_bag</span>
-            <p className="font-semibold text-on-surface mb-1">{t('orders.noOrdersFound')}</p>
-            <p className="text-sm">{t('orders.noOrdersHint')}</p>
+            <p className="font-semibold text-on-surface mb-1">{t('No orders found')}</p>
+            <p className="text-sm">{t('Try adjusting your filters or create a new order.')}</p>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>{t('orders.table.orderId')}</th>
-                <th>{t('orders.table.customer')}</th>
-                <th>{t('orders.table.itemType')}</th>
-                {!isWorker && <th className="text-right">{t('orders.table.price')}</th>}
-                {!isWorker && <th className="text-right">{t('orders.table.paid')}</th>}
-                {!isWorker && <th className="text-right">{t('orders.table.balance')}</th>}
-                <th>{t('orders.table.status')}</th>
-                <th>{t('orders.table.delivery')}</th>
-                <th className="text-center">{t('orders.table.actions')}</th>
+                <th>{t('Order ID')}</th>
+                <th>{t('Customer')}</th>
+                <th>{t('Item Type')}</th>
+                {!isWorker && <th className="text-right">{t('Price')}</th>}
+                {!isWorker && <th className="text-right">{t('Paid')}</th>}
+                {!isWorker && <th className="text-right">{t('Balance')}</th>}
+                <th>{t('Status')}</th>
+                <th>{t('Delivery')}</th>
+                <th className="text-center">{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -345,7 +345,7 @@ export default function OrdersPage() {
                         <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-bold flex items-center justify-center shrink-0">
                           {getInitials(order.customer_name)}
                         </div>
-                        <span className="font-medium">{order.customer_name || t('common.unknown')}</span>
+                        <span className="font-medium">{order.customer_name || t('Unknown')}</span>
                       </div>
                     </td>
 
@@ -388,14 +388,14 @@ export default function OrdersPage() {
                         <button
                           onClick={() => navigate(`/orders/edit/${order.id}`)}
                           className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary"
-                          title={t('common.edit')}
+                          title={t('Edit')}
                         >
                           <span className="material-symbols-outlined text-lg">edit_square</span>
                         </button>
                         <button
                           onClick={() => navigate(`/invoice/${order.id}`)}
                           className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary"
-                          title={t('orders.viewInvoice')}
+                          title={t('View Invoice')}
                         >
                           <span className="material-symbols-outlined text-lg">visibility</span>
                         </button>
@@ -413,14 +413,14 @@ export default function OrdersPage() {
       {!loading && filteredOrders.length > 0 && (
         <div className="flex justify-between items-center text-secondary text-sm px-2">
           <div>
-            {t('orders.showing')}{' '}
-            <span className="font-bold text-on-surface">{filteredOrders.length}</span> {t('orders.of')}{' '}
-            <span className="font-bold text-on-surface">{stats?.total ?? 0}</span> {t('orders.ordersCount')}
+            {t('Showing {count} of {total} orders')}{' '}
+            <span className="font-bold text-on-surface">{filteredOrders.length}</span> {t('of')}{' '}
+            <span className="font-bold text-on-surface">{stats?.total ?? 0}</span> {t('order(s)')}
           </div>
           <div className="flex gap-2">
             {!isWorker && (
               <span className="text-xs text-outline">
-                {t('orders.revenueOpen')}{' '}
+                {t('Revenue (open):')}{' '}
                 <span className="font-bold text-on-surface">
                   {(stats?.revenue ?? 0).toLocaleString('en-US')} QAR
                 </span>

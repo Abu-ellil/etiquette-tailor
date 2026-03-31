@@ -30,13 +30,13 @@ export default function TitleBar() {
           straighten
         </span>
         <span className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-tight">
-          {t('titleBar.version')}
+          {t('V1.0.0')}
         </span>
       </div>
 
       <div className="flex-1 text-center">
         <h1 className="text-xs font-bold text-on-surface font-headline">
-          {t('titleBar.appName')}
+          {t('Etiquette Tailor')}
         </h1>
       </div>
 

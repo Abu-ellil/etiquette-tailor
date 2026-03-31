@@ -143,6 +143,17 @@ export function initializeSchema() {
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS worker_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      amount REAL NOT NULL,
+      note TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS invoices (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id INTEGER REFERENCES orders(id) UNIQUE,
@@ -197,6 +208,20 @@ function migrateColumns() {
   try { db.exec('DROP TABLE IF EXISTS users_new'); } catch { /* ignore cleanup errors */ }
 
   const tables: Record<string, string[]> = {};
+
+  // Ensure worker_payments table exists (migration for existing DBs)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS worker_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        amount REAL NOT NULL,
+        note TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch { /* table already exists */ }
 
   // Get existing columns for each table
   for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates']) {

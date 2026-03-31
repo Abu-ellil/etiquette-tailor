@@ -55,7 +55,7 @@ export default function TaskBoardPage() {
     return (
       <div className="flex items-center justify-center py-20 text-secondary">
         <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-        {t('taskBoard.loading')}
+        {t('Loading task board...')}
       </div>
     );
   }
@@ -63,25 +63,25 @@ export default function TaskBoardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">{t('taskBoard.pageTitle')}</h1>
-        <p className="text-secondary mt-1">{t('taskBoard.subtitle')}</p>
+        <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">{t('Task Board')}</h1>
+        <p className="text-secondary mt-1">{t('Production overview across all orders')}</p>
       </div>
 
       <div className="grid grid-cols-4 gap-6">
         <div className="bg-surface-container-lowest rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('taskBoard.pending')}</span>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('Pending')}</span>
           <div className="text-3xl font-extrabold text-on-surface mt-2">{pendingCount}</div>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('taskBoard.inProgress')}</span>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('In Progress')}</span>
           <div className="text-3xl font-extrabold text-primary mt-2">{inProgressCount}</div>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('taskBoard.done')}</span>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('Done')}</span>
           <div className="text-3xl font-extrabold text-primary mt-2">{doneCount}</div>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6">
-          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('taskBoard.overdue')}</span>
+          <span className="text-xs font-bold tracking-widest uppercase text-secondary">{t('Overdue')}</span>
           <div className="text-3xl font-extrabold text-error mt-2">{overdueCount}</div>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function TaskBoardPage() {
             onChange={(e) => setFilters({ ...filters, branchId: e.target.value ? Number(e.target.value) : undefined })}
             className="input-field appearance-none min-w-[160px]"
           >
-            <option value="">{t('taskBoard.allBranches')}</option>
+            <option value="">{t('All Branches')}</option>
             {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name_en || b.name_ar}</option>)}
           </select>
         )}
@@ -102,7 +102,7 @@ export default function TaskBoardPage() {
           onChange={(e) => setFilters({ ...filters, workerId: e.target.value ? Number(e.target.value) : undefined })}
           className="input-field appearance-none min-w-[160px]"
         >
-          <option value="">{t('taskBoard.allWorkers')}</option>
+          <option value="">{t('All Workers')}</option>
           {workers.map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
         </select>
         <select
@@ -110,31 +110,31 @@ export default function TaskBoardPage() {
           onChange={(e) => setFilters({ ...filters, taskType: e.target.value || undefined })}
           className="input-field appearance-none min-w-[160px]"
         >
-          <option value="">{t('taskBoard.allTypes')}</option>
-          <option value="cutting">{t('taskBoard.cutting')}</option>
-          <option value="sewing">{t('taskBoard.sewing')}</option>
+          <option value="">{t('All Types')}</option>
+          <option value="cutting">{t('Cutting')}</option>
+          <option value="sewing">{t('Sewing')}</option>
         </select>
       </div>
 
       {tasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-secondary">
           <span className="material-symbols-outlined text-5xl mb-3 text-outline">view_kanban</span>
-          <p className="font-headline font-bold text-lg">{t('taskBoard.noTasksFound')}</p>
-          <p className="text-sm mt-1">{t('taskBoard.createTasksHint')}</p>
+          <p className="font-headline font-bold text-lg">{t('No tasks found')}</p>
+          <p className="text-sm mt-1">{t('Create orders and assign tasks to see them here.')}</p>
         </div>
       ) : (
         <div className="bg-surface-container-lowest rounded-2xl overflow-hidden">
           <table className="data-table">
             <thead>
               <tr>
-                <th>{t('taskBoard.order')}</th>
-                <th>{t('taskBoard.customer')}</th>
-                <th>{t('taskBoard.piece')}</th>
-                <th>{t('taskBoard.type')}</th>
-                <th>{t('taskBoard.worker')}</th>
-                <th>{t('taskBoard.dueDate')}</th>
-                {isAdmin && <th>{t('taskBoard.wage')}</th>}
-                <th>{t('taskBoard.status')}</th>
+                <th>{t('Order')}</th>
+                <th>{t('Customer')}</th>
+                <th>{t('Piece')}</th>
+                <th>{t('Type')}</th>
+                <th>{t('Worker')}</th>
+                <th>{t('Due Date')}</th>
+                {isAdmin && <th>{t('Wage')}</th>}
+                <th>{t('Status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -151,11 +151,11 @@ export default function TaskBoardPage() {
                         <span className="capitalize">{task.task_type}</span>
                       </div>
                     </td>
-                    <td>{task.worker_name || t('taskBoard.unassigned')}</td>
+                    <td>{task.worker_name || t('Unassigned')}</td>
                     <td>
                       <div className="flex items-center gap-2">
                         <span>{task.due_date || '--'}</span>
-                        {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">{t('taskBoard.overdue')}</span>}
+                        {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">{t('Overdue')}</span>}
                       </div>
                     </td>
                     {isAdmin && <td className="font-semibold">{Number(task.wage_amount || 0).toFixed(2)} QAR</td>}
@@ -169,7 +169,7 @@ export default function TaskBoardPage() {
           </table>
           <div className="px-6 py-4 border-t border-surface-container-high text-sm text-secondary flex justify-between items-center">
             <p className="text-xs font-medium uppercase tracking-widest">
-              {t('taskBoard.showing')} {tasks.length} {tasks.length !== 1 ? t('taskBoard.tasksPlural') : t('taskBoard.taskSingular')}
+              {t('Showing')} {tasks.length} {tasks.length !== 1 ? t('tasks') : t('task')}
             </p>
           </div>
         </div>

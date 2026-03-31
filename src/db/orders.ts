@@ -386,3 +386,144 @@ export function getOrderStats(branchId?: number): { total: number; in_progress: 
   `);
   return stmt.get(today, ...params) as { total: number; in_progress: number; ready: number; delivered: number; overdue: number; revenue: number };
 }
+
+export interface ReportStats {
+  totalOrders: number;
+  revenue: number;
+  workersCost: number;
+  netProfit: number;
+}
+
+export function getReportStats(branchId?: number): ReportStats {
+  let branchFilter = '';
+  const params: any[] = [];
+
+  if (branchId) {
+    branchFilter = ' AND branch_id = ?';
+    params.push(branchId);
+  }
+
+  const stmt = db.prepare(`
+    SELECT
+      COUNT(*) as totalOrders,
+      COALESCE(SUM(price), 0) as revenue
+    FROM orders
+    WHERE 1=1 ${branchFilter}
+  `);
+  const orderStats = stmt.get(...params) as { totalOrders: number; revenue: number };
+
+  // Workers cost = sum of all task wages
+  let costFilter = '';
+  const costParams: any[] = [];
+  if (branchId) {
+    costFilter = ' AND o.branch_id = ?';
+    costParams.push(branchId);
+  }
+  const costStmt = db.prepare(`
+    SELECT COALESCE(SUM(ot.wage_amount), 0) as workersCost
+    FROM order_tasks ot
+    JOIN orders o ON ot.order_id = o.id
+    WHERE 1=1 ${costFilter}
+  `);
+  const costResult = costStmt.get(...costParams) as { workersCost: number };
+
+  return {
+    totalOrders: orderStats.totalOrders,
+    revenue: orderStats.revenue,
+    workersCost: costResult.workersCost,
+    netProfit: orderStats.revenue - costResult.workersCost,
+  };
+}
+
+export interface PaymentSplit {
+  card: number;
+  cash: number;
+  cardAmount: number;
+  cashAmount: number;
+}
+
+export function getPaymentSplit(branchId?: number): PaymentSplit {
+  let branchFilter = '';
+  const params: any[] = [];
+
+  if (branchId) {
+    branchFilter = ' AND branch_id = ?';
+    params.push(branchId);
+  }
+
+  const stmt = db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN payment_method = 'card' THEN price ELSE 0 END), 0) as cardAmount,
+      COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN price ELSE 0 END), 0) as cashAmount,
+      COUNT(*) as total
+    FROM orders
+    WHERE 1=1 ${branchFilter}
+  `);
+  const result = stmt.get(...params) as { cardAmount: number; cashAmount: number; total: number };
+
+  const total = result.cardAmount + result.cashAmount;
+  return {
+    card: total > 0 ? Math.round((result.cardAmount / total) * 100) : 0,
+    cash: total > 0 ? Math.round((result.cashAmount / total) * 100) : 0,
+    cardAmount: result.cardAmount,
+    cashAmount: result.cashAmount,
+  };
+}
+
+export interface MonthlyRevenue {
+  month: string;
+  value: number;
+}
+
+export function getMonthlyRevenue(months: number = 6, branchId?: number): MonthlyRevenue[] {
+  let branchFilter = '';
+  const params: any[] = [];
+
+  if (branchId) {
+    branchFilter = ' AND branch_id = ?';
+    params.push(branchId);
+  }
+
+  const stmt = db.prepare(`
+    SELECT
+      strftime('%Y-%m', created_at) as month_key,
+      COALESCE(SUM(price), 0) as value
+    FROM orders
+    WHERE created_at >= date('now', '-${months} months') ${branchFilter}
+    GROUP BY strftime('%Y-%m', created_at)
+    ORDER BY month_key ASC
+  `);
+  const rows = stmt.all(...params) as { month_key: string; value: number }[];
+
+  return rows.map((r) => {
+    const d = new Date(r.month_key + '-01');
+    const monthLabel = d.toLocaleDateString('en', { month: 'short' });
+    return { month: monthLabel, value: r.value };
+  });
+}
+
+export function getRecentOrders(limit: number = 10, branchId?: number): any[] {
+  let branchFilter = '';
+  const params: any[] = [limit];
+
+  if (branchId) {
+    branchFilter = ' AND o.branch_id = ?';
+    params.push(branchId, limit);
+  }
+
+  const stmt = db.prepare(`
+    SELECT o.*, c.name as customer_name
+    FROM orders o
+    LEFT JOIN customers c ON o.customer_id = c.id
+    WHERE 1=1 ${branchFilter}
+    ORDER BY o.created_at DESC
+    LIMIT ?
+  `);
+
+  // SQLite positional: limit is always last
+  if (branchId) {
+    params.splice(0, 1); // remove first limit
+    return (stmt as any).all(branchId, limit) as any[];
+  }
+  return stmt.all(limit) as any[];
+}

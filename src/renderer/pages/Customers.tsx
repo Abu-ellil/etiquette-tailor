@@ -151,7 +151,7 @@ export default function CustomersPage() {
   /* ── Delete ── */
 
   const handleDelete = async (customer: Customer) => {
-    if (!window.confirm(t('customers.confirm.delete').replace('{name}', customer.name))) return;
+    if (!window.confirm(t('Delete customer "{name}"? This action cannot be undone.').replace('{name}', customer.name))) return;
     try {
       await window.electronAPI.customers.delete(customer.id);
       await loadCustomers();
@@ -168,10 +168,10 @@ export default function CustomersPage() {
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
           <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
-            {t('customers.pageTitle')}
+            {t('Customers')}
           </h1>
           <p className="text-secondary mt-1 text-sm">
-            {t('customers.pageSubtitle')}
+            {t("Manage your boutique's client profiles and preferences.")}
           </p>
         </div>
         <button
@@ -179,7 +179,7 @@ export default function CustomersPage() {
           className="btn-primary flex items-center gap-2 py-4 px-10 text-sm shadow-xl hover:opacity-90 transition-opacity active:scale-95"
         >
           <span className="material-symbols-outlined">person_add</span>
-          {t('customers.addCustomer')}
+          {t('Add Customer')}
         </button>
       </div>
 
@@ -187,7 +187,7 @@ export default function CustomersPage() {
       <div className="flex gap-4 items-end">
         <div className="flex-1">
           <label className="text-xs font-semibold text-secondary uppercase tracking-widest mb-2 block">
-            {t('customers.quickSearch')}
+            {t('Quick Search')}
           </label>
           <div className="relative group">
             <input
@@ -195,7 +195,7 @@ export default function CustomersPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="input-field pl-12"
-              placeholder={t('customers.searchPlaceholder')}
+              placeholder={t('Search by name, phone, or tags...')}
             />
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">
               search
@@ -209,24 +209,24 @@ export default function CustomersPage() {
         {loading ? (
           <div className="flex items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-            {t('customers.loading')}
+            {t('Loading customers...')}
           </div>
         ) : customers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined text-5xl mb-3 text-outline">group</span>
-            <p className="font-headline font-bold text-on-surface text-lg">{t('customers.noCustomersFound')}</p>
+            <p className="font-headline font-bold text-on-surface text-lg">{t('No customers found')}</p>
             <p className="text-sm mt-1">
-              {searchQuery ? t('customers.noCustomersSearch') : t('customers.noCustomersEmpty')}
+              {searchQuery ? t('Try a different search term.') : t('Add your first customer to get started.')}
             </p>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>{t('customers.table.name')}</th>
-                <th>{t('customers.table.phone')}</th>
-                <th>{t('customers.table.notes')}</th>
-                <th className="text-right">{t('customers.table.actions')}</th>
+                <th>{t('Name / Client')}</th>
+                <th>{t('Phone Number')}</th>
+                <th>{t('Notes & Preferences')}</th>
+                <th className="text-right">{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -266,7 +266,7 @@ export default function CustomersPage() {
                         {customer.notes}
                       </p>
                     ) : (
-                      <span className="text-outline text-sm">{t('customers.noNotes')}</span>
+                      <span className="text-outline text-sm">{t('No notes')}</span>
                     )}
                   </td>
 
@@ -276,14 +276,14 @@ export default function CustomersPage() {
                       <button
                         onClick={() => openEditModal(customer)}
                         className="p-2 text-outline hover:text-primary transition-colors"
-                        title={t('customers.editCustomer')}
+                        title={t('Edit customer')}
                       >
                         <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         onClick={() => handleDelete(customer)}
                         className="p-2 text-outline hover:text-error transition-colors"
-                        title={t('customers.deleteCustomer')}
+                        title={t('Delete customer')}
                       >
                         <span className="material-symbols-outlined">delete</span>
                       </button>
@@ -298,7 +298,7 @@ export default function CustomersPage() {
         {/* Table Footer */}
         {customers.length > 0 && (
           <div className="px-6 py-4 border-t border-surface-container-high text-sm text-secondary">
-            {t('customers.showing').replace('{count}', String(customers.length))}
+            {t('Showing {count} customer(s)').replace('{count}', String(customers.length))}
           </div>
         )}
       </div>
@@ -316,12 +316,12 @@ export default function CustomersPage() {
                 <div className="flex justify-between items-start mb-10">
                   <div>
                     <h2 className="text-3xl font-headline font-extrabold text-on-surface tracking-tight">
-                      {editingCustomer ? t('customers.modal.editTitle') : t('customers.modal.newTitle')}
+                      {editingCustomer ? t('Edit Client Profile') : t('New Client Profile')}
                     </h2>
                     <p className="text-secondary text-sm mt-1">
                       {editingCustomer
-                        ? t('customers.modal.editSubtitle')
-                        : t('customers.modal.newSubtitle')}
+                        ? t('Update customer information in the database.')
+                        : t('Add a new customer to the Etiquette Studio database.')}
                     </p>
                   </div>
                   <button
@@ -337,13 +337,13 @@ export default function CustomersPage() {
                   {/* Name */}
                   <div className="relative">
                     <label className="absolute -top-2 left-4 px-1 bg-surface-container-lowest text-xs font-semibold text-secondary uppercase tracking-widest z-10">
-                      {t('customers.form.fullName')}
+                      {t('Full Name')}
                     </label>
                     <input
-                      {...register('name', { required: t('customers.form.nameRequired') })}
+                      {...register('name', { required: t('Name is required') })}
                       type="text"
                       className={`input-field ${errors.name ? 'border-b-error' : ''}`}
-                      placeholder={t('customers.form.namePlaceholder')}
+                      placeholder={t('e.g. Abdullah Ahmed / عبدالله أحمد')}
                     />
                     {errors.name && (
                       <p className="text-error text-xs mt-1 ml-4">{errors.name.message}</p>
@@ -353,26 +353,26 @@ export default function CustomersPage() {
                   {/* Phone */}
                   <div className="relative">
                     <label className="absolute -top-2 left-4 px-1 bg-surface-container-lowest text-xs font-semibold text-secondary uppercase tracking-widest z-10">
-                      {t('customers.form.phoneNumber')}
+                      {t('Phone Number')}
                     </label>
                     <input
                       {...register('phone')}
                       type="tel"
                       className="input-field"
-                      placeholder={t('customers.form.phonePlaceholder')}
+                      placeholder={t('+971 -- --- ----')}
                     />
                   </div>
 
                   {/* Notes */}
                   <div className="relative">
                     <label className="absolute -top-2 left-4 px-1 bg-surface-container-lowest text-xs font-semibold text-secondary uppercase tracking-widest z-10">
-                      {t('customers.form.tailoringNotes')}
+                      {t('Tailoring Notes & Preferences')}
                     </label>
                     <textarea
                       {...register('notes')}
                       rows={5}
                       className="input-field h-auto py-4 pt-6 resize-none"
-                      placeholder={t('customers.form.notesPlaceholder')}
+                      placeholder={t('Fabric choices, measurement quirks, style preferences...')}
                     />
                   </div>
 
@@ -383,7 +383,7 @@ export default function CustomersPage() {
                       onClick={closeModal}
                       className="px-8 py-4 text-sm font-semibold text-secondary hover:text-on-surface transition-colors"
                     >
-                      {t('common.cancel')}
+                      {t('Cancel')}
                     </button>
                     <button
                       type="submit"
@@ -391,10 +391,10 @@ export default function CustomersPage() {
                       className="btn-primary px-10 py-4 text-sm shadow-xl active:scale-95 transition-all disabled:opacity-50"
                     >
                       {isSubmitting
-                        ? t('common.saving')
+                        ? t('Saving...')
                         : editingCustomer
-                          ? t('customers.form.updateProfile')
-                          : t('customers.form.createProfile')}
+                          ? t('Update Profile')
+                          : t('Create Profile')}
                     </button>
                   </div>
                 </form>

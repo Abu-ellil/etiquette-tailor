@@ -35,10 +35,10 @@ export default function LoginPage({ onLogin }: LoginProps) {
       if (session) {
         onLogin(session);
       } else {
-        setError(t('login.error.invalidCredentials'));
+        setError(t('Invalid username or password'));
       }
     } catch {
-      setError(t('login.error.loginFailed'));
+      setError(t('Login failed. Please try again.'));
     }
   };
 
@@ -79,10 +79,10 @@ export default function LoginPage({ onLogin }: LoginProps) {
             </span>
           </div>
           <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface mb-2">
-            {t('login.brandName')}
+            {t('Etiquette Tailor')}
           </h1>
           <p className="text-secondary text-sm tracking-wide">
-            {t('login.brandTagline')}
+            {t('Bespoke Studio')}
           </p>
         </div>
 
@@ -101,18 +101,18 @@ export default function LoginPage({ onLogin }: LoginProps) {
                 className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
                 htmlFor="username"
               >
-                {t('login.username')}
+                {t('Username')}
               </label>
               <div className="relative flex items-center">
                 <span className="material-symbols-outlined absolute left-4 text-outline">
                   person
                 </span>
                 <input
-                  {...register('username', { required: t('login.usernameRequired') })}
+                  {...register('username', { required: t('Username is required') })}
                   id="username"
                   type="text"
                   className="input-field pl-12"
-                  placeholder={t('login.usernamePlaceholder')}
+                  placeholder={t('Workshop ID or Email')}
                   autoComplete="username"
                 />
               </div>
@@ -125,7 +125,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
                   className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary"
                   htmlFor="password"
                 >
-                  {t('login.password')}
+                  {t('Password')}
                 </label>
               </div>
               <div className="relative flex items-center">
@@ -133,11 +133,11 @@ export default function LoginPage({ onLogin }: LoginProps) {
                   lock
                 </span>
                 <input
-                  {...register('password', { required: t('login.passwordRequired') })}
+                  {...register('password', { required: t('Password is required') })}
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   className="input-field pl-12 pr-12"
-                  placeholder={t('login.passwordPlaceholder')}
+                  placeholder={t('Enter your password')}
                   autoComplete="current-password"
                 />
                 <button
@@ -160,7 +160,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
                 disabled={isSubmitting}
                 className="btn-primary w-full h-14 rounded-lg font-headline font-bold text-lg flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {isSubmitting ? t('login.signingIn') : t('login.signIn')}
+                {isSubmitting ? t('Signing in...') : t('Sign In')}
                 {!isSubmitting && (
                   <span className="material-symbols-outlined">arrow_forward</span>
                 )}
@@ -174,12 +174,12 @@ export default function LoginPage({ onLogin }: LoginProps) {
           <div className="flex items-center justify-center gap-6 mb-4">
             <span className="h-px w-8 bg-outline-variant/40" />
             <p className="text-[10px] font-bold uppercase tracking-widest text-outline/60">
-              {t('login.securityStandards')}
+              {t('Bespoke Security Standards')}
             </p>
             <span className="h-px w-8 bg-outline-variant/40" />
           </div>
           <p className="text-[11px] text-secondary/60 font-medium">
-            {t('login.copyright')}
+            {t('© 2026 Etiquette Tailor System. All rights reserved.')}
           </p>
         </footer>
       </main>
