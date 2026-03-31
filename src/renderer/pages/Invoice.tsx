@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
+import { useTranslation } from '../contexts/I18nContext';
 
 interface OrderItem {
   piece_type: string;
@@ -61,6 +62,7 @@ function formatCurrency(amount: number): string {
 export default function InvoicePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const printRef = useRef<HTMLDivElement>(null);
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,7 +110,7 @@ export default function InvoicePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-secondary">Loading invoice...</p>
+        <p className="text-secondary">{t('invoice.loading')}</p>
       </div>
     );
   }
@@ -117,9 +119,9 @@ export default function InvoicePage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <span className="material-symbols-outlined text-5xl text-error">receipt_long</span>
-        <p className="text-secondary">Order not found.</p>
+        <p className="text-secondary">{t('invoice.orderNotFound')}</p>
         <button onClick={() => navigate(-1)} className="btn-primary text-sm">
-          Go Back
+          {t('invoice.goBack')}
         </button>
       </div>
     );
@@ -136,14 +138,14 @@ export default function InvoicePage() {
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h2 className="font-headline text-xl font-bold">Preview Invoice</h2>
+          <h2 className="font-headline text-xl font-bold">{t('invoice.previewInvoice')}</h2>
         </div>
         <button
           className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-md hover:opacity-90 transition-opacity"
           onClick={() => handlePrint()}
         >
           <span className="material-symbols-outlined text-sm">print</span>
-          <span className="text-sm font-semibold">Print Receipt</span>
+          <span className="text-sm font-semibold">{t('invoice.printReceipt')}</span>
         </button>
       </div>
 
@@ -164,17 +166,17 @@ export default function InvoicePage() {
               </span>
             </div>
             <h1 className="font-headline text-2xl font-extrabold tracking-tighter uppercase">
-              Etiquette Tailor
+              {t('invoice.brandName')}
             </h1>
             <p className="text-[10px] tracking-[0.2em] text-secondary font-semibold uppercase">
-              Premium Bespoke Atelier
+              {t('invoice.brandTagline')}
             </p>
           </div>
 
           {/* Order Identifier */}
           <div className="border-y border-dashed border-outline-variant py-4 mb-6 flex flex-col items-center gap-1">
             <div className="text-[10px] text-secondary font-bold uppercase tracking-widest">
-              Order Identifier
+              {t('invoice.orderIdentifier')}
             </div>
             <div className="text-3xl font-headline font-black text-primary tracking-tighter">
               #{order.order_number}
@@ -185,16 +187,16 @@ export default function InvoicePage() {
           <div className="space-y-4 mb-8">
             <div className="flex justify-between items-start border-b border-surface-container pb-2">
               <div className="text-xs">
-                <p className="text-secondary font-bold uppercase text-[9px]">Receipt Date</p>
+                <p className="text-secondary font-bold uppercase text-[9px]">{t('invoice.receiptDate')}</p>
                 <p className="font-semibold">{formatDate(order.created_at)}</p>
               </div>
               <div className="text-xs text-right">
-                <p className="text-secondary font-bold uppercase text-[9px]">Delivery Date</p>
+                <p className="text-secondary font-bold uppercase text-[9px]">{t('invoice.deliveryDate')}</p>
                 <p className="font-semibold text-primary">{formatDate(order.due_date)}</p>
               </div>
             </div>
             <div className="pt-2">
-              <p className="text-secondary font-bold uppercase text-[9px] mb-1">Customer Details</p>
+              <p className="text-secondary font-bold uppercase text-[9px] mb-1">{t('invoice.customerDetails')}</p>
               <div className="flex justify-between items-center">
                 <span className="font-bold text-sm">{order.customer_name}</span>
                 {order.customer_name_ar && (
@@ -212,8 +214,8 @@ export default function InvoicePage() {
           {/* Items Table */}
           <div className="mb-8">
             <div className="flex justify-between text-[10px] font-black uppercase text-secondary mb-2 border-b-2 border-on-surface pb-1">
-              <span>Description / الوصف</span>
-              <span>Amount</span>
+              <span>{t('invoice.description')}</span>
+              <span>{t('invoice.amount')}</span>
             </div>
             <div className="space-y-3">
               {order.items.map((item, idx) => (
@@ -241,23 +243,23 @@ export default function InvoicePage() {
           {/* Financials */}
           <div className="bg-surface-container-low p-4 space-y-2">
             <div className="flex justify-between text-xs">
-              <span className="text-secondary font-medium">Subtotal / المجموع</span>
+              <span className="text-secondary font-medium">{t('invoice.subtotal')}</span>
               <span className="font-semibold">{formatCurrency(order.subtotal)}</span>
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-xs">
-                <span className="text-secondary font-medium">Discount / خصم</span>
+                <span className="text-secondary font-medium">{t('invoice.discount')}</span>
                 <span className="font-semibold text-error">-{formatCurrency(order.discount)}</span>
               </div>
             )}
             <div className="flex justify-between text-xs text-primary">
-              <span className="font-bold uppercase tracking-tighter">Amount Paid / المدفوع</span>
+              <span className="font-bold uppercase tracking-tighter">{t('invoice.amountPaid')}</span>
               <span className="font-black">{formatCurrency(order.paid)}</span>
             </div>
             <div className="pt-3 mt-2 border-t-2 border-on-surface flex justify-between items-center">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-secondary">
-                  Balance Due
+                  {t('invoice.balanceDue')}
                 </p>
                 <p
                   className="text-[10px] font-bold"
@@ -279,13 +281,13 @@ export default function InvoicePage() {
               <span className="material-symbols-outlined text-4xl text-secondary">qr_code_2</span>
             </div>
             <p className="text-[8px] mt-2 text-secondary uppercase font-bold tracking-widest">
-              Scan to track order status
+              {t('invoice.scanToTrack')}
             </p>
           </div>
 
           {/* Footer */}
           <footer className="text-center pt-6 border-t border-dashed border-outline-variant">
-            <p className="font-headline font-bold text-sm mb-1 italic">Thank You for your trust!</p>
+            <p className="font-headline font-bold text-sm mb-1 italic">{t('invoice.thankYou')}</p>
             <p
               className="font-bold text-sm mb-4"
               style={{ fontFamily: "'Noto Sans Arabic', sans-serif", direction: 'rtl' }}
