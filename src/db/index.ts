@@ -6,3 +6,4 @@ export { getAllWorkers, getWorker, createWorker, updateWorker as updateWorkerUse
 export { authenticateUser, getAllUsers, getUser, getUserByUsername, createUser, updateUser, deactivateUser } from './auth';
 export { getSetting, getAllSettings, setSetting, setSettings, updateBranch, createBranch } from './settings';
 export { getPieceTypes } from './pieceTypes';
+export { createNotification, getNotificationsForUser, getUnreadCount, markAsRead, markAllAsRead, softDeleteNotification, generateOverdueNotifications } from './notifications';

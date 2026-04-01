@@ -70,6 +70,15 @@ export interface ElectronAPI {
   pieceTypes: {
     getAll: () => Promise<any[]>;
   };
+
+  notifications: {
+    getForUser: (userId: number, role: string, limit?: number) => Promise<any[]>;
+    getUnreadCount: (userId: number, role: string) => Promise<number>;
+    markAsRead: (notificationId: number) => Promise<void>;
+    markAllAsRead: (userId: number, role: string) => Promise<void>;
+    softDelete: (notificationId: number) => Promise<void>;
+    generateOverdue: () => Promise<number>;
+  };
 }
 
 declare global {

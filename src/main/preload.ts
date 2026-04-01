@@ -93,6 +93,15 @@ export interface ElectronAPI {
     lastDate: () => Promise<string | null>;
     dbSize: () => Promise<{ usedBytes: number; label: string }>;
   };
+
+  notifications: {
+    getForUser: (userId: number, role: string, limit?: number) => Promise<any[]>;
+    getUnreadCount: (userId: number, role: string) => Promise<number>;
+    markAsRead: (notificationId: number) => Promise<void>;
+    markAllAsRead: (userId: number, role: string) => Promise<void>;
+    softDelete: (notificationId: number) => Promise<void>;
+    generateOverdue: () => Promise<number>;
+  };
 }
 
 const api: ElectronAPI = {
@@ -187,6 +196,15 @@ const api: ElectronAPI = {
     list: () => ipcRenderer.invoke('backup:list'),
     lastDate: () => ipcRenderer.invoke('backup:lastDate'),
     dbSize: () => ipcRenderer.invoke('backup:dbSize'),
+  },
+
+  notifications: {
+    getForUser: (userId, role, limit?) => ipcRenderer.invoke('notifications:getForUser', userId, role, limit),
+    getUnreadCount: (userId, role) => ipcRenderer.invoke('notifications:getUnreadCount', userId, role),
+    markAsRead: (notificationId) => ipcRenderer.invoke('notifications:markAsRead', notificationId),
+    markAllAsRead: (userId, role) => ipcRenderer.invoke('notifications:markAllAsRead', userId, role),
+    softDelete: (notificationId) => ipcRenderer.invoke('notifications:softDelete', notificationId),
+    generateOverdue: () => ipcRenderer.invoke('notifications:generateOverdue'),
   },
 };
 

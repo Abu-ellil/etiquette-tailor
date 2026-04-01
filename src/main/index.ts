@@ -53,7 +53,17 @@ import {
   getOrderPayments,
   deleteOrderPayment,
 } from '../db';
+import {
+  createNotification,
+  getNotificationsForUser,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+  softDeleteNotification,
+  generateOverdueNotifications,
+} from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
+import db from '../db/schema';
 
 let currentSession: {
   userId: number;
@@ -207,7 +217,17 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('orders:create', async (_event, data: any, measurements?: any) => {
-    return createOrder(data, measurements);
+    const result = createOrder(data, measurements);
+    try {
+      const orderId = typeof result === 'object' ? result.id : result;
+      const order = getOrder(orderId);
+      if (order) {
+        const msg = `Order ${order.order_number} created for ${data.customer_name || 'customer'}`;
+        createNotification({ type: 'order_created', title: 'New Order', message: msg, order_id: orderId, target_role: 'admin' });
+        createNotification({ type: 'order_created', title: 'New Order', message: msg, order_id: orderId, target_role: 'manager' });
+      }
+    } catch (e) { console.error('Notification error:', e); }
+    return result;
   });
 
   ipcMain.handle('orders:update', async (_event, id: number, data: any) => {
@@ -215,7 +235,22 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('orders:updateStatus', async (_event, id: number, status: string) => {
-    return updateOrderStatus(id, status);
+    const result = updateOrderStatus(id, status);
+    try {
+      const order = getOrder(id);
+      if (order) {
+        const msg = `Order ${order.order_number} is now "${status}"`;
+        createNotification({ type: 'order_status_changed', title: 'Order Status Updated', message: msg, order_id: id, target_role: 'admin' });
+        createNotification({ type: 'order_status_changed', title: 'Order Status Updated', message: msg, order_id: id, target_role: 'manager' });
+        const tasks = getOrderTasks(id);
+        for (const task of tasks) {
+          if (task.assigned_to) {
+            createNotification({ type: 'order_status_changed', title: 'Order Status Changed', message: msg, order_id: id, task_id: task.id, target_user_id: task.assigned_to });
+          }
+        }
+      }
+    } catch (e) { console.error('Notification error:', e); }
+    return result;
   });
 
   ipcMain.handle('orders:getMeasurements', async (_event, orderId: number) => {
@@ -235,7 +270,19 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('orders:updateTaskStatus', async (_event, taskId: number, status: string) => {
-    return updateTaskStatus(taskId, status);
+    const result = updateTaskStatus(taskId, status);
+    try {
+      const tasks = db.prepare('SELECT * FROM order_tasks WHERE id = ?').get(taskId) as any;
+      if (tasks) {
+        const order = getOrder(tasks.order_id);
+        if (order) {
+          const msg = `${tasks.task_type} task on order ${order.order_number} is now "${status}"`;
+          createNotification({ type: 'task_status_changed', title: 'Task Updated', message: msg, order_id: tasks.order_id, task_id: taskId, target_role: 'admin' });
+          createNotification({ type: 'task_status_changed', title: 'Task Updated', message: msg, order_id: tasks.order_id, task_id: taskId, target_role: 'manager' });
+        }
+      }
+    } catch (e) { console.error('Notification error:', e); }
+    return result;
   });
 
   ipcMain.handle('orders:reassignTask', async (_event, taskId: number, newUserId: number, wageType: string, wageRate: number, wageAmount: number) => {
@@ -271,7 +318,16 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('orders:addPayment', async (_event, orderId: number, amount: number, method: 'cash' | 'card', note: string | null) => {
-    return addOrderPayment(orderId, amount, method, note, currentSession?.userId ?? null);
+    const result = addOrderPayment(orderId, amount, method, note, currentSession?.userId ?? null);
+    try {
+      const order = getOrder(orderId);
+      if (order) {
+        const msg = `${amount} QAR ${method} payment on order ${order.order_number}`;
+        createNotification({ type: 'payment_received', title: 'Payment Received', message: msg, order_id: orderId, target_role: 'admin' });
+        createNotification({ type: 'payment_received', title: 'Payment Received', message: msg, order_id: orderId, target_role: 'manager' });
+      }
+    } catch (e) { console.error('Notification error:', e); }
+    return result;
   });
 
   ipcMain.handle('orders:getPayments', async (_event, orderId: number) => {
@@ -326,6 +382,31 @@ function registerIpcHandlers() {
   // Piece types
   ipcMain.handle('pieceTypes:getAll', async () => {
     return getPieceTypes();
+  });
+
+  // Notifications
+  ipcMain.handle('notifications:getForUser', async (_event, userId: number, role: string, limit?: number) => {
+    return getNotificationsForUser(userId, role, limit || 20);
+  });
+
+  ipcMain.handle('notifications:getUnreadCount', async (_event, userId: number, role: string) => {
+    return getUnreadCount(userId, role);
+  });
+
+  ipcMain.handle('notifications:markAsRead', async (_event, notificationId: number) => {
+    return markAsRead(notificationId);
+  });
+
+  ipcMain.handle('notifications:markAllAsRead', async (_event, userId: number, role: string) => {
+    return markAllAsRead(userId, role);
+  });
+
+  ipcMain.handle('notifications:softDelete', async (_event, notificationId: number) => {
+    return softDeleteNotification(notificationId);
+  });
+
+  ipcMain.handle('notifications:generateOverdue', async () => {
+    return generateOverdueNotifications();
   });
   ipcMain.handle('window:maximize', () => {
     if (mainWindow?.isMaximized()) {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import TitleBar from './TitleBar';
+import NotificationBell from './NotificationBell';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../contexts/I18nContext';
 
@@ -177,6 +178,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
               style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             >
               <span className="text-sm text-on-surface-variant font-medium">{session.name}</span>
+              <NotificationBell session={session} />
               <button
                 onClick={() => setTheme(isDark ? 'light' : 'dark')}
                 className="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"

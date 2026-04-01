@@ -121,6 +121,10 @@ export default function DashboardPage() {
           const tasks = await window.electronAPI.workers.getWorkerTasks(session.userId);
           setWorkerTasks(tasks || []);
         } else {
+          try {
+            await window.electronAPI.notifications.generateOverdue();
+          } catch { /* non-critical */ }
+
           const branchFilter = isManager ? session.branch_id : undefined;
           const [statsData, ordersData] = await Promise.all([
             window.electronAPI.orders.getStats(branchFilter),

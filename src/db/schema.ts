@@ -182,6 +182,27 @@ export function initializeSchema() {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL CHECK(type IN (
+        'order_created','order_status_changed','order_overdue','payment_received','task_status_changed'
+      )),
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      order_id INTEGER REFERENCES orders(id),
+      task_id INTEGER REFERENCES order_tasks(id),
+      target_user_id INTEGER REFERENCES users(id),
+      target_role TEXT CHECK(target_role IN ('admin','manager','reception','worker',NULL)),
+      is_read INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(target_user_id, is_read, is_deleted, created_at DESC)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_role ON notifications(target_role, is_read, is_deleted, created_at DESC)`);
+
   const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get() as { count: number };
   if (branchCount.count === 0) {
     seedDatabase();

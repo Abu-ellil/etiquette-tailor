@@ -574,4 +574,17 @@ export default {
 
   // Password placeholder
   'e.g. Abdullah Ahmed / عبدالله أحمد': 'مثال: عبدالله أحمد',
+
+  // Notifications
+  'Notifications': 'الإشعارات',
+  'Mark all as read': 'تعليم الكل كمقروء',
+  'No notifications': 'لا توجد إشعارات',
+  'New Order': 'طلب جديد',
+  'Order Status Updated': 'تحديث حالة الطلب',
+  'Order Status Changed': 'تغيير حالة الطلب',
+  'Task Updated': 'تحديث المهمة',
+  'Payment Received': 'تم استلام الدفعة',
+  'Overdue Order': 'طلب متأخر',
+  'just now': 'الآن',
+  'ago': 'منذ',
 } as const;
