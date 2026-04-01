@@ -61,7 +61,7 @@ const ROLE_LABELS: Record<string, string> = {
   manager: 'Manager',
   reception: 'Reception',
   worker: 'Worker',
-};
+} as const;
 
 const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
   admin: { bg: 'bg-primary-fixed', text: 'text-on-primary-fixed' },
@@ -458,7 +458,7 @@ export default function SettingsPage() {
                           <span className="font-bold text-on-surface">{user.name}</span>
                           {user.role === 'worker' && user.worker_type && (
                             <span className="text-xs text-secondary ml-2">
-                              ({user.worker_type === 'master_cutter' ? 'Master Cutter' : user.worker_type === 'tailor' ? 'Tailor' : user.worker_type})
+                              ({user.worker_type === 'master_cutter' ? t('Master Cutter') : user.worker_type === 'tailor' ? t('Tailor') : user.worker_type})
                             </span>
                           )}
                         </td>
@@ -467,7 +467,7 @@ export default function SettingsPage() {
                           <span
                             className={`px-3 py-1 ${roleColor.bg} ${roleColor.text} text-[11px] font-bold uppercase rounded-full`}
                           >
-                            {ROLE_LABELS[user.role] || user.role}
+                            {t(ROLE_LABELS[user.role] || user.role)}
                           </span>
                         </td>
                         <td className="text-sm">{branch?.name_en || '--'}</td>
@@ -675,10 +675,10 @@ export default function SettingsPage() {
                     className="input-field pl-12 appearance-none"
                     defaultValue={settings.currency || 'QAR'}
                   >
-                    <option value="QAR">QAR - Qatari Riyal</option>
-                    <option value="SAR">SAR - Saudi Riyal</option>
-                    <option value="AED">AED - UAE Dirham</option>
-                    <option value="USD">USD - US Dollar</option>
+                    <option value="QAR">{t('QAR - Qatari Riyal')}</option>
+                    <option value="SAR">{t('SAR - Saudi Riyal')}</option>
+                    <option value="AED">{t('AED - UAE Dirham')}</option>
+                    <option value="USD">{t('USD - US Dollar')}</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                     expand_more
@@ -714,7 +714,7 @@ export default function SettingsPage() {
                 rows={3}
                 className="input-field resize-none"
                 defaultValue={settings.receipt_footer || ''}
-                placeholder="Text shown at the bottom of printed invoices"
+                placeholder={t('Text shown at the bottom of printed invoices')}
               />
             </div>
           </div>
@@ -875,10 +875,10 @@ export default function SettingsPage() {
                             {...register('role')}
                             className="input-field pl-12 appearance-none"
                           >
-                            <option value="admin">Admin</option>
-                            <option value="manager">Manager</option>
-                            <option value="reception">Reception</option>
-                            <option value="worker">Worker</option>
+                            <option value="admin">{t('Admin')}</option>
+                            <option value="manager">{t('Manager')}</option>
+                            <option value="reception">{t('Reception')}</option>
+                            <option value="worker">{t('Worker')}</option>
                           </select>
                           <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                             expand_more

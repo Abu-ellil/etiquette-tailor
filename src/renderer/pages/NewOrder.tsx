@@ -53,11 +53,11 @@ interface PieceType {
 /*  Category labels                                                    */
 /* ------------------------------------------------------------------ */
 const CATEGORY_LABELS: Record<string, string> = {
-  custom_wear: 'Custom Wear — التفصيل النسائي',
-  abaya: 'Abaya — العبايات',
-  uniform: 'Uniforms — اليونفورم',
-  alteration: 'Alterations — التعديلات',
-  special: 'Special Orders — أعمال خاصة',
+  custom_wear: 'Custom Wear',
+  abaya: 'Abaya',
+  uniform: 'Uniforms',
+  alteration: 'Alterations',
+  special: 'Special Orders',
 };
 
 /* ------------------------------------------------------------------ */
@@ -354,7 +354,7 @@ export default function NewOrderPage() {
                           : 'text-secondary font-semibold hover:bg-surface-container-high'
                       }`}
                     >
-                      {method}
+                      {t(method)}
                     </button>
                   ))}
                 </div>
@@ -502,7 +502,7 @@ export default function NewOrderPage() {
                   {(() => {
                     const categories = [...new Set(pieceTypes.map((pt) => pt.category))];
                     return categories.map((cat) => (
-                      <optgroup key={cat} label={CATEGORY_LABELS[cat] || cat}>
+                      <optgroup key={cat} label={`${CATEGORY_LABELS[cat] || cat} — ${t(CATEGORY_LABELS[cat] || cat)}`}>
                         {pieceTypes
                           .filter((pt) => pt.category === cat)
                           .map((pt) => (
@@ -597,7 +597,7 @@ export default function NewOrderPage() {
                     type="number"
                     step="0.01"
                     className="input-field"
-                    placeholder={wageType === 'percentage' ? 'e.g. 18' : 'e.g. 50.00'}
+                    placeholder={wageType === 'percentage' ? t('e.g. 18') : t('e.g. 50.00')}
                     {...register('wage_rate', { valueAsNumber: true })}
                   />
                   <p className="text-[11px] text-outline ml-1">
@@ -618,7 +618,7 @@ export default function NewOrderPage() {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{' '}
-                      QAR
+                      {t('QAR')}
                     </span>
                     {wageType === 'percentage' && wageRate > 0 && (
                       <span className="text-xs text-outline italic">

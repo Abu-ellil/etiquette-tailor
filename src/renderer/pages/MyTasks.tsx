@@ -136,7 +136,7 @@ export default function MyTasksPage() {
                   <div className="mt-3 bg-surface rounded-lg p-4 grid grid-cols-3 gap-3 text-sm">
                     {['chest', 'waist', 'hips', 'length', 'sleeve', 'shoulder'].map((f) => (
                       <div key={f}>
-                        <span className="text-secondary text-xs uppercase">{f}</span>
+                        <span className="text-secondary text-xs uppercase">{t(f)}</span>
                         <span className="block font-semibold">{measurements[task.order_id][f] || '--'}</span>
                       </div>
                     ))}

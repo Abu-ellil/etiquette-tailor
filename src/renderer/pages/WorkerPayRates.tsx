@@ -393,7 +393,7 @@ export default function WorkerPayRatesPage() {
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-2.5 text-secondary text-xs font-medium">
-                                  {rate.wage_type === 'percentage' ? '%' : 'QAR'}
+                                  {rate.wage_type === 'percentage' ? '%' : t('QAR')}
                                 </span>
                               </div>
                             </div>

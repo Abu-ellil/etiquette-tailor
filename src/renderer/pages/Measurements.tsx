@@ -314,7 +314,7 @@ export default function MeasurementsPage() {
                         {...register(field.key)}
                         className="w-full h-14 bg-surface-container-high border-none border-b-2 border-transparent focus:border-primary focus:outline-none rounded-t-lg px-4 text-lg transition-colors"
                         type="text"
-                        placeholder='e.g. 38.5"'
+                        placeholder={t('e.g. 38.5"')}
                       />
                     </div>
                   ))}
@@ -337,7 +337,7 @@ export default function MeasurementsPage() {
                         {...register(field.key)}
                         className="w-full h-14 bg-surface-container-high border-none border-b-2 border-transparent focus:border-primary focus:outline-none rounded-t-lg px-4 text-lg transition-colors"
                         type="text"
-                        placeholder='e.g. 24.5"'
+                        placeholder={t('e.g. 24.5"')}
                       />
                     </div>
                   ))}
@@ -433,7 +433,7 @@ export default function MeasurementsPage() {
                       {customerProfile.customer.name}
                     </h4>
                     <p className="text-sm text-secondary">
-                      ID #{String(customerProfile.customer.id).padStart(4, '0')}
+                      {t('ID #')}{String(customerProfile.customer.id).padStart(4, '0')}
                     </p>
                   </div>
 

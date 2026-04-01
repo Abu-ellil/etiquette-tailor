@@ -648,7 +648,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
           <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('Total Profit')}</span>
           <div>
             <span className="text-3xl font-headline font-extrabold text-on-surface">{(account?.total_earnings || 0).toLocaleString()}</span>
-            <span className="text-sm text-secondary ml-1">QAR</span>
+            <span className="text-sm text-secondary ml-1">{t('QAR')}</span>
           </div>
           <p className="text-xs text-secondary">{account?.task_count || 0} {t('completed tasks')}</p>
         </div>
@@ -656,7 +656,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
           <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('Total Paid')}</span>
           <div>
             <span className="text-3xl font-headline font-extrabold text-on-surface">{(account?.total_paid || 0).toLocaleString()}</span>
-            <span className="text-sm text-secondary ml-1">QAR</span>
+            <span className="text-sm text-secondary ml-1">{t('QAR')}</span>
           </div>
           <p className="text-xs text-secondary">{t('Payments received')}</p>
         </div>
@@ -675,7 +675,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
                 }`}>{(account?.balance || 0).toLocaleString()}</span>
                 <span className={`text-sm ml-1 ${
                   hasBalance ? 'text-on-tertiary-fixed-variant' : 'text-secondary'
-                }`}>QAR</span>
+                }`}>{t('QAR')}</span>
               </div>
               <p className="text-xs text-on-tertiary-fixed-variant">{t('Amount owed to you')}</p>
             </div>
@@ -716,16 +716,16 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-secondary">{t('Piece Earnings')}</span>
-                <span className="font-semibold">{(earnings?.piece_earnings || 0).toLocaleString()} QAR</span>
+                <span className="font-semibold">{(earnings?.piece_earnings || 0).toLocaleString()} {t('QAR')}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-secondary">{t('Base Salary')}</span>
-                <span className="font-semibold">{(earnings?.fixed_salary || 0).toLocaleString()} QAR</span>
+                <span className="font-semibold">{(earnings?.fixed_salary || 0).toLocaleString()} {t('QAR')}</span>
               </div>
               <div className="h-px bg-outline-variant/20" />
               <div className="flex justify-between">
                 <span className="font-bold">{t('Total')}</span>
-                <span className="font-bold text-primary text-lg">{(earnings?.total_earnings || 0).toLocaleString()} QAR</span>
+                <span className="font-bold text-primary text-lg">{(earnings?.total_earnings || 0).toLocaleString()} {t('QAR')}</span>
               </div>
             </div>
             <p className="text-xs text-secondary">{earnings?.task_count || 0} {t('completed tasks')}</p>

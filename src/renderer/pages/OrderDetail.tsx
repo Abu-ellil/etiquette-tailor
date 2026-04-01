@@ -424,7 +424,7 @@ export default function OrderDetailPage() {
                   </div>
                   <div className="flex justify-between items-center text-xs text-secondary">
                     <span>{t('Worker:')}: {task.worker_name || t('Unassigned')}</span>
-                    {!isWorker && <span>{t('Wage:')} {Number(task.wage_amount || 0).toFixed(2)} QAR</span>}
+                    {!isWorker && <span>{t('Wage:')} {Number(task.wage_amount || 0).toFixed(2)} {t('QAR')}</span>}
                   </div>
                   {task.started_at && <div className="text-xs text-secondary">{t('Started:')} {new Date(task.started_at).toLocaleString()}</div>}
                   {task.completed_at && <div className="text-xs text-secondary">{t('Completed:')} {new Date(task.completed_at).toLocaleString()}</div>}
@@ -480,7 +480,7 @@ export default function OrderDetailPage() {
               <div className="px-6 py-6">
                 <h2 className="text-xl font-headline font-bold mb-2">{t('Record Payment')}</h2>
                 <p className="text-sm text-secondary mb-5">
-                  {t('Balance due')}: <span className="font-bold text-error">{balance.toFixed(2)} QAR</span>
+                  {t('Balance due')}: <span className="font-bold text-error">{balance.toFixed(2)} {t('QAR')}</span>
                 </p>
                 <div className="space-y-4">
                   <div>
