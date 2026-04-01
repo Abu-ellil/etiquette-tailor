@@ -39,7 +39,7 @@ interface OrderStats {
 /* ------------------------------------------------------------------ */
 /*  Status helpers                                                     */
 /* ------------------------------------------------------------------ */
-type FilterTab = 'all' | 'in_progress' | 'ready' | 'delivered' | 'late';
+type FilterTab = 'all' | 'in_progress' | 'ready' | 'delivered' | 'late' | 'ready_unpaid';
 
 const DB_STATUSES_FOR_PROGRESS = ['intake', 'cutting', 'sewing'];
 
@@ -83,15 +83,18 @@ const NEXT_STATUS: Record<string, string[]> = {
 function StatusDropdown({
   current,
   orderId,
+  orderBalance,
   onUpdated,
   t,
 }: {
   current: string;
   orderId: number;
+  orderBalance: number;
   onUpdated: () => void;
-  t: (key: string) => string;
+  t: (key: string, params?: any) => string;
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const key = current === 'inProgress' ? 'In_Progress'
@@ -110,9 +113,19 @@ function StatusDropdown({
   }, []);
 
   async function handleSelect(dbStatus: string) {
-    await window.electronAPI.orders.updateStatus(orderId, dbStatus);
-    setOpen(false);
-    onUpdated();
+    if (dbStatus === 'delivered' && orderBalance > 0.01) {
+      setError(t('Cannot deliver: balance of {balance} QAR outstanding', { balance: orderBalance.toFixed(2) }));
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+    try {
+      await window.electronAPI.orders.updateStatus(orderId, dbStatus);
+      setOpen(false);
+      onUpdated();
+    } catch (err: any) {
+      setError(err?.message || t('Failed to update status'));
+      setTimeout(() => setError(null), 4000);
+    }
   }
 
   return (
@@ -121,20 +134,36 @@ function StatusDropdown({
         onClick={() => setOpen((o) => !o)}
         className={`${statusChipClass(current)} cursor-pointer`}
       >
-        {t(`orders.status.${current}`)}
+        {t(`status.${current}`)}
         <span className="material-symbols-outlined text-xs ml-1 align-middle">expand_more</span>
       </button>
+      {error && (
+        <div className="absolute z-50 mt-1 left-0 bg-error text-on-primary text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+          {error}
+        </div>
+      )}
       {open && next.length > 0 && (
         <div className="absolute z-50 mt-1 left-0 bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/30 py-1 min-w-[140px]">
-          {next.map((s) => (
-            <button
-              key={s}
-              onClick={() => handleSelect(s === 'ready' ? 'ready' : 'delivered')}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-high transition-colors"
-            >
-              {t('orders.markAs')} {t(`orders.status.${s === 'ready' ? 'ready' : 'delivered'}`)}
-            </button>
-          ))}
+          {next.map((s) => {
+            const targetStatus = s === 'ready' ? 'ready' : 'delivered';
+            const isBlocked = targetStatus === 'delivered' && orderBalance > 0.01;
+            return (
+              <button
+                key={s}
+                onClick={() => handleSelect(targetStatus)}
+                disabled={isBlocked}
+                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                  isBlocked
+                    ? 'text-outline cursor-not-allowed'
+                    : 'hover:bg-surface-container-high'
+                }`}
+                title={isBlocked ? t('Order must be fully paid before delivery') : undefined}
+              >
+                {t('Mark as')} {t(`status.${targetStatus}`)}
+                {isBlocked && <span className="ml-1 text-error text-xs">({t('Unpaid')})</span>}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -200,19 +229,24 @@ export default function OrdersPage() {
   /* Filter by tab */
   const filteredOrders = orders.filter((o) => {
     if (activeFilter === 'all') return true;
+    if (activeFilter === 'ready_unpaid') return o.status === 'ready' && (o.price - o.paid) > 0.01;
     const statusKey = displayStatusKey(o);
     if (activeFilter === 'in_progress') return DB_STATUSES_FOR_PROGRESS.includes(o.status);
     if (activeFilter === 'late') return statusKey === 'late';
     return statusKey === activeFilter;
   });
 
+  /* Count ready & unpaid */
+  const readyUnpaidCount = orders.filter((o) => o.status === 'ready' && (o.price - o.paid) > 0.01).length;
+
   /* Stats badges */
   const tabs: { key: FilterTab; label: string; count: number }[] = [
-    { key: 'all', label: t('orders.tab.all'), count: stats?.total ?? 0 },
-    { key: 'in_progress', label: t('orders.tab.inProgress'), count: stats?.in_progress ?? 0 },
-    { key: 'ready', label: t('orders.tab.ready'), count: stats?.ready ?? 0 },
-    { key: 'delivered', label: t('orders.tab.delivered'), count: stats?.delivered ?? 0 },
-    { key: 'late', label: t('orders.tab.late'), count: stats?.overdue ?? 0 },
+    { key: 'all', label: t('All'), count: stats?.total ?? 0 },
+    { key: 'in_progress', label: t('In Progress'), count: stats?.in_progress ?? 0 },
+    { key: 'ready', label: t('Ready'), count: stats?.ready ?? 0 },
+    { key: 'ready_unpaid', label: t('Ready & Unpaid'), count: readyUnpaidCount },
+    { key: 'delivered', label: t('Delivered'), count: stats?.delivered ?? 0 },
+    { key: 'late', label: t('Late'), count: stats?.overdue ?? 0 },
   ];
 
   /* Helpers */
@@ -236,9 +270,9 @@ export default function OrdersPage() {
       <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h2 className="text-4xl font-bold tracking-tight text-on-surface mb-2 font-headline">
-            {t('orders.pageTitle')}
+            {t('Orders Registry')}
           </h2>
-          <p className="text-secondary text-lg">{t('orders.pageSubtitle')}</p>
+          <p className="text-secondary text-lg">{t('Manage bespoke commissions and production status.')}</p>
         </div>
 
         {/* Filters cluster */}
@@ -250,7 +284,7 @@ export default function OrdersPage() {
             </span>
             <input
               type="text"
-              placeholder={t('orders.searchPlaceholder')}
+              placeholder={t('Search orders...')}
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="h-10 pl-10 pr-4 bg-surface-container-lowest border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none w-52"
@@ -263,7 +297,7 @@ export default function OrdersPage() {
             className="btn-primary h-10 px-5 text-sm rounded-lg flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            {t('orders.newOrder')}
+            {t('New Order')}
           </button>
         </div>
       </div>
@@ -277,7 +311,9 @@ export default function OrdersPage() {
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               activeFilter === tab.key
                 ? 'bg-primary text-on-primary shadow-sm'
-                : 'bg-surface-container-high text-secondary hover:bg-surface-container-highest'
+                : tab.key === 'ready_unpaid' && tab.count > 0
+                  ? 'bg-error/10 text-error hover:bg-error/20'
+                  : 'bg-surface-container-high text-secondary hover:bg-surface-container-highest'
             }`}
           >
             {tab.label}
@@ -299,27 +335,27 @@ export default function OrdersPage() {
         {loading ? (
           <div className="flex items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-            {t('orders.loading')}
+            {t('Loading orders...')}
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined text-4xl mb-3 text-outline">shopping_bag</span>
-            <p className="font-semibold text-on-surface mb-1">{t('orders.noOrdersFound')}</p>
-            <p className="text-sm">{t('orders.noOrdersHint')}</p>
+            <p className="font-semibold text-on-surface mb-1">{t('No orders found')}</p>
+            <p className="text-sm">{t('Try adjusting your filters or create a new order.')}</p>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>{t('orders.table.orderId')}</th>
-                <th>{t('orders.table.customer')}</th>
-                <th>{t('orders.table.itemType')}</th>
-                {!isWorker && <th className="text-right">{t('orders.table.price')}</th>}
-                {!isWorker && <th className="text-right">{t('orders.table.paid')}</th>}
-                {!isWorker && <th className="text-right">{t('orders.table.balance')}</th>}
-                <th>{t('orders.table.status')}</th>
-                <th>{t('orders.table.delivery')}</th>
-                <th className="text-center">{t('orders.table.actions')}</th>
+                <th>{t('Order ID')}</th>
+                <th>{t('Customer')}</th>
+                <th>{t('Item Type')}</th>
+                {!isWorker && <th className="text-right">{t('Price')}</th>}
+                {!isWorker && <th className="text-right">{t('Paid')}</th>}
+                {!isWorker && <th className="text-right">{t('Balance')}</th>}
+                <th>{t('Status')}</th>
+                <th>{t('Delivery')}</th>
+                <th className="text-center">{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -345,7 +381,7 @@ export default function OrdersPage() {
                         <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-bold flex items-center justify-center shrink-0">
                           {getInitials(order.customer_name)}
                         </div>
-                        <span className="font-medium">{order.customer_name || t('common.unknown')}</span>
+                        <span className="font-medium">{order.customer_name || t('Unknown')}</span>
                       </div>
                     </td>
 
@@ -361,7 +397,7 @@ export default function OrdersPage() {
                     {!isWorker && <td className="text-right text-secondary">{formatCurrency(order.paid)}</td>}
 
                     {/* Balance */}
-                    {!isWorker && <td className={`text-right font-bold ${balance > 0 ? 'text-error' : 'text-tertiary'}`}>
+                    {!isWorker && <td className={`text-right font-bold ${balance > 0.01 ? 'text-error' : 'text-tertiary'}`}>
                       {formatCurrency(balance)}
                     </td>}
 
@@ -370,6 +406,7 @@ export default function OrdersPage() {
                       <StatusDropdown
                         current={dStatus}
                         orderId={order.id}
+                        orderBalance={balance}
                         onUpdated={fetchData}
                         t={t}
                       />
@@ -388,14 +425,14 @@ export default function OrdersPage() {
                         <button
                           onClick={() => navigate(`/orders/edit/${order.id}`)}
                           className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary"
-                          title={t('common.edit')}
+                          title={t('Edit')}
                         >
                           <span className="material-symbols-outlined text-lg">edit_square</span>
                         </button>
                         <button
                           onClick={() => navigate(`/invoice/${order.id}`)}
                           className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary"
-                          title={t('orders.viewInvoice')}
+                          title={t('View Invoice')}
                         >
                           <span className="material-symbols-outlined text-lg">visibility</span>
                         </button>
@@ -413,14 +450,14 @@ export default function OrdersPage() {
       {!loading && filteredOrders.length > 0 && (
         <div className="flex justify-between items-center text-secondary text-sm px-2">
           <div>
-            {t('orders.showing')}{' '}
-            <span className="font-bold text-on-surface">{filteredOrders.length}</span> {t('orders.of')}{' '}
-            <span className="font-bold text-on-surface">{stats?.total ?? 0}</span> {t('orders.ordersCount')}
+            {t('Showing {count} of {total} orders')}{' '}
+            <span className="font-bold text-on-surface">{filteredOrders.length}</span> {t('of')}{' '}
+            <span className="font-bold text-on-surface">{stats?.total ?? 0}</span> {t('order(s)')}
           </div>
           <div className="flex gap-2">
             {!isWorker && (
               <span className="text-xs text-outline">
-                {t('orders.revenueOpen')}{' '}
+                {t('Revenue (open):')}{' '}
                 <span className="font-bold text-on-surface">
                   {(stats?.revenue ?? 0).toLocaleString('en-US')} QAR
                 </span>

@@ -29,9 +29,9 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/worker-rates', '/task-board', '/reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/measurements', '/orders', '/workers', '/task-board', '/reports'],
-  reception: ['/dashboard', '/customers', '/measurements', '/orders'],
+  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/reports', '/backup', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/reports'],
+  reception: ['/dashboard', '/customers', '/orders', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };
 
@@ -75,7 +75,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-surface">
-        <div className="text-on-surface-variant text-lg">{t('app.loading')}</div>
+        <div className="text-on-surface-variant text-lg">{t('Loading...')}</div>
       </div>
     );
   }
@@ -121,14 +121,6 @@ export default function App() {
             }
           />
           <Route
-            path="measurements"
-            element={
-              <ProtectedRoute path="/measurements" session={session}>
-                <MeasurementsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="orders"
             element={
               <ProtectedRoute path="/orders" session={session}>
@@ -136,6 +128,14 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+            <Route
+              path="measurements"
+              element={
+                <ProtectedRoute path="/measurements" session={session}>
+                  <MeasurementsPage />
+                </ProtectedRoute>
+              }
+            />
           <Route
             path="orders/new"
             element={

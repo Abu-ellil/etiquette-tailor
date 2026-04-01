@@ -15,9 +15,9 @@ export default function StatusChip({ status, onClick }: StatusChipProps) {
   const { t } = useTranslation();
 
   const STATUS_LABELS: Record<string, string> = {
-    pending: t('status.pending'),
-    in_progress: t('status.inProgress'),
-    done: t('status.done'),
+    pending: t('Pending'),
+    in_progress: t('In Progress'),
+    done: t('Done'),
   };
 
   const style = STATUS_STYLES[status] || 'bg-surface-container-high text-on-surface-variant';

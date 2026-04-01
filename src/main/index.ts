@@ -36,12 +36,22 @@ import {
   getWorkerTasks,
   getMonthlyEarnings,
   getWorkerOrderDetails,
+  getWorkerAccount,
+  addWorkerPayment,
+  getWorkerPayments,
   getAllSettings,
   setSettings,
   updateBranch,
   createBranch,
   getPieceTypes,
   recalculateTaskWages,
+  getReportStats,
+  getPaymentSplit,
+  getMonthlyRevenue,
+  getRecentOrders,
+  addOrderPayment,
+  getOrderPayments,
+  deleteOrderPayment,
 } from '../db';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 
@@ -152,6 +162,18 @@ function registerIpcHandlers() {
     return getWorkerOrderDetails(userId, startDate, endDate);
   });
 
+  ipcMain.handle('workers:getAccount', async (_event, userId: number) => {
+    return getWorkerAccount(userId);
+  });
+
+  ipcMain.handle('workers:addPayment', async (_event, userId: number, amount: number, note: string | null) => {
+    return addWorkerPayment(userId, amount, note, currentSession?.userId ?? null);
+  });
+
+  ipcMain.handle('workers:getPayments', async (_event, userId: number) => {
+    return getWorkerPayments(userId);
+  });
+
   ipcMain.handle('customers:getAll', async (_event, branchId?: number) => {
     return getAllCustomers(branchId);
   });
@@ -224,12 +246,40 @@ function registerIpcHandlers() {
     return getOrderStats(branchId);
   });
 
+  ipcMain.handle('reports:getStats', async (_event, branchId?: number, period?: string) => {
+    return getReportStats(branchId, period);
+  });
+
+  ipcMain.handle('reports:getPaymentSplit', async (_event, branchId?: number, period?: string) => {
+    return getPaymentSplit(branchId, period);
+  });
+
+  ipcMain.handle('reports:getMonthlyRevenue', async (_event, months?: number, branchId?: number) => {
+    return getMonthlyRevenue(months, branchId);
+  });
+
+  ipcMain.handle('reports:getRecentOrders', async (_event, limit?: number, branchId?: number, period?: string) => {
+    return getRecentOrders(limit, branchId, period);
+  });
+
   ipcMain.handle('orders:getAllTasks', async (_event, filters?: { branchId?: number; workerId?: number; taskType?: string }) => {
     return getAllTasks(filters);
   });
 
   ipcMain.handle('orders:recalculateTaskWages', async (_event, orderId: number, newPrice: number) => {
     return recalculateTaskWages(orderId, newPrice);
+  });
+
+  ipcMain.handle('orders:addPayment', async (_event, orderId: number, amount: number, method: 'cash' | 'card', note: string | null) => {
+    return addOrderPayment(orderId, amount, method, note, currentSession?.userId ?? null);
+  });
+
+  ipcMain.handle('orders:getPayments', async (_event, orderId: number) => {
+    return getOrderPayments(orderId);
+  });
+
+  ipcMain.handle('orders:deletePayment', async (_event, paymentId: number) => {
+    return deleteOrderPayment(paymentId);
   });
 
   // Settings

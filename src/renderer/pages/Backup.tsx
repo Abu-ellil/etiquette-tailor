@@ -43,7 +43,7 @@ export default function BackupPage() {
       if (result.success) {
         await loadBackupInfo();
       } else if (result.error !== 'Cancelled') {
-        setError(result.error || t('backup.error.backupFailed'));
+        setError(result.error || t('Backup failed'));
       }
     } catch (err: any) {
       setError(err.message);
@@ -54,7 +54,7 @@ export default function BackupPage() {
 
   const handleRestore = async () => {
     const confirmed = window.confirm(
-      t('backup.restoreConfirm')
+      t('Restoring a backup will replace ALL current data and restart the app. Are you sure?')
     );
     if (!confirmed) return;
 
@@ -63,7 +63,7 @@ export default function BackupPage() {
     try {
       const result = await window.electronAPI.backup.restore();
       if (!result.success && result.error !== 'Cancelled') {
-        setError(result.error || t('backup.error.restoreFailed'));
+        setError(result.error || t('Restore failed'));
         setRestoring(false);
       }
       // If successful, app restarts — no need to reset state
@@ -80,19 +80,19 @@ export default function BackupPage() {
         <div className="flex justify-between items-end">
           <div>
             <h2 className="text-5xl font-headline font-extrabold text-on-surface tracking-tight mb-4">
-              {t('backup.pageTitle')}
+              {t('Security & Backup')}
             </h2>
             <p className="text-lg text-secondary max-w-2xl leading-relaxed">
-              {t('backup.pageSubtitle')}
+              {t("Protect your studio's legacy. Manage database integrity and restore workshop history.")}
             </p>
           </div>
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-secondary mb-1">
-              {t('backup.systemHealth')}
+              {t('System Health')}
             </span>
             <div className="flex items-center gap-2 px-4 py-2 bg-tertiary-fixed text-on-tertiary-fixed rounded-full">
               <span className="w-2 h-2 rounded-full bg-on-tertiary-fixed animate-pulse" />
-              <span className="text-xs font-bold">{t('backup.allSystemsSecure')}</span>
+              <span className="text-xs font-bold">{t('ALL SYSTEMS SECURE')}</span>
             </div>
           </div>
         </div>
@@ -115,16 +115,16 @@ export default function BackupPage() {
               </div>
               <div>
                 <p className="text-sm text-secondary uppercase tracking-widest mb-1 font-semibold">
-                  {t('backup.lastBackupDate')}
+                  {t('Last Backup Date')}
                 </p>
                 <h3 className="text-3xl font-headline font-bold text-on-surface">
-                  {lastBackup || t('backup.noBackupYet')}
+                  {lastBackup || t('No backups yet')}
                 </h3>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm font-medium text-secondary italic mb-1">{t('backup.backupLocation')}</p>
-              <p className="font-bold text-on-surface">{t('backup.localDisk')}</p>
+              <p className="text-sm font-medium text-secondary italic mb-1">{t('Backup location:')}</p>
+              <p className="font-bold text-on-surface">{t('Local Disk')}</p>
             </div>
           </div>
         </div>
@@ -142,16 +142,16 @@ export default function BackupPage() {
               database
             </span>
           </div>
-          <h4 className="text-2xl font-headline font-bold text-on-surface mb-3">{t('backup.backupData')}</h4>
+          <h4 className="text-2xl font-headline font-bold text-on-surface mb-3">{t('Backup Data')}</h4>
           <p className="text-secondary leading-relaxed mb-8 flex-1">
-            {t('backup.backupDataDescription')}
+            {t('Generate a complete snapshot of all customers, measurements, and financial records.')}
           </p>
           <button
             onClick={handleBackup}
             disabled={backingUp}
             className="w-full py-4 bg-gradient-to-br from-primary to-primary-container text-white font-headline font-bold rounded-lg shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
           >
-            {backingUp ? t('backup.backingUp') : t('backup.startBackupNow')}
+            {backingUp ? t('Backing Up...') : t('Start Backup Now')}
           </button>
         </div>
 
@@ -162,16 +162,16 @@ export default function BackupPage() {
               settings_backup_restore
             </span>
           </div>
-          <h4 className="text-2xl font-headline font-bold text-on-surface mb-3">{t('backup.restoreData')}</h4>
+          <h4 className="text-2xl font-headline font-bold text-on-surface mb-3">{t('Restore Data')}</h4>
           <p className="text-secondary leading-relaxed mb-8 flex-1">
-            {t('backup.restoreDataDescription')}
+            {t('Roll back your studio database to a previous state.')}
           </p>
           <button
             onClick={handleRestore}
             disabled={restoring}
             className="w-full py-4 bg-secondary text-white font-headline font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
           >
-            {restoring ? t('backup.restoring') : t('backup.uploadRecoveryFile')}
+            {restoring ? t('Restoring...') : t('Upload Recovery File')}
           </button>
         </div>
       </section>
@@ -181,7 +181,7 @@ export default function BackupPage() {
         {/* DB Size Card */}
         <div className="p-8 rounded-3xl bg-surface-container flex items-center justify-between">
           <div>
-            <h5 className="font-headline font-bold text-on-surface text-xl mb-1">{t('backup.databaseSize')}</h5>
+            <h5 className="font-headline font-bold text-on-surface text-xl mb-1">{t('Database Size')}</h5>
             <p className="text-sm text-secondary">{dbSize?.label || '—'}</p>
           </div>
           <span className="material-symbols-outlined text-primary text-3xl">sd_card</span>
@@ -191,20 +191,20 @@ export default function BackupPage() {
       {/* Backup File List */}
       <section className="bg-surface-container-lowest rounded-2xl overflow-hidden">
         <div className="p-8 border-b border-surface-container">
-          <h3 className="font-headline font-bold text-2xl">{t('backup.recentBackups')}</h3>
+          <h3 className="font-headline font-bold text-2xl">{t('Recent Backups')}</h3>
         </div>
         {backups.length === 0 ? (
           <div className="p-8 text-center text-secondary">
-            {t('backup.noBackupsYet')}
+            {t('No backups yet. Click "Start Backup Now" to create your first backup.')}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>{t('backup.table.fileName')}</th>
-                  <th>{t('backup.table.date')}</th>
-                  <th>{t('backup.table.size')}</th>
+                  <th>{t('File Name')}</th>
+                  <th>{t('Date')}</th>
+                  <th>{t('Size')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -231,7 +231,7 @@ export default function BackupPage() {
       {/* Footer Note */}
       <footer className="mt-16 text-center">
         <p className="text-sm text-secondary/60 font-medium">
-          {t('backup.backupNote')}
+          {t('Backups are saved to your chosen location on disk. Keep backup files in a safe place.')}
         </p>
       </footer>
     </div>

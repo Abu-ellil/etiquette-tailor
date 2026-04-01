@@ -34,6 +34,9 @@ export interface ElectronAPI {
     getWorkerTasks: (userId: number) => Promise<any[]>;
     getMonthlyEarnings: (userId: number, month: string) => Promise<any>;
     getWorkerOrderDetails: (userId: number, startDate: string, endDate: string) => Promise<any[]>;
+    getAccount: (userId: number) => Promise<any>;
+    addPayment: (userId: number, amount: number, note: string | null) => Promise<number>;
+    getPayments: (userId: number) => Promise<any[]>;
   };
 
   customers: {
@@ -60,6 +63,9 @@ export interface ElectronAPI {
     getStats: (branchId?: number) => Promise<any>;
     getAllTasks: (filters?: { branchId?: number; workerId?: number; taskType?: string }) => Promise<any[]>;
     recalculateTaskWages: (orderId: number, newPrice: number) => Promise<number>;
+    addPayment: (orderId: number, amount: number, method: 'cash' | 'card', note: string | null) => Promise<number>;
+    getPayments: (orderId: number) => Promise<any[]>;
+    deletePayment: (paymentId: number) => Promise<void>;
   };
 
   window: {
@@ -71,6 +77,13 @@ export interface ElectronAPI {
 
   pieceTypes: {
     getAll: () => Promise<any[]>;
+  };
+
+  reports: {
+    getStats: (branchId?: number, period?: string) => Promise<any>;
+    getPaymentSplit: (branchId?: number, period?: string) => Promise<any>;
+    getMonthlyRevenue: (months?: number, branchId?: number) => Promise<any[]>;
+    getRecentOrders: (limit?: number, branchId?: number, period?: string) => Promise<any[]>;
   };
 
   backup: {
@@ -116,6 +129,9 @@ const api: ElectronAPI = {
     getWorkerTasks: (userId) => ipcRenderer.invoke('workers:getWorkerTasks', userId),
     getMonthlyEarnings: (userId, month) => ipcRenderer.invoke('workers:getMonthlyEarnings', userId, month),
     getWorkerOrderDetails: (userId, startDate, endDate) => ipcRenderer.invoke('workers:getWorkerOrderDetails', userId, startDate, endDate),
+    getAccount: (userId) => ipcRenderer.invoke('workers:getAccount', userId),
+    addPayment: (userId, amount, note) => ipcRenderer.invoke('workers:addPayment', userId, amount, note),
+    getPayments: (userId) => ipcRenderer.invoke('workers:getPayments', userId),
   },
 
   customers: {
@@ -142,6 +158,9 @@ const api: ElectronAPI = {
     getStats: (branchId?: number) => ipcRenderer.invoke('orders:getStats', branchId),
     getAllTasks: (filters) => ipcRenderer.invoke('orders:getAllTasks', filters),
     recalculateTaskWages: (orderId, newPrice) => ipcRenderer.invoke('orders:recalculateTaskWages', orderId, newPrice),
+    addPayment: (orderId, amount, method, note) => ipcRenderer.invoke('orders:addPayment', orderId, amount, method, note),
+    getPayments: (orderId) => ipcRenderer.invoke('orders:getPayments', orderId),
+    deletePayment: (paymentId) => ipcRenderer.invoke('orders:deletePayment', paymentId),
   },
 
   window: {
@@ -153,6 +172,13 @@ const api: ElectronAPI = {
 
   pieceTypes: {
     getAll: () => ipcRenderer.invoke('pieceTypes:getAll'),
+  },
+
+  reports: {
+    getStats: (branchId?: number, period?: string) => ipcRenderer.invoke('reports:getStats', branchId, period),
+    getPaymentSplit: (branchId?: number, period?: string) => ipcRenderer.invoke('reports:getPaymentSplit', branchId, period),
+    getMonthlyRevenue: (months?: number, branchId?: number) => ipcRenderer.invoke('reports:getMonthlyRevenue', months, branchId),
+    getRecentOrders: (limit?: number, branchId?: number, period?: string) => ipcRenderer.invoke('reports:getRecentOrders', limit, branchId, period),
   },
 
   backup: {
