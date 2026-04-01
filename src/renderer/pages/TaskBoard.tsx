@@ -143,15 +143,15 @@ export default function TaskBoardPage() {
                 return (
                   <tr key={task.task_id}>
                     <td className="font-bold">{task.order_number}</td>
-                    <td>{task.customer_name || '--'}</td>
-                    <td>{task.piece_type}</td>
+                    <td className="max-w-[180px]"><span className="truncate block">{task.customer_name || '--'}</span></td>
+                    <td className="max-w-[140px]"><span className="truncate block">{task.piece_type}</span></td>
                     <td>
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-sm">{TASK_TYPE_ICONS[task.task_type] || 'task'}</span>
                         <span className="capitalize">{task.task_type}</span>
                       </div>
                     </td>
-                    <td>{task.worker_name || t('Unassigned')}</td>
+                    <td className="max-w-[160px]"><span className="truncate block">{task.worker_name || t('Unassigned')}</span></td>
                     <td>
                       <div className="flex items-center gap-2">
                         <span>{task.due_date || '--'}</span>

@@ -56,11 +56,11 @@ function isOrderLate(order: Order): boolean {
   }
 }
 
-function formatRevenue(amount: number): string {
+function formatRevenue(amount: number, currencyLabel: string): string {
   if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(1)}k QAR`;
+    return `${(amount / 1000).toFixed(1)}k ${currencyLabel}`;
   }
-  return `${amount.toFixed(0)} QAR`;
+  return `${amount.toFixed(0)} ${currencyLabel}`;
 }
 
 function formatNumber(n: number): string {
@@ -134,7 +134,7 @@ export default function DashboardPage() {
         }
       } catch (err: unknown) {
         console.error('Failed to load dashboard data:', err);
-        const message = err instanceof Error ? err.message : 'Failed to load dashboard data. Please try again.';
+        const message = err instanceof Error ? err.message : t('Failed to load dashboard data. Please try again.');
         setError(message);
       } finally {
         setLoading(false);
@@ -317,7 +317,7 @@ export default function DashboardPage() {
             </div>
             <div className="mt-4">
               <span className="text-3xl font-headline font-extrabold text-on-surface">
-                {formatRevenue(safeStats.revenue)}
+                {formatRevenue(safeStats.revenue, t('QAR'))}
               </span>
               <p className="text-xs text-secondary mt-1">{t('Open order value')}</p>
             </div>
@@ -497,13 +497,13 @@ export default function DashboardPage() {
                           {order.order_number}
                         </td>
                         <td>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div
                               className={`w-8 h-8 rounded-full ${avatarColor.bg} flex items-center justify-center text-[10px] font-bold ${avatarColor.text}`}
                             >
                               {getInitials(order.customer_name)}
                             </div>
-                            <span className="text-sm font-semibold text-on-surface">
+                            <span className="text-sm font-semibold text-on-surface truncate">
                               {order.customer_name || t('Unknown')}
                             </span>
                           </div>
@@ -751,22 +751,22 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
                   return (order[a.status] ?? 3) - (order[b.status] ?? 3);
                 })
                 .map((task) => (
-                  <div key={task.task_id} className="bg-surface-container-lowest rounded-xl p-5 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  <div key={task.task_id} className="bg-surface-container-lowest rounded-xl p-5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 ${
                         task.status === 'done' ? 'bg-tertiary-fixed text-on-tertiary-fixed'
                         : task.status === 'in_progress' ? 'bg-primary-fixed text-on-primary-fixed'
                         : 'bg-surface-container-high text-on-surface-variant'
                       }`}>
                         {task.status === 'in_progress' ? t('In Progress') : task.status === 'done' ? t('Done') : t('Pending')}
                       </span>
-                      <div>
-                        <span className="font-bold text-on-surface">{task.order_number}</span>
-                        <span className="text-secondary mx-2">·</span>
-                        <span className="text-sm text-secondary">{task.piece_type}</span>
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className="font-bold text-on-surface whitespace-nowrap">{task.order_number}</span>
+                        <span className="text-secondary">·</span>
+                        <span className="text-sm text-secondary truncate">{task.piece_type}</span>
                       </div>
                     </div>
-                    <div className="text-sm text-secondary">
+                    <div className="text-sm text-secondary whitespace-nowrap shrink-0">
                       {task.due_date ? `${t('Due:')} ${formatDate(task.due_date)}` : ''}
                     </div>
                   </div>

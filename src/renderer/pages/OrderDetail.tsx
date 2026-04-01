@@ -215,12 +215,12 @@ export default function OrderDetailPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-end">
-        <div>
+      <div className="flex justify-between items-end gap-4">
+        <div className="min-w-0 flex-1">
           <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
             {t('Order #{number}', { number: order.order_number })}
           </h1>
-          <p className="text-secondary mt-1">
+          <p className="text-secondary mt-1 truncate">
             {order.customer_name} {order.customer_phone && `· ${order.customer_phone}`}
           </p>
         </div>
@@ -250,16 +250,16 @@ export default function OrderDetailPage() {
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-surface-container-lowest rounded-xl p-5 text-center">
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Total Price')}</p>
-            <p className="text-2xl font-extrabold text-on-surface">{Number(order.price).toFixed(2)} <span className="text-sm font-semibold text-secondary">QAR</span></p>
+            <p className="text-2xl font-extrabold text-on-surface">{Number(order.price).toFixed(2)} <span className="text-sm font-semibold text-secondary">{t('QAR')}</span></p>
           </div>
           <div className="bg-surface-container-lowest rounded-xl p-5 text-center">
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Total Paid')}</p>
-            <p className="text-2xl font-extrabold text-tertiary">{Number(order.paid).toFixed(2)} <span className="text-sm font-semibold text-secondary">QAR</span></p>
+            <p className="text-2xl font-extrabold text-tertiary">{Number(order.paid).toFixed(2)} <span className="text-sm font-semibold text-secondary">{t('QAR')}</span></p>
           </div>
           <div className={`rounded-xl p-5 text-center ${balance > 0.01 ? 'bg-error/10 border-2 border-error/20' : 'bg-tertiary-container/20 border-2 border-tertiary-container/30'}`}>
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Balance Due')}</p>
             <p className={`text-2xl font-extrabold ${balance > 0.01 ? 'text-error' : 'text-tertiary'}`}>
-              {balance > 0.01 ? balance.toFixed(2) : '0.00'} <span className="text-sm font-semibold text-secondary">QAR</span>
+              {balance > 0.01 ? balance.toFixed(2) : '0.00'} <span className="text-sm font-semibold text-secondary">{t('QAR')}</span>
             </p>
             {balance <= 0.01 && (
               <span className="inline-flex items-center gap-1 text-xs text-tertiary font-semibold mt-1">
@@ -353,7 +353,7 @@ export default function OrderDetailPage() {
                       <div className="flex items-center gap-4">
                         <span className="text-xs text-secondary font-mono w-6">#{idx + 1}</span>
                         <div>
-                          <span className="font-bold text-on-surface">{Number(p.amount).toFixed(2)} QAR</span>
+                          <span className="font-bold text-on-surface">{Number(p.amount).toFixed(2)} {t('QAR')}</span>
                           <span className={`ml-3 text-xs px-2 py-0.5 rounded-full font-semibold ${p.method === 'cash' ? 'bg-tertiary-container/20 text-tertiary' : 'bg-primary-container/20 text-primary'}`}>
                             {p.method === 'cash' ? t('Cash') : t('Card')}
                           </span>
@@ -419,7 +419,7 @@ export default function OrderDetailPage() {
               ) : tasks.map((task: any) => (
                 <div key={task.id} className="bg-surface rounded-lg p-4 space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="font-bold text-sm capitalize">{task.task_type}</span>
+                    <span className="font-bold text-sm capitalize">{t(task.task_type)}</span>
                     <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
                   </div>
                   <div className="flex justify-between items-center text-xs text-secondary">

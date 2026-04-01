@@ -172,7 +172,6 @@ export default {
   'Delivery date is required': 'تاريخ التسليم مطلوب',
   'Creating...': 'جاري الإنشاء...',
   'Create Order': 'إنشاء طلب',
-  'Branches': 'الفروع',
   'Quick Note': 'ملاحظة سريعة',
   'Balance Auto-Calculated': 'الرصيد محسوب تلقائياً',
   'Balance = Price - Paid': 'الرصيد = السعر - المدفوع',
@@ -204,7 +203,6 @@ export default {
   'Card': 'بطاقة',
   'Due Date': 'تاريخ الاستحقاق',
   'Details': 'التفاصيل',
-  'Measurements': 'القياسات',
   'No measurements recorded for this order.': 'لا توجد قياسات مسجلة لهذا الطلب.',
   'Notes': 'ملاحظات',
   'Save Measurements': 'حفظ القياسات',
@@ -277,19 +275,15 @@ export default {
   'Join Date': 'تاريخ الانضمام',
   'Fixed Salary': 'راتب ثابت',
   'Piece-rate': 'بالقطعة',
-  'Worker': 'عامل',
   'Showing {count} artisan(s)': 'عرض {count} حرفي',
   'Edit Worker': 'تعديل العامل',
   'Deactivate': 'إلغاء التفعيل',
-  'tasks': 'مهام',
-  'Order Details': 'تفاصيل الطلب',
   'Apply': 'تطبيق',
   'No completed tasks in this period.': 'لا توجد مهام مكتملة في هذه الفترة.',
   'New Worker': 'عامل جديد',
   'Update worker information': 'تحديث بيانات العامل',
   'Add an artisan to the team': 'إضافة حرفي إلى الفريق',
   'Personal Information': 'المعلومات الشخصية',
-  'Username': 'اسم المستخدم',
   'New Password': 'كلمة المرور الجديدة',
   'Login ID': 'معرف الدخول',
   'Leave blank to keep': 'اتركه فارغاً للإبقاء',
@@ -361,7 +355,6 @@ export default {
   'Loading task board...': 'جاري تحميل لوحة المهام...',
   'No tasks found': 'لا توجد مهام',
   'Create orders and assign tasks to see them here.': 'أنشئ طلبات وعيّن مهام لرؤيتها هنا.',
-  'Due Date': 'تاريخ الاستحقاق',
   'Showing {count} task(s)': 'عرض {count} مهمة',
   'Showing': 'عرض',
   'tasks': 'مهام',
@@ -371,10 +364,7 @@ export default {
   'View and manage your assigned tasks': 'عرض وإدارة المهام المعينة لك',
   'Loading tasks...': 'جاري تحميل المهام...',
   'Completed Today': 'مكتمل اليوم',
-  'No tasks assigned': 'لا توجد مهام معينة',
-  'Tasks will appear here when assigned to you.': 'ستظهر المهام هنا عند تعيينها لك.',
   'Overdue': 'متأخر',
-  'Due:': 'الاستحقاق:',
   'View Measurements': 'عرض القياسات',
   'Hide Measurements': 'إخفاء القياسات',
   'Start': 'بدء',
@@ -404,7 +394,6 @@ export default {
   'Monthly Revenue Trend': 'اتجاه الإيرادات الشهرية',
   'Last 6 Months': 'آخر 6 أشهر',
   'Orders Summary': 'ملخص الطلبات',
-  'Search orders...': 'البحث في الطلبات...',
   'Filter': 'تصفية',
   'Service Type': 'نوع الخدمة',
   'Value': 'القيمة',
@@ -499,7 +488,6 @@ export default {
   'Add Branch': 'إضافة فرع',
   'No address set': 'لم يتم تعيين عنوان',
   'Edit Branch': 'تعديل الفرع',
-  'Edit Branch': 'تعديل الفرع',
   'New Branch': 'فرع جديد',
   'Update branch details': 'تحديث بيانات الفرع',
   'Add a new workshop location': 'إضافة موقع ورشة جديد',
@@ -528,7 +516,6 @@ export default {
   'Save Preferences': 'حفظ التفضيلات',
 
   // Measurement Guide (extras)
-  'Ready': 'جاهز',
   'How to take accurate measurements': 'كيفية أخذ القياسات بدقة',
   'Ensure the client stands naturally. Measurements should be snug but not tight. Record measurements in inches for best accuracy.': 'تأكد من وقوف العميل بشكل طبيعي. القياس يجب أن يكون محكماً لكنه ليس ضيقاً. سجّل القياسات بالبوصة للحصول على أفضل دقة.',
 
@@ -538,4 +525,51 @@ export default {
 
   // Settings extras
   'Orders will be numbered: {prefix}-001, {prefix}-002, etc.': 'سيتم ترقيم الطلبات: {prefix}-001, {prefix}-002, إلخ.',
+
+  // Currency
+  'QAR': 'ر.ق',
+  'QAR - Qatari Riyal': 'ر.ق - ريال قطري',
+  'SAR - Saudi Riyal': 'ر.س - ريال سعودي',
+  'AED - UAE Dirham': 'د.إ - درهم إماراتي',
+  'USD - US Dollar': '$ - دولار أمريكي',
+
+  // Task types
+  'sewing': 'خياطة',
+  'cutting': 'قص',
+
+  // Measurement fields (short keys for MyTasks)
+  'chest': 'الصدر',
+  'waist': 'الخصر',
+  'hips': 'الوركين',
+  'length': 'الطول',
+  'sleeve': 'الكم',
+  'shoulder': 'الكتف',
+
+  // Extra error/placeholder strings
+  'Failed to load dashboard data. Please try again.': 'فشل تحميل بيانات لوحة التحكم. يرجى المحاولة مرة أخرى.',
+  'e.g. 18': 'مثال: 18',
+  'e.g. 50.00': 'مثال: 50.00',
+  'ID #': 'رقم #',
+  'e.g. 38.5"': 'مثال: 38.5"',
+  'e.g. 24.5"': 'مثال: 24.5"',
+
+  // Categories
+  'Custom Wear': 'ملابس مخصصة',
+  'Abaya': 'عباية',
+  'Uniforms': 'زي موحد',
+  'Alterations': 'تعديلات',
+  'Special Orders': 'طلبات خاصة',
+
+  // Invoice extras
+  'Balance Due / الرصيد المتبقي': 'الرصيد المستحق / الرصيد المتبقي',
+  'Thank you for your trust!': 'شكراً لثقتكم بنا!',
+  'cash': 'نقدي',
+  'card': 'بطاقة',
+
+  // Worker
+  'permanent': 'دائم',
+  'seasonal': 'موسمي',
+
+  // Password placeholder
+  'e.g. Abdullah Ahmed / عبدالله أحمد': 'مثال: عبدالله أحمد',
 } as const;

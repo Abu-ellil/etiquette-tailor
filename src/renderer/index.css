@@ -102,6 +102,25 @@
   box-shadow: 0 6px 20px rgba(207, 183, 196, 0.3);
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
+
 /* Base */
 html, body, #root {
   height: 100%;
@@ -225,6 +244,7 @@ body {
     letter-spacing: 0.05em;
     color: var(--color-secondary);
     background-color: var(--color-surface-container-high);
+    white-space: nowrap;
   }
 
   .data-table tbody tr {
@@ -246,6 +266,7 @@ body {
   .data-table tbody td {
     padding: 1rem 1.5rem;
     font-size: 0.875rem;
+    white-space: nowrap;
   }
 
   /* Modal backdrop - glassmorphic */

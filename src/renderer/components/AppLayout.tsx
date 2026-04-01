@@ -92,7 +92,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
           />
         )}
 
-        <aside className={`fixed inset-y-0 ${sidebarPositionClass} z-50 flex flex-col py-6 space-y-2 bg-surface-container-low transition-transform duration-300 w-72 h-screen pt-[calc(var(--titlebar-h,32px)+20px)] lg:static lg:z-auto lg:translate-x-0 lg:h-full lg:shrink-0 lg:overflow-y-auto lg:w-72 ${sidebarOpen ? sidebarShowClass : sidebarHiddenClass} ${lgSidebarClass}`}>
+        <aside className={`fixed inset-y-0 ${sidebarPositionClass} z-50 flex flex-col py-6 space-y-2 bg-surface-container-low transition-transform duration-300 w-72 h-screen pt-[calc(var(--titlebar-h,32px)+20px)] lg:static lg:z-auto lg:translate-x-0 lg:h-full lg:shrink-0 lg:overflow-y-auto lg:w-62 ${sidebarOpen ? sidebarShowClass : sidebarHiddenClass} ${lgSidebarClass}`}>
           <div className="px-8 mb-8 flex justify-start">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-white shrink-0">

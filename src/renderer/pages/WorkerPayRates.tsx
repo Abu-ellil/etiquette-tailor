@@ -171,7 +171,7 @@ export default function WorkerPayRatesPage() {
   const calcWage = (rate: WorkerRate, price: number): string => {
     if (!rate || rate.rate <= 0) return '--';
     const wage = rate.wage_type === 'percentage' ? price * (rate.rate / 100) : rate.rate;
-    return `${wage.toFixed(0)} QAR`;
+    return `${wage.toFixed(0)} ${t('QAR')}`;
   };
 
   /* ---- Render ---- */
@@ -279,7 +279,7 @@ export default function WorkerPayRatesPage() {
                 onChange={(e) => setCalcPrice(Number(e.target.value) || 0)}
                 className="w-24 h-9 px-3 text-sm font-bold text-right bg-surface-container-lowest rounded-lg border-none focus:ring-2 focus:ring-primary/30 outline-none"
               />
-              <span className="text-sm text-secondary">QAR</span>
+              <span className="text-sm text-secondary">{t('QAR')}</span>
             </div>
             <div className="flex flex-wrap gap-4">
               {pieceTypes
@@ -293,7 +293,7 @@ export default function WorkerPayRatesPage() {
                   return (
                     <div key={pt.name_en} className="flex items-center gap-2 text-sm">
                       <span className="text-secondary">{pt.name_en}:</span>
-                      <span className="font-bold text-primary">{wage.toFixed(0)} QAR</span>
+                      <span className="font-bold text-primary">{wage.toFixed(0)} {t('QAR')}</span>
                     </div>
                   );
                 })}

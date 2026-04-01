@@ -377,11 +377,11 @@ export default function OrdersPage() {
 
                     {/* Customer */}
                     <td>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-bold flex items-center justify-center shrink-0">
                           {getInitials(order.customer_name)}
                         </div>
-                        <span className="font-medium">{order.customer_name || t('Unknown')}</span>
+                        <span className="font-medium truncate">{order.customer_name || t('Unknown')}</span>
                       </div>
                     </td>
 
@@ -459,7 +459,7 @@ export default function OrdersPage() {
               <span className="text-xs text-outline">
                 {t('Revenue (open):')}{' '}
                 <span className="font-bold text-on-surface">
-                  {(stats?.revenue ?? 0).toLocaleString('en-US')} QAR
+                  {(stats?.revenue ?? 0).toLocaleString('en-US')} {t('QAR')}
                 </span>
               </span>
             )}
