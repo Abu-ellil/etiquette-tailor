@@ -39,7 +39,7 @@ interface OrderStats {
 /* ------------------------------------------------------------------ */
 /*  Status helpers                                                     */
 /* ------------------------------------------------------------------ */
-type FilterTab = 'all' | 'in_progress' | 'ready' | 'delivered' | 'late';
+type FilterTab = 'all' | 'in_progress' | 'ready' | 'delivered' | 'late' | 'ready_unpaid';
 
 const DB_STATUSES_FOR_PROGRESS = ['intake', 'cutting', 'sewing'];
 
@@ -83,15 +83,18 @@ const NEXT_STATUS: Record<string, string[]> = {
 function StatusDropdown({
   current,
   orderId,
+  orderBalance,
   onUpdated,
   t,
 }: {
   current: string;
   orderId: number;
+  orderBalance: number;
   onUpdated: () => void;
-  t: (key: string) => string;
+  t: (key: string, params?: any) => string;
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const key = current === 'inProgress' ? 'In_Progress'
@@ -110,9 +113,19 @@ function StatusDropdown({
   }, []);
 
   async function handleSelect(dbStatus: string) {
-    await window.electronAPI.orders.updateStatus(orderId, dbStatus);
-    setOpen(false);
-    onUpdated();
+    if (dbStatus === 'delivered' && orderBalance > 0.01) {
+      setError(t('Cannot deliver: balance of {balance} QAR outstanding', { balance: orderBalance.toFixed(2) }));
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+    try {
+      await window.electronAPI.orders.updateStatus(orderId, dbStatus);
+      setOpen(false);
+      onUpdated();
+    } catch (err: any) {
+      setError(err?.message || t('Failed to update status'));
+      setTimeout(() => setError(null), 4000);
+    }
   }
 
   return (
@@ -124,17 +137,33 @@ function StatusDropdown({
         {t(`status.${current}`)}
         <span className="material-symbols-outlined text-xs ml-1 align-middle">expand_more</span>
       </button>
+      {error && (
+        <div className="absolute z-50 mt-1 left-0 bg-error text-on-primary text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+          {error}
+        </div>
+      )}
       {open && next.length > 0 && (
         <div className="absolute z-50 mt-1 left-0 bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/30 py-1 min-w-[140px]">
-          {next.map((s) => (
-            <button
-              key={s}
-              onClick={() => handleSelect(s === 'ready' ? 'ready' : 'delivered')}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-high transition-colors"
-            >
-              {t('Mark as')} {t(`status.${s === 'ready' ? 'ready' : 'delivered'}`)}
-            </button>
-          ))}
+          {next.map((s) => {
+            const targetStatus = s === 'ready' ? 'ready' : 'delivered';
+            const isBlocked = targetStatus === 'delivered' && orderBalance > 0.01;
+            return (
+              <button
+                key={s}
+                onClick={() => handleSelect(targetStatus)}
+                disabled={isBlocked}
+                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                  isBlocked
+                    ? 'text-outline cursor-not-allowed'
+                    : 'hover:bg-surface-container-high'
+                }`}
+                title={isBlocked ? t('Order must be fully paid before delivery') : undefined}
+              >
+                {t('Mark as')} {t(`status.${targetStatus}`)}
+                {isBlocked && <span className="ml-1 text-error text-xs">({t('Unpaid')})</span>}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -200,17 +229,22 @@ export default function OrdersPage() {
   /* Filter by tab */
   const filteredOrders = orders.filter((o) => {
     if (activeFilter === 'all') return true;
+    if (activeFilter === 'ready_unpaid') return o.status === 'ready' && (o.price - o.paid) > 0.01;
     const statusKey = displayStatusKey(o);
     if (activeFilter === 'in_progress') return DB_STATUSES_FOR_PROGRESS.includes(o.status);
     if (activeFilter === 'late') return statusKey === 'late';
     return statusKey === activeFilter;
   });
 
+  /* Count ready & unpaid */
+  const readyUnpaidCount = orders.filter((o) => o.status === 'ready' && (o.price - o.paid) > 0.01).length;
+
   /* Stats badges */
   const tabs: { key: FilterTab; label: string; count: number }[] = [
     { key: 'all', label: t('All'), count: stats?.total ?? 0 },
     { key: 'in_progress', label: t('In Progress'), count: stats?.in_progress ?? 0 },
     { key: 'ready', label: t('Ready'), count: stats?.ready ?? 0 },
+    { key: 'ready_unpaid', label: t('Ready & Unpaid'), count: readyUnpaidCount },
     { key: 'delivered', label: t('Delivered'), count: stats?.delivered ?? 0 },
     { key: 'late', label: t('Late'), count: stats?.overdue ?? 0 },
   ];
@@ -277,7 +311,9 @@ export default function OrdersPage() {
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               activeFilter === tab.key
                 ? 'bg-primary text-on-primary shadow-sm'
-                : 'bg-surface-container-high text-secondary hover:bg-surface-container-highest'
+                : tab.key === 'ready_unpaid' && tab.count > 0
+                  ? 'bg-error/10 text-error hover:bg-error/20'
+                  : 'bg-surface-container-high text-secondary hover:bg-surface-container-highest'
             }`}
           >
             {tab.label}
@@ -361,7 +397,7 @@ export default function OrdersPage() {
                     {!isWorker && <td className="text-right text-secondary">{formatCurrency(order.paid)}</td>}
 
                     {/* Balance */}
-                    {!isWorker && <td className={`text-right font-bold ${balance > 0 ? 'text-error' : 'text-tertiary'}`}>
+                    {!isWorker && <td className={`text-right font-bold ${balance > 0.01 ? 'text-error' : 'text-tertiary'}`}>
                       {formatCurrency(balance)}
                     </td>}
 
@@ -370,6 +406,7 @@ export default function OrdersPage() {
                       <StatusDropdown
                         current={dStatus}
                         orderId={order.id}
+                        orderBalance={balance}
                         onUpdated={fetchData}
                         t={t}
                       />

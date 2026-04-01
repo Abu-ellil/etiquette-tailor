@@ -11,25 +11,34 @@ export default function OrderDetailPage() {
   const [tasks, setTasks] = React.useState<any[]>([]);
   const [measurements, setMeasurements] = React.useState<any>(null);
   const [workers, setWorkers] = React.useState<any[]>([]);
+  const [payments, setPayments] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [editing, setEditing] = React.useState(false);
   const [showAddTask, setShowAddTask] = React.useState(false);
+  const [showAddPayment, setShowAddPayment] = React.useState(false);
   const [originalPrice, setOriginalPrice] = React.useState(0);
   const [newTask, setNewTask] = React.useState({ task_type: 'sewing', assigned_to: null });
+  const [newPayment, setNewPayment] = React.useState<{ amount: string; method: 'cash' | 'card'; note: string }>({
+    amount: '',
+    method: 'cash',
+    note: '',
+  });
 
   const loadOrder = React.useCallback(async () => {
     try {
       setLoading(true);
-      const [orderData, taskData, measData, workerData] = await Promise.all([
+      const [orderData, taskData, measData, workerData, paymentData] = await Promise.all([
         window.electronAPI.orders.get(Number(id)),
         window.electronAPI.orders.getTasks(Number(id)),
         window.electronAPI.orders.getMeasurements(Number(id)),
         window.electronAPI.workers.getAll(),
+        window.electronAPI.orders.getPayments(Number(id)),
       ]);
       setOrder(orderData);
       setTasks(taskData || []);
       setMeasurements(measData);
       setWorkers(workerData || []);
+      setPayments(paymentData || []);
     } catch (err) {
       console.error('Failed to load order:', err);
     } finally {
@@ -57,7 +66,6 @@ export default function OrderDetailPage() {
         piece_type: order.piece_type,
         details: order.details,
         price: Number(order.price),
-        paid: Number(order.paid),
         payment_method: order.payment_method,
         status: order.status,
         delivery_date: order.delivery_date,
@@ -139,6 +147,44 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleAddPayment = async () => {
+    if (!order) return;
+    const amount = Number(newPayment.amount);
+    if (!amount || amount <= 0) {
+      alert(t('Please enter a valid amount.'));
+      return;
+    }
+    const balance = Number(order.price) - Number(order.paid);
+    if (amount > balance + 0.01) {
+      alert(t('Payment amount exceeds the balance due ({balance} QAR).', { balance: balance.toFixed(2) }));
+      return;
+    }
+    try {
+      await window.electronAPI.orders.addPayment(
+        order.id,
+        amount,
+        newPayment.method,
+        newPayment.note || null,
+      );
+      setShowAddPayment(false);
+      setNewPayment({ amount: '', method: 'cash', note: '' });
+      await loadOrder();
+    } catch (err) {
+      console.error('Failed to add payment:', err);
+      alert(t('Failed to record payment.'));
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    if (!confirm(t('Delete this payment record? This will recalculate the order balance.'))) return;
+    try {
+      await window.electronAPI.orders.deletePayment(paymentId);
+      await loadOrder();
+    } catch (err) {
+      console.error('Failed to delete payment:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-secondary">
@@ -159,6 +205,7 @@ export default function OrderDetailPage() {
   }
 
   const balance = (Number(order.price) || 0) - (Number(order.paid) || 0);
+  const isFullyPaid = balance <= 0.01;
 
   const [session, setSession] = React.useState<any>(null);
   React.useEffect(() => {
@@ -198,6 +245,32 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
+      {/* ── Payment Summary Bar ── */}
+      {!isWorker && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-surface-container-lowest rounded-xl p-5 text-center">
+            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Total Price')}</p>
+            <p className="text-2xl font-extrabold text-on-surface">{Number(order.price).toFixed(2)} <span className="text-sm font-semibold text-secondary">QAR</span></p>
+          </div>
+          <div className="bg-surface-container-lowest rounded-xl p-5 text-center">
+            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Total Paid')}</p>
+            <p className="text-2xl font-extrabold text-tertiary">{Number(order.paid).toFixed(2)} <span className="text-sm font-semibold text-secondary">QAR</span></p>
+          </div>
+          <div className={`rounded-xl p-5 text-center ${balance > 0.01 ? 'bg-error/10 border-2 border-error/20' : 'bg-tertiary-container/20 border-2 border-tertiary-container/30'}`}>
+            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Balance Due')}</p>
+            <p className={`text-2xl font-extrabold ${balance > 0.01 ? 'text-error' : 'text-tertiary'}`}>
+              {balance > 0.01 ? balance.toFixed(2) : '0.00'} <span className="text-sm font-semibold text-secondary">QAR</span>
+            </p>
+            {balance <= 0.01 && (
+              <span className="inline-flex items-center gap-1 text-xs text-tertiary font-semibold mt-1">
+                <span className="material-symbols-outlined text-sm">check_circle</span>
+                {t('Fully Paid')}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <div className="bg-surface-container-lowest rounded-xl p-6">
@@ -225,14 +298,6 @@ export default function OrderDetailPage() {
                       <input type="number" value={order.price} onChange={(e) => setOrder({...order, price: e.target.value})} className="input-field w-full" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Paid (QAR)')}</label>
-                      <input type="number" value={order.paid} onChange={(e) => setOrder({...order, paid: e.target.value})} className="input-field w-full" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Balance')}</label>
-                      <input readOnly value={balance.toFixed(2)} className="input-field w-full opacity-60" />
-                    </div>
-                    <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Payment')}</label>
                       <select value={order.payment_method} onChange={(e) => setOrder({...order, payment_method: e.target.value})} className="input-field w-full appearance-none">
                         <option value="cash">{t('Cash')}</option>
@@ -255,9 +320,6 @@ export default function OrderDetailPage() {
                 <div><span className="text-secondary">{t('Piece Type')}:</span> <span className="font-semibold">{order.piece_type}</span></div>
                 <div><span className="text-secondary">{t('Status')}:</span> <StatusChip status={order.status} /></div>
                 {!isWorker && (<>
-                  <div><span className="text-secondary">{t('Price')}:</span> <span className="font-semibold">{Number(order.price).toFixed(2)} QAR</span></div>
-                  <div><span className="text-secondary">{t('Paid')}:</span> <span className="font-semibold">{Number(order.paid).toFixed(2)} QAR</span></div>
-                  <div><span className="text-secondary">{t('Balance')}:</span> <span className="font-semibold text-primary">{balance.toFixed(2)} QAR</span></div>
                   <div><span className="text-secondary">{t('Payment')}:</span> <span className="font-semibold capitalize">{order.payment_method}</span></div>
                 </>)}
                 <div><span className="text-secondary">{t('Due Date')}:</span> <span className="font-semibold">{order.delivery_date || '--'}</span></div>
@@ -265,6 +327,57 @@ export default function OrderDetailPage() {
               </div>
             )}
           </div>
+
+          {/* ── Payment History ── */}
+          {!isWorker && (
+            <div className="bg-surface-container-lowest rounded-xl p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-headline font-bold">{t('Payment History')}</h3>
+                {balance > 0.01 && order.status !== 'delivered' && (
+                  <button
+                    onClick={() => setShowAddPayment(true)}
+                    className="btn-primary px-4 py-2 text-sm flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-base">payments</span>
+                    {t('Record Payment')}
+                  </button>
+                )}
+              </div>
+
+              {payments.length === 0 ? (
+                <p className="text-secondary text-sm py-4">{t('No payments recorded yet.')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {payments.map((p: any, idx: number) => (
+                    <div key={p.id} className="bg-surface rounded-lg p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs text-secondary font-mono w-6">#{idx + 1}</span>
+                        <div>
+                          <span className="font-bold text-on-surface">{Number(p.amount).toFixed(2)} QAR</span>
+                          <span className={`ml-3 text-xs px-2 py-0.5 rounded-full font-semibold ${p.method === 'cash' ? 'bg-tertiary-container/20 text-tertiary' : 'bg-primary-container/20 text-primary'}`}>
+                            {p.method === 'cash' ? t('Cash') : t('Card')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {p.note && <span className="text-xs text-secondary italic">"{p.note}"</span>}
+                        <span className="text-xs text-secondary">{new Date(p.created_at).toLocaleString()}</span>
+                        {order.status !== 'delivered' && (
+                          <button
+                            onClick={() => handleDeletePayment(p.id)}
+                            className="text-xs text-error hover:underline"
+                            title={t('Delete payment')}
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="bg-surface-container-lowest rounded-xl p-6">
             <h3 className="text-lg font-headline font-bold mb-4">{t('Measurements')}</h3>
@@ -326,6 +439,7 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
+      {/* ── Add Task Modal ── */}
       {showAddTask && (
         <div className="modal-backdrop" onClick={() => setShowAddTask(false)}>
           <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
@@ -351,6 +465,75 @@ export default function OrderDetailPage() {
                 <div className="flex justify-end gap-3 mt-6">
                   <button onClick={() => setShowAddTask(false)} className="px-4 py-2 text-sm text-secondary">{t('Cancel')}</button>
                   <button onClick={handleAddTask} disabled={!newTask.assigned_to} className="btn-primary px-6 py-2 text-sm disabled:opacity-50">{t('Add Task')}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Payment Modal ── */}
+      {showAddPayment && (
+        <div className="modal-backdrop" onClick={() => setShowAddPayment(false)}>
+          <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-6">
+                <h2 className="text-xl font-headline font-bold mb-2">{t('Record Payment')}</h2>
+                <p className="text-sm text-secondary mb-5">
+                  {t('Balance due')}: <span className="font-bold text-error">{balance.toFixed(2)} QAR</span>
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Amount (QAR)')}</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newPayment.amount}
+                      onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
+                      className="input-field w-full"
+                      placeholder={balance.toFixed(2)}
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Payment Method')}</label>
+                    <div className="flex gap-2">
+                      {(['cash', 'card'] as const).map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setNewPayment({...newPayment, method})}
+                          className={`flex-1 py-3 rounded-lg font-bold transition-all capitalize text-sm ${
+                            newPayment.method === method
+                              ? 'bg-primary text-on-primary shadow-sm'
+                              : 'bg-surface-container-high text-secondary hover:bg-surface-container-highest'
+                          }`}
+                        >
+                          {method === 'cash' ? t('Cash') : t('Card')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Note (optional)')}</label>
+                    <input
+                      type="text"
+                      value={newPayment.note}
+                      onChange={(e) => setNewPayment({...newPayment, note: e.target.value})}
+                      className="input-field w-full"
+                      placeholder={t('e.g. Second installment')}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button onClick={() => setShowAddPayment(false)} className="px-4 py-2 text-sm text-secondary">{t('Cancel')}</button>
+                  <button
+                    onClick={handleAddPayment}
+                    disabled={!newPayment.amount || Number(newPayment.amount) <= 0}
+                    className="btn-primary px-6 py-2 text-sm disabled:opacity-50"
+                  >
+                    {t('Record Payment')}
+                  </button>
                 </div>
               </div>
             </div>

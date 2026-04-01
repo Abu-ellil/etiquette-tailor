@@ -178,6 +178,13 @@ export function updateOrder(id: number, order: Partial<Order>): void {
 }
 
 export function updateOrderStatus(id: number, status: string): void {
+  if (status === 'delivered') {
+    const order = db.prepare('SELECT price, paid FROM orders WHERE id = ?').get(id) as { price: number; paid: number } | undefined;
+    if (!order) throw new Error('Order not found');
+    if (order.paid < order.price) {
+      throw new Error(`Cannot deliver: balance outstanding (${(order.price - order.paid).toFixed(2)} QAR remaining)`);
+    }
+  }
   const stmt = db.prepare('UPDATE orders SET status = ? WHERE id = ?');
   stmt.run(status, id);
 }
@@ -394,7 +401,20 @@ export interface ReportStats {
   netProfit: number;
 }
 
-export function getReportStats(branchId?: number): ReportStats {
+function getPeriodDateFilter(period?: string): { filter: string; params: any[] } {
+  if (!period || period === 'monthly') {
+    return { filter: " AND created_at >= date('now', 'start of month')", params: [] };
+  }
+  if (period === 'daily') {
+    return { filter: " AND date(created_at) = date('now')", params: [] };
+  }
+  if (period === 'weekly') {
+    return { filter: " AND created_at >= date('now', '-7 days')", params: [] };
+  }
+  return { filter: '', params: [] };
+}
+
+export function getReportStats(branchId?: number, period?: string): ReportStats {
   let branchFilter = '';
   const params: any[] = [];
 
@@ -403,12 +423,14 @@ export function getReportStats(branchId?: number): ReportStats {
     params.push(branchId);
   }
 
+  const { filter: dateFilter } = getPeriodDateFilter(period);
+
   const stmt = db.prepare(`
     SELECT
       COUNT(*) as totalOrders,
       COALESCE(SUM(price), 0) as revenue
     FROM orders
-    WHERE 1=1 ${branchFilter}
+    WHERE 1=1 ${branchFilter}${dateFilter}
   `);
   const orderStats = stmt.get(...params) as { totalOrders: number; revenue: number };
 
@@ -419,11 +441,14 @@ export function getReportStats(branchId?: number): ReportStats {
     costFilter = ' AND o.branch_id = ?';
     costParams.push(branchId);
   }
+
+  const costDateFilter = dateFilter.replace(/created_at/g, 'o.created_at');
+
   const costStmt = db.prepare(`
     SELECT COALESCE(SUM(ot.wage_amount), 0) as workersCost
     FROM order_tasks ot
     JOIN orders o ON ot.order_id = o.id
-    WHERE 1=1 ${costFilter}
+    WHERE 1=1 ${costFilter}${costDateFilter}
   `);
   const costResult = costStmt.get(...costParams) as { workersCost: number };
 
@@ -442,7 +467,7 @@ export interface PaymentSplit {
   cashAmount: number;
 }
 
-export function getPaymentSplit(branchId?: number): PaymentSplit {
+export function getPaymentSplit(branchId?: number, period?: string): PaymentSplit {
   let branchFilter = '';
   const params: any[] = [];
 
@@ -451,13 +476,15 @@ export function getPaymentSplit(branchId?: number): PaymentSplit {
     params.push(branchId);
   }
 
+  const { filter: dateFilter } = getPeriodDateFilter(period);
+
   const stmt = db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN payment_method = 'card' THEN price ELSE 0 END), 0) as cardAmount,
       COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN price ELSE 0 END), 0) as cashAmount,
       COUNT(*) as total
     FROM orders
-    WHERE 1=1 ${branchFilter}
+    WHERE 1=1 ${branchFilter}${dateFilter}
   `);
   const result = stmt.get(...params) as { cardAmount: number; cashAmount: number; total: number };
 
@@ -502,28 +529,84 @@ export function getMonthlyRevenue(months: number = 6, branchId?: number): Monthl
   });
 }
 
-export function getRecentOrders(limit: number = 10, branchId?: number): any[] {
+export function getRecentOrders(limit: number = 10, branchId?: number, period?: string): any[] {
   let branchFilter = '';
-  const params: any[] = [limit];
+  const params: any[] = [];
 
   if (branchId) {
     branchFilter = ' AND o.branch_id = ?';
-    params.push(branchId, limit);
+    params.push(branchId);
   }
+
+  const { filter: dateFilter } = getPeriodDateFilter(period);
+  const orderDateFilter = dateFilter.replace(/created_at/g, 'o.created_at');
 
   const stmt = db.prepare(`
     SELECT o.*, c.name as customer_name
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
-    WHERE 1=1 ${branchFilter}
+    WHERE 1=1 ${branchFilter}${orderDateFilter}
     ORDER BY o.created_at DESC
     LIMIT ?
   `);
 
-  // SQLite positional: limit is always last
-  if (branchId) {
-    params.splice(0, 1); // remove first limit
-    return (stmt as any).all(branchId, limit) as any[];
-  }
-  return stmt.all(limit) as any[];
+  params.push(limit);
+  return (stmt as any).all(...params) as any[];
+}
+
+// ── Order Payments ──────────────────────────────────────────────────
+
+export interface OrderPayment {
+  id: number;
+  order_id: number;
+  amount: number;
+  method: 'cash' | 'card';
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export function addOrderPayment(orderId: number, amount: number, method: 'cash' | 'card', note: string | null, createdBy: number | null): number {
+  const txn = db.transaction(() => {
+    const insertStmt = db.prepare(
+      'INSERT INTO order_payments (order_id, amount, method, note, created_by) VALUES (?, ?, ?, ?, ?)'
+    );
+    const result = insertStmt.run(orderId, amount, method, note, createdBy);
+
+    // Recalculate total paid from all payment records
+    const sumRow = db.prepare(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM order_payments WHERE order_id = ?'
+    ).get(orderId) as { total: number };
+
+    db.prepare('UPDATE orders SET paid = ? WHERE id = ?').run(sumRow.total, orderId);
+
+    return result.lastInsertRowid as number;
+  });
+
+  return txn();
+}
+
+export function getOrderPayments(orderId: number): OrderPayment[] {
+  const stmt = db.prepare(
+    'SELECT * FROM order_payments WHERE order_id = ? ORDER BY created_at ASC'
+  );
+  return stmt.all(orderId) as OrderPayment[];
+}
+
+export function deleteOrderPayment(paymentId: number): void {
+  const txn = db.transaction(() => {
+    const payment = db.prepare('SELECT order_id FROM order_payments WHERE id = ?').get(paymentId) as { order_id: number } | undefined;
+    if (!payment) return;
+
+    db.prepare('DELETE FROM order_payments WHERE id = ?').run(paymentId);
+
+    // Recalculate total paid
+    const sumRow = db.prepare(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM order_payments WHERE order_id = ?'
+    ).get(payment.order_id) as { total: number };
+
+    db.prepare('UPDATE orders SET paid = ? WHERE id = ?').run(sumRow.total, payment.order_id);
+  });
+
+  txn();
 }

@@ -72,10 +72,10 @@ export default function ReportsPage() {
       try {
         setLoading(true);
         const [statsData, paymentData, monthlyData, ordersData] = await Promise.all([
-          window.electronAPI.reports.getStats(branchId),
-          window.electronAPI.reports.getPaymentSplit(branchId),
+          window.electronAPI.reports.getStats(branchId, period),
+          window.electronAPI.reports.getPaymentSplit(branchId, period),
           window.electronAPI.reports.getMonthlyRevenue(6, branchId),
-          window.electronAPI.reports.getRecentOrders(10, branchId),
+          window.electronAPI.reports.getRecentOrders(10, branchId, period),
         ]);
         setStats(statsData);
         setPaymentSplit(paymentData);
@@ -90,7 +90,7 @@ export default function ReportsPage() {
       }
     }
     fetchData();
-  }, [branchId]);
+  }, [branchId, period]);
 
   if (loading) {
     return (

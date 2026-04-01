@@ -49,6 +49,9 @@ import {
   getPaymentSplit,
   getMonthlyRevenue,
   getRecentOrders,
+  addOrderPayment,
+  getOrderPayments,
+  deleteOrderPayment,
 } from '../db';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 
@@ -243,20 +246,20 @@ function registerIpcHandlers() {
     return getOrderStats(branchId);
   });
 
-  ipcMain.handle('reports:getStats', async (_event, branchId?: number) => {
-    return getReportStats(branchId);
+  ipcMain.handle('reports:getStats', async (_event, branchId?: number, period?: string) => {
+    return getReportStats(branchId, period);
   });
 
-  ipcMain.handle('reports:getPaymentSplit', async (_event, branchId?: number) => {
-    return getPaymentSplit(branchId);
+  ipcMain.handle('reports:getPaymentSplit', async (_event, branchId?: number, period?: string) => {
+    return getPaymentSplit(branchId, period);
   });
 
   ipcMain.handle('reports:getMonthlyRevenue', async (_event, months?: number, branchId?: number) => {
     return getMonthlyRevenue(months, branchId);
   });
 
-  ipcMain.handle('reports:getRecentOrders', async (_event, limit?: number, branchId?: number) => {
-    return getRecentOrders(limit, branchId);
+  ipcMain.handle('reports:getRecentOrders', async (_event, limit?: number, branchId?: number, period?: string) => {
+    return getRecentOrders(limit, branchId, period);
   });
 
   ipcMain.handle('orders:getAllTasks', async (_event, filters?: { branchId?: number; workerId?: number; taskType?: string }) => {
@@ -265,6 +268,18 @@ function registerIpcHandlers() {
 
   ipcMain.handle('orders:recalculateTaskWages', async (_event, orderId: number, newPrice: number) => {
     return recalculateTaskWages(orderId, newPrice);
+  });
+
+  ipcMain.handle('orders:addPayment', async (_event, orderId: number, amount: number, method: 'cash' | 'card', note: string | null) => {
+    return addOrderPayment(orderId, amount, method, note, currentSession?.userId ?? null);
+  });
+
+  ipcMain.handle('orders:getPayments', async (_event, orderId: number) => {
+    return getOrderPayments(orderId);
+  });
+
+  ipcMain.handle('orders:deletePayment', async (_event, paymentId: number) => {
+    return deleteOrderPayment(paymentId);
   });
 
   // Settings

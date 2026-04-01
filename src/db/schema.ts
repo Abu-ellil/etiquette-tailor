@@ -154,6 +154,18 @@ export function initializeSchema() {
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS order_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL REFERENCES orders(id),
+      amount REAL NOT NULL,
+      method TEXT NOT NULL CHECK(method IN ('cash','card')),
+      note TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS invoices (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id INTEGER REFERENCES orders(id) UNIQUE,
@@ -222,6 +234,43 @@ function migrateColumns() {
       )
     `);
   } catch { /* table already exists */ }
+
+  // Ensure order_payments table exists (migration for existing DBs)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS order_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL REFERENCES orders(id),
+        amount REAL NOT NULL,
+        method TEXT NOT NULL CHECK(method IN ('cash','card')),
+        note TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch { /* table already exists */ }
+
+  // Backfill: create a single order_payments row for existing orders where paid > 0 and no payment record exists
+  try {
+    const unpaidOrders = db.prepare(`
+      SELECT id, paid, payment_method FROM orders
+      WHERE paid > 0 AND id NOT IN (SELECT DISTINCT order_id FROM order_payments)
+    `).all() as { id: number; paid: number; payment_method: string }[];
+    if (unpaidOrders.length > 0) {
+      const backfill = db.prepare(
+        'INSERT INTO order_payments (order_id, amount, method, note) VALUES (?, ?, ?, ?)'
+      );
+      const txn = db.transaction(() => {
+        for (const o of unpaidOrders) {
+          backfill.run(o.id, o.paid, o.payment_method, 'Initial payment (migrated)');
+        }
+      });
+      txn();
+      console.log(`Migrated ${unpaidOrders.length} existing payment(s) to order_payments`);
+    }
+  } catch (e) {
+    console.log('order_payments backfill skipped:', (e as Error).message);
+  }
 
   // Get existing columns for each table
   for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates']) {
