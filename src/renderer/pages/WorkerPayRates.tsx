@@ -27,6 +27,7 @@ interface PieceType {
   name_en: string;
   name_ar: string;
   category: string;
+  base_price: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -38,7 +39,7 @@ interface PieceType {
 /* ------------------------------------------------------------------ */
 
 export default function WorkerPayRatesPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<number | null>(null);
   const [rates, setRates] = useState<Record<string, WorkerRate>>({});
@@ -171,7 +172,9 @@ export default function WorkerPayRatesPage() {
   const calcWage = (rate: WorkerRate, price: number): string => {
     if (!rate || rate.rate <= 0) return '--';
     const wage = rate.wage_type === 'percentage' ? price * (rate.rate / 100) : rate.rate;
-    return `${wage.toFixed(0)} ${t('QAR')}`;
+    return rate.wage_type === 'percentage'
+      ? `${price} x ${rate.rate}% = ${wage.toFixed(0)} ${t(currency)}`
+      : `${wage.toFixed(0)} ${t(currency)}`;
   };
 
   /* ---- Render ---- */
@@ -255,7 +258,7 @@ export default function WorkerPayRatesPage() {
             </span>
             {selectedWorker.base_salary > 0 && (
               <span className="text-xs font-semibold text-primary">
-                {t('+ {amount} QAR salary').replace('{amount}', String(selectedWorker.base_salary))}
+                {t('+ {amount} QAR salary').replace('{amount}', String(selectedWorker.base_salary)).replaceAll('QAR', t(currency))}
               </span>
             )}
           </div>
@@ -271,7 +274,7 @@ export default function WorkerPayRatesPage() {
               <span className="font-semibold text-on-surface">{t('Quick Calculator')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-secondary">{t('Piece price:')}</span>
+              <span className="text-sm text-secondary">{t('Fallback price:')}</span>
               <input
                 type="number"
                 min="0"
@@ -279,21 +282,23 @@ export default function WorkerPayRatesPage() {
                 onChange={(e) => setCalcPrice(Number(e.target.value) || 0)}
                 className="w-24 h-9 px-3 text-sm font-bold text-right bg-surface-container-lowest rounded-lg border-none focus:ring-2 focus:ring-primary/30 outline-none"
               />
-              <span className="text-sm text-secondary">{t('QAR')}</span>
+              <span className="text-sm text-secondary">{t(currency)}</span>
             </div>
             <div className="flex flex-wrap gap-4">
               {pieceTypes
                 .filter((pt) => rates[pt.name_en]?.rate > 0)
                 .map((pt) => {
                   const rate = rates[pt.name_en];
+                  const price = pt.base_price || calcPrice;
                   const wage =
                     rate.wage_type === 'percentage'
-                      ? calcPrice * (rate.rate / 100)
+                      ? price * (rate.rate / 100)
                       : rate.rate;
                   return (
                     <div key={pt.name_en} className="flex items-center gap-2 text-sm">
                       <span className="text-secondary">{pt.name_en}:</span>
-                      <span className="font-bold text-primary">{wage.toFixed(0)} {t('QAR')}</span>
+                      <span className="text-secondary text-xs">({price} × {rate.rate}% =</span>
+                      <span className="font-bold text-primary">{wage.toFixed(0)} {t(currency)})</span>
                     </div>
                   );
                 })}
@@ -318,6 +323,9 @@ export default function WorkerPayRatesPage() {
                   <tr className="border-b border-outline-variant/15">
                     <th className="text-left px-6 py-4 text-xs font-bold uppercase tracking-widest text-secondary">
                       {t('Piece Type')}
+                    </th>
+                    <th className="text-center px-4 py-4 text-xs font-bold uppercase tracking-widest text-secondary">
+                      {t('Base Price')}
                     </th>
                     <th className="text-center px-4 py-4 text-xs font-bold uppercase tracking-widest text-secondary">
                       {t('Wage Type')}
@@ -346,6 +354,36 @@ export default function WorkerPayRatesPage() {
                           <td className="px-6 py-4">
                             <p className="font-semibold text-on-surface">{pt.name_en}</p>
                             <p className="text-xs text-secondary">{pt.name_ar}</p>
+                          </td>
+
+                          {/* Base Price */}
+                          <td className="px-4 py-4 text-center">
+                            <div className="flex justify-center">
+                              <div className="relative w-24">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={pt.base_price || ''}
+                                  onChange={async (e) => {
+                                    const newPrice = parseFloat(e.target.value) || 0;
+                                    try {
+                                      await window.electronAPI.pieceTypes.updateBasePrice(pt.name_en, newPrice);
+                                      setPieceTypes((prev) =>
+                                        prev.map((p) =>
+                                          p.name_en === pt.name_en ? { ...p, base_price: newPrice } : p
+                                        )
+                                      );
+                                    } catch (err) {
+                                      console.error('Failed to update base_price:', err);
+                                    }
+                                  }}
+                                  className="w-full h-9 pl-2 pr-8 text-right text-sm font-bold text-on-surface bg-surface-container-high rounded-lg border-none focus:ring-2 focus:ring-primary/30 outline-none"
+                                  placeholder="0"
+                                />
+                                <span className="absolute right-2 top-2 text-secondary text-xs">{t(currency)}</span>
+                              </div>
+                            </div>
                           </td>
 
                           {/* Wage Type Toggle */}
@@ -393,7 +431,7 @@ export default function WorkerPayRatesPage() {
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-2.5 text-secondary text-xs font-medium">
-                                  {rate.wage_type === 'percentage' ? '%' : t('QAR')}
+                                  {rate.wage_type === 'percentage' ? '%' : t(currency)}
                                 </span>
                               </div>
                             </div>
@@ -423,7 +461,7 @@ export default function WorkerPayRatesPage() {
                           {/* Preview */}
                           <td className="px-6 py-4 text-right">
                             <span className="text-sm font-bold text-primary">
-                              {calcWage(rate, calcPrice)}
+                              {calcWage(rate, pt.base_price || calcPrice)}
                             </span>
                           </td>
                         </tr>
@@ -431,7 +469,7 @@ export default function WorkerPayRatesPage() {
                         {/* Seasonal Dates Row */}
                         {hasSeasonal && (
                           <tr className={`${isEven ? 'bg-surface' : 'bg-surface-container-lowest'}`}>
-                            <td colSpan={5} className="px-6 py-3">
+                            <td colSpan={6} className="px-6 py-3">
                               <div className="flex items-center gap-3 ml-auto justify-end">
                                 <span className="text-xs text-secondary">{t('From')}</span>
                                 <input
@@ -476,7 +514,7 @@ export default function WorkerPayRatesPage() {
             {/* Table footer */}
             <div className="px-6 py-3 border-t border-outline-variant/10 flex justify-between items-center text-xs text-secondary">
               <span>{t('{count} of {total} rates configured').replace('{count}', String(configuredCount)).replace('{total}', String(pieceTypes.length))}</span>
-              <span>{t('Previewing at {price} QAR per piece').replace('{price}', String(calcPrice))}</span>
+              <span>{t('Preview uses base_price per piece type, fallback: {price} QAR').replace('{price}', String(calcPrice)).replaceAll('QAR', t(currency))}</span>
             </div>
           </div>
         </>

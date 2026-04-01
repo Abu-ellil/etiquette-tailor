@@ -72,6 +72,11 @@ export interface ElectronAPI {
     addPayment: (orderId: number, amount: number, method: 'cash' | 'card', note: string | null) => Promise<number>;
     getPayments: (orderId: number) => Promise<any[]>;
     deletePayment: (paymentId: number) => Promise<void>;
+    getItems: (orderId: number) => Promise<any[]>;
+    createItem: (data: any) => Promise<any>;
+    updateItem: (id: number, data: any) => Promise<any>;
+    deleteItem: (id: number) => Promise<void>;
+    recalculateTotal: (orderId: number) => Promise<void>;
   };
 
   window: {
@@ -83,6 +88,8 @@ export interface ElectronAPI {
 
   pieceTypes: {
     getAll: () => Promise<any[]>;
+    updateBasePrice: (name_en: string, base_price: number) => Promise<void>;
+    getBasePrice: (name_en: string) => Promise<number>;
   };
 
   reports: {
@@ -182,6 +189,11 @@ const api: ElectronAPI = {
     addPayment: (orderId, amount, method, note) => ipcRenderer.invoke('orders:addPayment', orderId, amount, method, note),
     getPayments: (orderId) => ipcRenderer.invoke('orders:getPayments', orderId),
     deletePayment: (paymentId) => ipcRenderer.invoke('orders:deletePayment', paymentId),
+    getItems: (orderId: number) => ipcRenderer.invoke('orders:getItems', orderId),
+    createItem: (data: any) => ipcRenderer.invoke('orders:createItem', data),
+    updateItem: (id: number, data: any) => ipcRenderer.invoke('orders:updateItem', id, data),
+    deleteItem: (id: number) => ipcRenderer.invoke('orders:deleteItem', id),
+    recalculateTotal: (orderId: number) => ipcRenderer.invoke('orders:recalculateTotal', orderId),
   },
 
   window: {
@@ -193,6 +205,8 @@ const api: ElectronAPI = {
 
   pieceTypes: {
     getAll: () => ipcRenderer.invoke('pieceTypes:getAll'),
+    updateBasePrice: (name_en: string, base_price: number) => ipcRenderer.invoke('pieceTypes:updateBasePrice', name_en, base_price),
+    getBasePrice: (name_en: string) => ipcRenderer.invoke('pieceTypes:getBasePrice', name_en),
   },
 
   reports: {

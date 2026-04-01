@@ -93,7 +93,7 @@ function formatDate(dateStr?: string): string {
 /* ------------------------------------------------------------------ */
 
 export default function WorkersPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -411,7 +411,7 @@ export default function WorkersPage() {
             <span className="material-symbols-outlined text-4xl">payments</span>
             <div>
               <span className="text-xl font-bold">
-                {Object.values(workerEarnings).reduce((sum: number, e: any) => sum + (e?.total_earnings || 0), 0).toFixed(0)} {t('QAR')}
+                {Object.values(workerEarnings).reduce((sum: number, e: any) => sum + (e?.total_earnings || 0), 0).toFixed(0)} {t(currency)}
               </span>
               <p className="text-white/70 text-xs">{selectedMonth}</p>
             </div>
@@ -504,7 +504,7 @@ export default function WorkersPage() {
                           >
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-bold text-primary">
-                                {(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} {t('QAR')}
+                                {(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} {t(currency)}
                               </span>
                               <span className="material-symbols-outlined text-xs text-secondary">
                                 {expandedEarnings[worker.id] ? 'expand_less' : 'expand_more'}
@@ -517,15 +517,15 @@ export default function WorkersPage() {
                               <div className="mt-2 p-2 bg-surface-container rounded text-xs space-y-1 min-w-[160px]">
                                 <div className="flex justify-between">
                                   <span className="text-secondary">{t('Piece Earnings')}</span>
-                                  <span className="font-semibold">{(workerEarnings[worker.id]?.piece_earnings || 0).toFixed(0)} {t('QAR')}</span>
+                                  <span className="font-semibold">{(workerEarnings[worker.id]?.piece_earnings || 0).toFixed(0)} {t(currency)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-secondary">{t('Fixed Salary')}</span>
-                                  <span className="font-semibold">{(workerEarnings[worker.id]?.fixed_salary || 0).toFixed(0)} {t('QAR')}</span>
+                                  <span className="font-semibold">{(workerEarnings[worker.id]?.fixed_salary || 0).toFixed(0)} {t(currency)}</span>
                                 </div>
                                 <div className="flex justify-between border-t border-outline-variant/20 pt-1">
                                   <span className="font-bold">{t('Total')}</span>
-                                  <span className="font-bold text-primary">{(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} {t('QAR')}</span>
+                                  <span className="font-bold text-primary">{(workerEarnings[worker.id]?.total_earnings || 0).toFixed(0)} {t(currency)}</span>
                                 </div>
                                 {/* Order-level breakdown toggle */}
                                 <div className="border-t border-outline-variant/20 pt-1 mt-1">
@@ -583,8 +583,8 @@ export default function WorkersPage() {
                                         <tr key={d.task_id} className="border-t border-outline-variant/10">
                                           <td className="px-2 py-1 font-semibold">{d.order_number}</td>
                                           <td className="px-2 py-1 text-secondary">{d.piece_type}</td>
-                                          <td className="px-2 py-1 text-right">{Number(d.price).toFixed(0)} {t('QAR')}</td>
-                                          <td className="px-2 py-1 text-right font-semibold text-primary">{Number(d.wage_amount).toFixed(0)} {t('QAR')}</td>
+                                          <td className="px-2 py-1 text-right">{Number(d.price).toFixed(0)} {t(currency)}</td>
+                                          <td className="px-2 py-1 text-right font-semibold text-primary">{Number(d.wage_amount).toFixed(0)} {t(currency)}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -990,7 +990,7 @@ export default function WorkersPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                      {t('Amount (QAR)')}
+                      {`${t('Amount')} (${t(currency)})`}
                     </label>
                     <div className="relative flex items-center">
                       <span className="material-symbols-outlined absolute left-4 text-outline">

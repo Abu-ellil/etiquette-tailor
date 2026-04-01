@@ -119,7 +119,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
             </div>
           </div>
 
-          <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-0 space-y-1 overflow-y-auto">
             {visibleItems.map((item) => {
               const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
               return (
@@ -142,12 +142,12 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
             })}
           </nav>
 
-          <div className="px-6 mt-8 space-y-3">
+          <div className="px-6 mt-4 space-y-3">
             {showNewOrder && (
               <button
                 onClick={() => handleNav('/orders/new')}
                 title={t('New Order')}
-                className="btn-primary w-full py-3 lg:py-4 text-sm tracking-wide flex items-center justify-center gap-2"
+                className="btn-primary w-full py-3 lg:py-2 text-sm tracking-wide flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-sm shrink-0">add_circle</span>
                 <span className="whitespace-nowrap">{t('New Order')}</span>
@@ -156,7 +156,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
             <button
               onClick={handleLogout}
               title={t('Logout')}
-              className="w-full py-2.5 text-on-surface-variant hover:bg-surface-container/50 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2 text-on-surface-variant hover:bg-surface-container/50 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
               <span className="whitespace-nowrap">{t('Logout')}</span>
             </button>

@@ -32,7 +32,14 @@
       "Bash(python3:*)",
       "Bash(xxd)",
       "Bash(npx eslint:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(find src/ -type f -not -path */node_modules/* -not -path */.claude/* -not -path */.git/*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(xxd \"src/renderer/pages/WorkerPayRates.tsx\")",
+      "Bash(python -c \":*)",
+      "Bash(npx electron-forge:*)"
     ]
   }
 }

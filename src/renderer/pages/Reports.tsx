@@ -42,10 +42,10 @@ function getInitials(name?: string): string {
 type TimePeriod = 'daily' | 'weekly' | 'monthly';
 
 export default function ReportsPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
 
   function formatCurrency(amount: number): string {
-    return `${t('QAR')} ${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `${t(currency)} ${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   }
   const [period, setPeriod] = useState<TimePeriod>('weekly');
   const [searchQuery, setSearchQuery] = useState('');

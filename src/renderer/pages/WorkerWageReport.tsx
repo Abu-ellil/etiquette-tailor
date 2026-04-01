@@ -11,7 +11,7 @@ interface Worker {
 }
 
 export default function WorkerWageReportPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<number | null>(null);
   const [periodMode, setPeriodMode] = useState<'this_month' | 'last_month' | 'custom' | 'all'>('this_month');
@@ -218,7 +218,7 @@ export default function WorkerWageReportPage() {
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-extrabold text-primary">{totalEarnings.toFixed(0)}</span>
-                <span className="text-secondary font-medium">{t('QAR')}</span>
+                <span className="text-secondary font-medium">{t(currency)}</span>
               </div>
             </div>
 
@@ -228,7 +228,7 @@ export default function WorkerWageReportPage() {
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-extrabold text-on-surface">{totalPaid.toFixed(0)}</span>
-                <span className="text-secondary font-medium">{t('QAR')}</span>
+                <span className="text-secondary font-medium">{t(currency)}</span>
               </div>
             </div>
 
@@ -238,7 +238,7 @@ export default function WorkerWageReportPage() {
               </span>
               <div className="flex items-baseline gap-2">
                 <span className={`text-4xl font-extrabold ${balance > 0 ? 'text-white' : 'text-on-surface'}`}>{balance.toFixed(0)}</span>
-                <span className={`font-medium ${balance > 0 ? 'text-white/70' : 'text-secondary'}`}>{t('QAR')}</span>
+                <span className={`font-medium ${balance > 0 ? 'text-white/70' : 'text-secondary'}`}>{t(currency)}</span>
               </div>
             </div>
           </div>
@@ -270,7 +270,7 @@ export default function WorkerWageReportPage() {
                   {payments.map((p: any) => (
                     <tr key={p.id}>
                       <td className="text-secondary text-sm">{formatDate(p.created_at)}</td>
-                      <td className="font-bold text-primary">{Number(p.amount).toFixed(0)} {t('QAR')}</td>
+                      <td className="font-bold text-primary">{Number(p.amount).toFixed(0)} {t(currency)}</td>
                       <td className="text-secondary text-sm">{p.note || '--'}</td>
                     </tr>
                   ))}
@@ -297,6 +297,7 @@ export default function WorkerWageReportPage() {
                       <th>{t('Order')}</th>
                       <th>{t('Piece Type')}</th>
                       <th>{t('Task Type')}</th>
+                      <th>{t('Qty')}</th>
                       <th>{t('Wage Type')}</th>
                       <th>{t('Wage Rate')}</th>
                       <th>{t('Wage Amount')}</th>
@@ -311,9 +312,17 @@ export default function WorkerWageReportPage() {
                         <td>
                           <span className="chip chip-progress capitalize">{t(d.task_type)}</span>
                         </td>
+                        <td className="text-center text-sm font-semibold">{d.task_quantity || 1}</td>
                         <td className="text-sm">{d.wage_type === 'percentage' ? t('Percentage') : t('Fixed')}</td>
-                        <td className="text-sm">{d.wage_type === 'percentage' ? `${d.wage_rate}%` : `${Number(d.wage_rate).toFixed(0)} ${t('QAR')}`}</td>
-                        <td className="font-bold text-primary">{Number(d.wage_amount).toFixed(0)} {t('QAR')}</td>
+                        <td className="text-sm">{d.wage_type === 'percentage' ? `${d.wage_rate}%` : `${Number(d.wage_rate).toFixed(0)} ${t(currency)}`}</td>
+                        <td className="font-bold text-primary">
+                          <span>{Number(d.wage_amount).toFixed(0)} {t(currency)}</span>
+                          {d.wage_type === 'percentage' && d.price > 0 && (
+                            <span className="block text-xs text-secondary font-normal mt-0.5">
+                              {d.price} × {d.wage_rate}% × {d.task_quantity || 1} = {(d.price * (d.wage_rate / 100) * (d.task_quantity || 1)).toFixed(0)}
+                            </span>
+                          )}
+                        </td>
                         <td className="text-secondary text-sm">{formatDate(d.completed_at)}</td>
                       </tr>
                     ))}
@@ -347,7 +356,7 @@ export default function WorkerWageReportPage() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">{t('Amount (QAR)')}</label>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">{`${t('Amount')} (${t(currency)})`}</label>
                     <div className="relative flex items-center">
                       <span className="material-symbols-outlined absolute left-4 text-outline">payments</span>
                       <input type="number" min="0" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="input-field pl-12" placeholder="0.00" autoFocus />

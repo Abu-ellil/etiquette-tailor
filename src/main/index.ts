@@ -50,6 +50,8 @@ import {
   updateBranch,
   createBranch,
   getPieceTypes,
+  updateBasePrice,
+  getBasePrice,
   recalculateTaskWages,
   getReportStats,
   getPaymentSplit,
@@ -58,6 +60,11 @@ import {
   addOrderPayment,
   getOrderPayments,
   deleteOrderPayment,
+  getOrderItems,
+  createOrderItem,
+  updateOrderItem,
+  deleteOrderItem,
+  recalculateOrderTotal,
 } from '../db';
 import {
   createNotification,
@@ -352,7 +359,7 @@ function registerIpcHandlers() {
     try {
       const order = getOrder(orderId);
       if (order) {
-        const msg = `${amount} QAR ${method} payment on order ${order.order_number}`;
+        const msg = `${amount} ${getAllSettings().currency || 'QAR'} ${method} payment on order ${order.order_number}`;
         createNotification({ type: 'payment_received', title: 'Payment Received', message: msg, order_id: orderId, target_role: 'admin' });
         createNotification({ type: 'payment_received', title: 'Payment Received', message: msg, order_id: orderId, target_role: 'manager' });
       }
@@ -366,6 +373,27 @@ function registerIpcHandlers() {
 
   ipcMain.handle('orders:deletePayment', async (_event, paymentId: number) => {
     return deleteOrderPayment(paymentId);
+  });
+
+  // Order Items
+  ipcMain.handle('orders:getItems', async (_event, orderId: number) => {
+    return getOrderItems(orderId);
+  });
+
+  ipcMain.handle('orders:createItem', async (_event, data: any) => {
+    return createOrderItem(data);
+  });
+
+  ipcMain.handle('orders:updateItem', async (_event, id: number, data: any) => {
+    return updateOrderItem(id, data);
+  });
+
+  ipcMain.handle('orders:deleteItem', async (_event, id: number) => {
+    return deleteOrderItem(id);
+  });
+
+  ipcMain.handle('orders:recalculateTotal', async (_event, orderId: number) => {
+    return recalculateOrderTotal(orderId);
   });
 
   // Settings
@@ -412,6 +440,14 @@ function registerIpcHandlers() {
   // Piece types
   ipcMain.handle('pieceTypes:getAll', async () => {
     return getPieceTypes();
+  });
+
+  ipcMain.handle('pieceTypes:updateBasePrice', async (_event, name_en: string, base_price: number) => {
+    return updateBasePrice(name_en, base_price);
+  });
+
+  ipcMain.handle('pieceTypes:getBasePrice', async (_event, name_en: string) => {
+    return getBasePrice(name_en);
   });
 
   // Notifications

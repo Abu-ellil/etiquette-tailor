@@ -77,7 +77,7 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('shop');
   const { theme, setTheme } = useTheme();
-  const { t, locale, setLocale } = useTranslation();
+  const { t, locale, setLocale, setCurrency } = useTranslation();
   const [settings, setSettingsState] = useState<Record<string, string>>({});
   const [users, setUsers] = useState<User[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -173,6 +173,8 @@ export default function SettingsPage() {
       setSaving(true);
       await window.electronAPI.settings.set(updates);
       setSettingsState((prev) => ({ ...prev, ...updates }));
+      if (updates.currency) setCurrency(updates.currency);
+      if (updates.locale) setLocale(updates.locale as 'en' | 'ar');
     } catch (err) {
       console.error('Failed to save preferences:', err);
     } finally {

@@ -114,7 +114,7 @@ function StatusDropdown({
 
   async function handleSelect(dbStatus: string) {
     if (dbStatus === 'delivered' && orderBalance > 0.01) {
-      setError(t('Cannot deliver: balance of {balance} QAR outstanding', { balance: orderBalance.toFixed(2) }));
+      setError(t('Cannot deliver: balance of {balance} QAR outstanding').replace('{balance}', orderBalance.toFixed(2)).replaceAll('QAR', t(currency)));
       setTimeout(() => setError(null), 4000);
       return;
     }
@@ -175,7 +175,7 @@ function StatusDropdown({
 /* ------------------------------------------------------------------ */
 export default function OrdersPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const session = JSON.parse(localStorage.getItem('session') || '{}');
   const isWorker = session.role === 'worker';
   const [orders, setOrders] = useState<Order[]>([]);
@@ -184,6 +184,7 @@ export default function OrdersPage() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [orderItemsMap, setOrderItemsMap] = React.useState<Record<number, any[]>>({});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -194,6 +195,20 @@ export default function OrdersPage() {
       ]);
       setOrders(allOrders);
       setStats(orderStats);
+
+      // Fetch items for each order
+      const itemsMap: Record<number, any[]> = {};
+      await Promise.all(
+        allOrders.map(async (order: any) => {
+          try {
+            const items = await window.electronAPI.orders.getItems(order.id);
+            if (items && items.length > 0) {
+              itemsMap[order.id] = items;
+            }
+          } catch { /* ignore per-order errors */ }
+        })
+      );
+      setOrderItemsMap(itemsMap);
     } catch (err) {
       console.error('Failed to load orders:', err);
     } finally {
@@ -218,6 +233,20 @@ export default function OrdersPage() {
         try {
           const results = await window.electronAPI.orders.search(q);
           setOrders(results);
+
+          // Fetch items for search results
+          const itemsMap: Record<number, any[]> = {};
+          await Promise.all(
+            results.map(async (order: any) => {
+              try {
+                const items = await window.electronAPI.orders.getItems(order.id);
+                if (items && items.length > 0) {
+                  itemsMap[order.id] = items;
+                }
+              } catch { /* ignore */ }
+            })
+          );
+          setOrderItemsMap(itemsMap);
         } catch (err) {
           console.error('Search failed:', err);
         }
@@ -250,6 +279,18 @@ export default function OrdersPage() {
   ];
 
   /* Helpers */
+  function buildItemsSummary(items: any[] | undefined, fallback: string): string {
+    if (!items || items.length === 0) return fallback;
+    const totalQty = items.reduce((s, it) => s + (it.quantity || 1), 0);
+    if (items.length === 1) {
+      return `${items[0].piece_type} x${items[0].quantity || 1}`;
+    }
+    if (totalQty <= 6) {
+      return items.map((it) => `${it.piece_type} x${it.quantity || 1}`).join(', ');
+    }
+    return `${items.length} types, ${totalQty} pieces`;
+  }
+
   function formatCurrency(v: number) {
     return v.toLocaleString('en-US', { minimumFractionDigits: 0 });
   }
@@ -387,7 +428,7 @@ export default function OrdersPage() {
 
                     {/* Item Type */}
                     <td className="text-secondary">
-                      {order.piece_type}
+                      {buildItemsSummary(orderItemsMap[order.id], order.piece_type)}
                     </td>
 
                     {/* Price */}
@@ -459,7 +500,7 @@ export default function OrdersPage() {
               <span className="text-xs text-outline">
                 {t('Revenue (open):')}{' '}
                 <span className="font-bold text-on-surface">
-                  {(stats?.revenue ?? 0).toLocaleString('en-US')} {t('QAR')}
+                  {(stats?.revenue ?? 0).toLocaleString('en-US')} {t(currency)}
                 </span>
               </span>
             )}

@@ -9,7 +9,7 @@ const TASK_TYPE_ICONS: Record<string, string> = {
 };
 
 export default function TaskBoardPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [tasks, setTasks] = useState<any[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
@@ -130,6 +130,7 @@ export default function TaskBoardPage() {
                 <th>{t('Order')}</th>
                 <th>{t('Customer')}</th>
                 <th>{t('Piece')}</th>
+                <th>{t('Qty')}</th>
                 <th>{t('Type')}</th>
                 <th>{t('Worker')}</th>
                 <th>{t('Due Date')}</th>
@@ -144,7 +145,8 @@ export default function TaskBoardPage() {
                   <tr key={task.task_id}>
                     <td className="font-bold">{task.order_number}</td>
                     <td className="max-w-[180px]"><span className="truncate block">{task.customer_name || '--'}</span></td>
-                    <td className="max-w-[140px]"><span className="truncate block">{task.piece_type}</span></td>
+                    <td className="max-w-[140px]"><span className="truncate block">{task.item_piece_type || task.piece_type}</span></td>
+                    <td>{task.task_quantity || 1}</td>
                     <td>
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-sm">{TASK_TYPE_ICONS[task.task_type] || 'task'}</span>
@@ -158,7 +160,7 @@ export default function TaskBoardPage() {
                         {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">{t('Overdue')}</span>}
                       </div>
                     </td>
-                    {isAdmin && <td className="font-semibold">{Number(task.wage_amount || 0).toFixed(2)} QAR</td>}
+                    {isAdmin && <td className="font-semibold">{Number(task.wage_amount || 0).toFixed(2)} {t(currency)}</td>}
                     <td>
                       <StatusChip status={task.status} />
                     </td>

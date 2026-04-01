@@ -19,7 +19,7 @@ interface WorkerData {
 }
 
 export default function SalarySummaryPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [workerData, setWorkerData] = useState<WorkerData[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -139,21 +139,21 @@ export default function SalarySummaryPage() {
           <span className="text-secondary font-headline text-xs font-bold uppercase tracking-widest">{t('Total Earnings')}</span>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-extrabold text-primary">{totalEarnings.toFixed(0)}</span>
-            <span className="text-secondary">{t('QAR')}</span>
+            <span className="text-secondary">{t(currency)}</span>
           </div>
         </div>
         <div className="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_20px_40px_rgba(25,28,29,0.03)] flex flex-col justify-between h-36">
           <span className="text-secondary font-headline text-xs font-bold uppercase tracking-widest">{t('Total Paid')}</span>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-extrabold text-on-surface">{totalPaid.toFixed(0)}</span>
-            <span className="text-secondary">{t('QAR')}</span>
+            <span className="text-secondary">{t(currency)}</span>
           </div>
         </div>
         <div className="bg-primary-container p-8 rounded-xl text-white flex flex-col justify-between h-36">
           <span className="text-white/80 font-headline text-xs font-bold uppercase tracking-widest">{t('Outstanding Balance')}</span>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-extrabold">{totalBalance.toFixed(0)}</span>
-            <span className="text-white/70">{t('QAR')}</span>
+            <span className="text-white/70">{t(currency)}</span>
           </div>
         </div>
       </div>
@@ -225,13 +225,13 @@ export default function SalarySummaryPage() {
                       </div>
                     </td>
                     <td className="font-semibold">{d.earnings?.task_count || 0}</td>
-                    <td>{(d.earnings?.piece_earnings || 0).toFixed(0)} {t('QAR')}</td>
-                    <td>{(d.earnings?.fixed_salary || 0).toFixed(0)} {t('QAR')}</td>
-                    <td className="font-bold text-primary">{(d.earnings?.total_earnings || 0).toFixed(0)} {t('QAR')}</td>
-                    <td className="text-on-surface">{(d.account?.total_paid || 0).toFixed(0)} {t('QAR')}</td>
+                    <td>{(d.earnings?.piece_earnings || 0).toFixed(0)} {t(currency)}</td>
+                    <td>{(d.earnings?.fixed_salary || 0).toFixed(0)} {t(currency)}</td>
+                    <td className="font-bold text-primary">{(d.earnings?.total_earnings || 0).toFixed(0)} {t(currency)}</td>
+                    <td className="text-on-surface">{(d.account?.total_paid || 0).toFixed(0)} {t(currency)}</td>
                     <td>
                       <span className={`font-bold ${(d.account?.balance || 0) > 0 ? 'text-error' : 'text-on-surface'}`}>
-                        {(d.account?.balance || 0).toFixed(0)} {t('QAR')}
+                        {(d.account?.balance || 0).toFixed(0)} {t(currency)}
                       </span>
                     </td>
                     {batchMode && (
@@ -255,14 +255,14 @@ export default function SalarySummaryPage() {
                   {batchMode && <td></td>}
                   <td>{t('Total')}</td>
                   <td>{workerData.reduce((s, d) => s + (d.earnings?.task_count || 0), 0)}</td>
-                  <td>{workerData.reduce((s, d) => s + (d.earnings?.piece_earnings || 0), 0).toFixed(0)} {t('QAR')}</td>
-                  <td>{workerData.reduce((s, d) => s + (d.earnings?.fixed_salary || 0), 0).toFixed(0)} {t('QAR')}</td>
-                  <td className="text-primary">{totalEarnings.toFixed(0)} {t('QAR')}</td>
-                  <td>{totalPaid.toFixed(0)} {t('QAR')}</td>
-                  <td className={totalBalance > 0 ? 'text-error' : ''}>{totalBalance.toFixed(0)} {t('QAR')}</td>
+                  <td>{workerData.reduce((s, d) => s + (d.earnings?.piece_earnings || 0), 0).toFixed(0)} {t(currency)}</td>
+                  <td>{workerData.reduce((s, d) => s + (d.earnings?.fixed_salary || 0), 0).toFixed(0)} {t(currency)}</td>
+                  <td className="text-primary">{totalEarnings.toFixed(0)} {t(currency)}</td>
+                  <td>{totalPaid.toFixed(0)} {t(currency)}</td>
+                  <td className={totalBalance > 0 ? 'text-error' : ''}>{totalBalance.toFixed(0)} {t(currency)}</td>
                   {batchMode && (
                     <td className="text-primary">
-                      {workerData.filter((d) => d.selected && Number(d.payAmount) > 0).reduce((s, d) => s + Number(d.payAmount), 0).toFixed(0)} {t('QAR')}
+                      {workerData.filter((d) => d.selected && Number(d.payAmount) > 0).reduce((s, d) => s + Number(d.payAmount), 0).toFixed(0)} {t(currency)}
                     </td>
                   )}
                 </tr>

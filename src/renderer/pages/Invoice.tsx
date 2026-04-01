@@ -44,7 +44,7 @@ function formatCurrency(amount: number): string {
 export default function InvoicePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const printRef = useRef<HTMLDivElement>(null);
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -252,7 +252,7 @@ export default function InvoicePage() {
               </div>
               <div className="text-2xl font-headline font-black tracking-tight text-on-surface">
                 {formatCurrency(order.balance)}{' '}
-                <span className="text-xs font-medium ml-1">{t('QAR')}</span>
+                <span className="text-xs font-medium ml-1">{t(currency)}</span>
               </div>
             </div>
           </div>

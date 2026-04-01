@@ -90,14 +90,27 @@ function getAvatarColor(index: number) {
   return AVATAR_COLORS[index % AVATAR_COLORS.length];
 }
 
+function buildItemsSummary(items: any[] | undefined, fallback: string): string {
+  if (!items || items.length === 0) return fallback;
+  const totalQty = items.reduce((s, it) => s + (it.quantity || 1), 0);
+  if (items.length === 1) {
+    return `${items[0].piece_type} x${items[0].quantity || 1}`;
+  }
+  if (totalQty <= 6) {
+    return items.map((it) => `${it.piece_type} x${it.quantity || 1}`).join(', ');
+  }
+  return `${items.length} types, ${totalQty} pieces`;
+}
+
 export default function DashboardPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workerTasks, setWorkerTasks] = useState<any[]>([]);
   const [allTasks, setAllTasks] = useState<any[]>([]);
+  const [orderItemsMap, setOrderItemsMap] = useState<Record<number, any[]>>({});
 
   const session = React.useMemo(() => {
     try {
@@ -131,7 +144,22 @@ export default function DashboardPage() {
             window.electronAPI.orders.getAll(branchFilter),
           ]);
           setStats(statsData);
-          setOrders((ordersData || []).slice(0, 5));
+          const latestOrders = (ordersData || []).slice(0, 5);
+          setOrders(latestOrders);
+
+          // Fetch items for latest orders
+          const itemsMap: Record<number, any[]> = {};
+          await Promise.all(
+            latestOrders.map(async (order: any) => {
+              try {
+                const items = await window.electronAPI.orders.getItems(order.id);
+                if (items && items.length > 0) {
+                  itemsMap[order.id] = items;
+                }
+              } catch { /* ignore */ }
+            })
+          );
+          setOrderItemsMap(itemsMap);
 
           const tasks = await window.electronAPI.orders.getAllTasks(isManager ? { branchId: session.branch_id } : {});
           setAllTasks(tasks || []);
@@ -321,7 +349,7 @@ export default function DashboardPage() {
             </div>
             <div className="mt-4">
               <span className="text-3xl font-headline font-extrabold text-on-surface">
-                {formatRevenue(safeStats.revenue, t('QAR'))}
+                {formatRevenue(safeStats.revenue, t(currency))}
               </span>
               <p className="text-xs text-secondary mt-1">{t('Open order value')}</p>
             </div>
@@ -513,7 +541,7 @@ export default function DashboardPage() {
                           </div>
                         </td>
                         <td className="text-sm text-secondary">
-                          {order.piece_type}
+                          {buildItemsSummary(orderItemsMap[order.id], order.piece_type)}
                         </td>
                         <td>{getStatusChip(order.status, late, t)}</td>
                         <td
@@ -537,7 +565,7 @@ export default function DashboardPage() {
 }
 
 function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter: boolean; loading: boolean }) {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const session = React.useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('session') || '{}');
@@ -640,7 +668,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
             </span>
             <span className="flex items-center gap-1">
               <span className="material-symbols-outlined text-base">payments</span>
-              {(earnings?.fixed_salary || 0).toLocaleString()} {t('QAR base')}
+              {(earnings?.fixed_salary || 0).toLocaleString()} {t(currency)} {t('base')}
             </span>
           </div>
         </div>
@@ -652,7 +680,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
           <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('Total Profit')}</span>
           <div>
             <span className="text-3xl font-headline font-extrabold text-on-surface">{(account?.total_earnings || 0).toLocaleString()}</span>
-            <span className="text-sm text-secondary ml-1">{t('QAR')}</span>
+            <span className="text-sm text-secondary ml-1">{t(currency)}</span>
           </div>
           <p className="text-xs text-secondary">{account?.task_count || 0} {t('completed tasks')}</p>
         </div>
@@ -660,7 +688,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
           <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('Total Paid')}</span>
           <div>
             <span className="text-3xl font-headline font-extrabold text-on-surface">{(account?.total_paid || 0).toLocaleString()}</span>
-            <span className="text-sm text-secondary ml-1">{t('QAR')}</span>
+            <span className="text-sm text-secondary ml-1">{t(currency)}</span>
           </div>
           <p className="text-xs text-secondary">{t('Payments received')}</p>
         </div>
@@ -679,7 +707,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
                 }`}>{(account?.balance || 0).toLocaleString()}</span>
                 <span className={`text-sm ml-1 ${
                   hasBalance ? 'text-on-tertiary-fixed-variant' : 'text-secondary'
-                }`}>{t('QAR')}</span>
+                }`}>{t(currency)}</span>
               </div>
               <p className="text-xs text-on-tertiary-fixed-variant">{t('Amount owed to you')}</p>
             </div>
@@ -720,16 +748,16 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-secondary">{t('Piece Earnings')}</span>
-                <span className="font-semibold">{(earnings?.piece_earnings || 0).toLocaleString()} {t('QAR')}</span>
+                <span className="font-semibold">{(earnings?.piece_earnings || 0).toLocaleString()} {t(currency)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-secondary">{t('Base Salary')}</span>
-                <span className="font-semibold">{(earnings?.fixed_salary || 0).toLocaleString()} {t('QAR')}</span>
+                <span className="font-semibold">{(earnings?.fixed_salary || 0).toLocaleString()} {t(currency)}</span>
               </div>
               <div className="h-px bg-outline-variant/20" />
               <div className="flex justify-between">
                 <span className="font-bold">{t('Total')}</span>
-                <span className="font-bold text-primary text-lg">{(earnings?.total_earnings || 0).toLocaleString()} {t('QAR')}</span>
+                <span className="font-bold text-primary text-lg">{(earnings?.total_earnings || 0).toLocaleString()} {t(currency)}</span>
               </div>
             </div>
             <p className="text-xs text-secondary">{earnings?.task_count || 0} {t('completed tasks')}</p>
@@ -768,6 +796,9 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
                         <span className="font-bold text-on-surface whitespace-nowrap">{task.order_number}</span>
                         <span className="text-secondary">·</span>
                         <span className="text-sm text-secondary truncate">{task.piece_type}</span>
+                        {task.task_quantity && task.task_quantity > 1 && (
+                          <span className="text-xs text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded">x{task.task_quantity}</span>
+                        )}
                       </div>
                     </div>
                     <div className="text-sm text-secondary whitespace-nowrap shrink-0">

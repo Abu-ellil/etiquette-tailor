@@ -37,16 +37,21 @@ export interface OrderMeasurement {
 export interface OrderTask {
   id?: number;
   order_id: number;
+  order_item_id?: number;
   task_type: 'cutting' | 'sewing' | 'design';
   assigned_to?: number;
   wage_type: 'percentage' | 'fixed';
   wage_rate: number;
   wage_amount: number;
+  task_quantity?: number;
   status: 'pending' | 'in_progress' | 'done';
   started_at?: string;
   completed_at?: string;
   notes?: string;
   worker_name?: string;
+  // Joined fields from order_items
+  item_piece_type?: string;
+  base_price?: number;
 }
 
 function generateOrderNumber(branchId: number): string {
@@ -59,6 +64,82 @@ function generateOrderNumber(branchId: number): string {
   updateSeq.run(nextSeq, branchId);
 
   return `${branch.prefix}-${String(nextSeq).padStart(3, '0')}`;
+}
+
+// ── Order Items ────────────────────────────────────────────────────
+
+export interface OrderItem {
+  id?: number;
+  order_id: number;
+  piece_type: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  fabric_source: 'customer' | 'shop';
+  details?: string;
+  sort_order?: number;
+  created_at?: string;
+  // Joined fields
+  base_price?: number;
+  name_ar?: string;
+}
+
+export function getOrderItems(orderId: number): OrderItem[] {
+  const stmt = db.prepare(`
+    SELECT oi.*, pt.base_price, pt.name_ar
+    FROM order_items oi
+    LEFT JOIN piece_types pt ON oi.piece_type = pt.name_en
+    WHERE oi.order_id = ?
+    ORDER BY oi.sort_order
+  `);
+  return stmt.all(orderId) as OrderItem[];
+}
+
+export function createOrderItem(item: Omit<OrderItem, 'id'>): number {
+  const stmt = db.prepare(`
+    INSERT INTO order_items (order_id, piece_type, quantity, unit_price, total_price, fabric_source, details, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const result = stmt.run(
+    item.order_id,
+    item.piece_type,
+    item.quantity,
+    item.unit_price,
+    item.total_price || (item.unit_price * item.quantity),
+    item.fabric_source || 'customer',
+    item.details || null,
+    item.sort_order || 0
+  );
+  return result.lastInsertRowid as number;
+}
+
+export function updateOrderItem(id: number, data: Partial<OrderItem>): void {
+  const stmt = db.prepare(`
+    UPDATE order_items SET
+      piece_type = ?, quantity = ?, unit_price = ?,
+      total_price = ?, fabric_source = ?, details = ?
+    WHERE id = ?
+  `);
+  stmt.run(
+    data.piece_type,
+    data.quantity,
+    data.unit_price,
+    data.total_price || (data.unit_price! * data.quantity!),
+    data.fabric_source || 'customer',
+    data.details || null,
+    id
+  );
+}
+
+export function deleteOrderItem(id: number): void {
+  db.prepare('DELETE FROM order_items WHERE id = ?').run(id);
+}
+
+export function recalculateOrderTotal(orderId: number): void {
+  const sum = db.prepare(
+    'SELECT COALESCE(SUM(total_price), 0) as total FROM order_items WHERE order_id = ?'
+  ).get(orderId) as { total: number };
+  db.prepare('UPDATE orders SET price = ? WHERE id = ?').run(sum.total, orderId);
 }
 
 export function getAllOrders(branchId?: number, status?: string): Order[] {
@@ -104,33 +185,63 @@ export function getOrderByNumber(orderNumber: string): Order | undefined {
   return stmt.get(orderNumber) as Order | undefined;
 }
 
-export function createOrder(order: Omit<Order, 'id' | 'balance'>, measurements?: OrderMeasurement): number {
+export function createOrder(order: Omit<Order, 'id' | 'balance'>, measurements?: OrderMeasurement, items?: Omit<OrderItem, 'id' | 'order_id'>[]): number {
   const transaction = db.transaction(() => {
     const orderNumber = generateOrderNumber(order.branch_id);
+
+    // Calculate total from items if provided
+    const totalPrice = items && items.length > 0
+      ? items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0)
+      : order.price;
+
+    // Get primary piece_type from first item if provided
+    const primaryPieceType = items && items.length > 0 ? items[0].piece_type : order.piece_type;
 
     const orderStmt = db.prepare(`
       INSERT INTO orders (
         order_number, branch_id, customer_id, piece_type, details,
-        price, paid, payment_method, status, receive_date, delivery_date, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        price, paid, payment_method, status, receive_date, delivery_date, created_by, fabric_source
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = orderStmt.run(
       orderNumber,
       order.branch_id,
       order.customer_id,
-      order.piece_type,
+      primaryPieceType,
       order.details || null,
-      order.price,
+      totalPrice,
       order.paid || 0,
       order.payment_method,
       order.status || 'intake',
       order.receive_date || null,
       order.delivery_date || null,
-      order.created_by || null
+      order.created_by || null,
+      (items && items.length > 0) ? items[0].fabric_source || 'customer' : 'customer'
     );
 
     const orderId = result.lastInsertRowid as number;
+
+    // Insert order items
+    if (items && items.length > 0) {
+      const itemStmt = db.prepare(`
+        INSERT INTO order_items (order_id, piece_type, quantity, unit_price, total_price, fabric_source, details, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        itemStmt.run(
+          orderId,
+          item.piece_type,
+          item.quantity,
+          item.unit_price,
+          item.unit_price * item.quantity,
+          item.fabric_source || 'customer',
+          item.details || null,
+          i
+        );
+      }
+    }
 
     if (measurements) {
       const measStmt = db.prepare(`
@@ -220,9 +331,13 @@ export function updateOrderMeasurements(orderId: number, measurements: Partial<O
 
 export function getOrderTasks(orderId: number): OrderTask[] {
   const stmt = db.prepare(`
-    SELECT ot.*, u.name as worker_name
+    SELECT ot.*, u.name as worker_name,
+      oi.piece_type as item_piece_type,
+      pt.base_price
     FROM order_tasks ot
     LEFT JOIN users u ON ot.assigned_to = u.id
+    LEFT JOIN order_items oi ON ot.order_item_id = oi.id
+    LEFT JOIN piece_types pt ON oi.piece_type = pt.name_en
     WHERE ot.order_id = ?
     ORDER BY ot.task_type
   `);
@@ -231,16 +346,18 @@ export function getOrderTasks(orderId: number): OrderTask[] {
 
 export function createOrderTask(task: Omit<OrderTask, 'id'>): number {
   const stmt = db.prepare(`
-    INSERT INTO order_tasks (order_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, status, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO order_tasks (order_id, order_item_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, task_quantity, status, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
     task.order_id,
+    (task as any).order_item_id || null,
     task.task_type,
     task.assigned_to || null,
     task.wage_type,
     task.wage_rate,
     task.wage_amount,
+    (task as any).task_quantity || 1,
     task.status || 'pending',
     task.notes || null
   );
@@ -302,6 +419,7 @@ export interface TaskBoardItem {
   wage_type?: string;
   wage_rate?: number;
   wage_amount?: number;
+  task_quantity?: number;
   status: string;
   started_at?: string;
   completed_at?: string;
@@ -310,6 +428,8 @@ export interface TaskBoardItem {
   order_price?: number;
   order_status?: string;
   notes?: string;
+  order_item_id?: number;
+  base_price?: number;
 }
 
 export function getAllTasks(filters?: { branchId?: number; workerId?: number; taskType?: string }): TaskBoardItem[] {
@@ -319,14 +439,17 @@ export function getAllTasks(filters?: { branchId?: number; workerId?: number; ta
       ot.order_id,
       o.order_number,
       c.name as customer_name,
-      o.piece_type,
-      o.details,
+      COALESCE(oi.piece_type, o.piece_type) as piece_type,
+      COALESCE(oi.details, o.details) as details,
       ot.task_type,
       ot.assigned_to,
       u.name as worker_name,
       ot.wage_type,
       ot.wage_rate,
       ot.wage_amount,
+      COALESCE(ot.task_quantity, 1) as task_quantity,
+      ot.order_item_id,
+      pt.base_price,
       ot.status,
       ot.started_at,
       ot.completed_at,
@@ -337,6 +460,8 @@ export function getAllTasks(filters?: { branchId?: number; workerId?: number; ta
       ot.notes
     FROM order_tasks ot
     JOIN orders o ON ot.order_id = o.id
+    LEFT JOIN order_items oi ON ot.order_item_id = oi.id
+    LEFT JOIN piece_types pt ON oi.piece_type = pt.name_en
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN users u ON ot.assigned_to = u.id
     WHERE 1=1

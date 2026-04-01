@@ -35,6 +35,15 @@ export default {
   'Ready': 'جاهز',
   'Delivered': 'تم التسليم',
   'Late': 'متأخر',
+  'status.inProgress': 'قيد التنفيذ',
+  'status.ready': 'جاهز',
+  'status.delivered': 'تم التسليم',
+  'status.late': 'متأخر',
+  'Unpaid': 'غير مدفوع',
+  'Ready & Unpaid': 'جاهز وغير مدفوع',
+  'Cannot deliver: balance of {balance} QAR outstanding': 'لا يمكن التسليم: رصيد {balance} ريال مستحق',
+  'Order must be fully paid before delivery': 'يجب دفع كامل المبلغ قبل التسليم',
+  'Failed to update status': 'فشل تحديث الحالة',
 
   // Common
   'Cancel': 'إلغاء',
@@ -103,6 +112,7 @@ export default {
   'Total': 'الإجمالي',
   'completed tasks': 'مهام مكتملة',
   'QAR base': 'ريال راتب أساسي',
+  'base': 'راتب أساسي',
   'No tasks assigned': 'لا توجد مهام معينة',
   'Tasks will appear here when assigned to you.': 'ستظهر المهام هنا عند تعيينها لك.',
   'Done Today': 'مكتمل اليوم',
@@ -555,7 +565,6 @@ export default {
   'e.g. 18': 'مثال: 18',
   'e.g. 50.00': 'مثال: 50.00',
   'ID #': 'رقم #',
-  'e.g. 38.5"': 'مثال: 38.5"',
   'e.g. 24.5"': 'مثال: 24.5"',
 
   // Categories
@@ -575,14 +584,10 @@ export default {
   'permanent': 'دائم',
   'seasonal': 'موسمي',
 
-  // Password placeholder
-  'e.g. Abdullah Ahmed / عبدالله أحمد': 'مثال: عبدالله أحمد',
-
   // Notifications
   'Notifications': 'الإشعارات',
   'Mark all as read': 'تعليم الكل كمقروء',
   'No notifications': 'لا توجد إشعارات',
-  'New Order': 'طلب جديد',
   'Order Status Updated': 'تحديث حالة الطلب',
   'Order Status Changed': 'تغيير حالة الطلب',
   'Task Updated': 'تحديث المهمة',
@@ -592,7 +597,6 @@ export default {
 
   // Worker Wage Report
   'Worker Wage Report': 'تقرير أجور العامل',
-  'Select Worker...': 'اختر عاملاً...',
   'Period': 'الفترة',
   'Total Earnings': 'إجمالي الأرباح',
   'Remaining Balance': 'الرصيد المتبقي',
@@ -621,7 +625,6 @@ export default {
   'Payment recorded successfully.': 'تم تسجيل الدفعة بنجاح.',
   '{count} payments recorded successfully.': 'تم تسجيل {count} دفعات بنجاح.',
   'Enter payment amounts for workers below': 'أدخل مبالغ الدفع للعمال أدناه',
-  'Tasks Done': 'المهام المنجزة',
 
   // Worker Productivity
   'Worker Productivity': 'إنتاجية العمال',
@@ -635,7 +638,6 @@ export default {
   'Most Productive': 'الأكثر إنتاجية',
   'Worker performance and production metrics': 'مقاييس أداء وإنتاجية العمال',
   'This Week': 'هذا الأسبوع',
-  'This Month': 'هذا الشهر',
 
   // Task Management
   'Task Management': 'إدارة المهام',

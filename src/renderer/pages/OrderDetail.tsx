@@ -6,9 +6,11 @@ import { useTranslation } from '../contexts/I18nContext';
 export default function OrderDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [order, setOrder] = React.useState<any>(null);
   const [tasks, setTasks] = React.useState<any[]>([]);
+  const [orderItems, setOrderItems] = React.useState<any[]>([]);
+  const [pieceTypes, setPieceTypes] = React.useState<any[]>([]);
   const [measurements, setMeasurements] = React.useState<any>(null);
   const [workers, setWorkers] = React.useState<any[]>([]);
   const [payments, setPayments] = React.useState<any[]>([]);
@@ -23,22 +25,30 @@ export default function OrderDetailPage() {
     method: 'cash',
     note: '',
   });
+  const [session, setSession] = React.useState<any>(null);
+  React.useEffect(() => {
+    window.electronAPI.auth.getSession().then((s: any) => setSession(s));
+  }, []);
 
   const loadOrder = React.useCallback(async () => {
     try {
       setLoading(true);
-      const [orderData, taskData, measData, workerData, paymentData] = await Promise.all([
+      const [orderData, taskData, measData, workerData, paymentData, itemsData, ptData] = await Promise.all([
         window.electronAPI.orders.get(Number(id)),
         window.electronAPI.orders.getTasks(Number(id)),
         window.electronAPI.orders.getMeasurements(Number(id)),
         window.electronAPI.workers.getAll(),
         window.electronAPI.orders.getPayments(Number(id)),
+        window.electronAPI.orders.getItems(Number(id)),
+        window.electronAPI.pieceTypes.getAll(),
       ]);
       setOrder(orderData);
       setTasks(taskData || []);
       setMeasurements(measData);
       setWorkers(workerData || []);
       setPayments(paymentData || []);
+      setOrderItems(itemsData || []);
+      setPieceTypes(ptData || []);
     } catch (err) {
       console.error('Failed to load order:', err);
     } finally {
@@ -75,11 +85,11 @@ export default function OrderDetailPage() {
         const nonDoneTasks = tasks.filter((t: any) => t.status !== 'done');
         if (nonDoneTasks.length > 0) {
           const recalc = window.confirm(
-            t('Price changed from {oldPrice} QAR to {newPrice} QAR. This will recalculate wages for {count} task(s). Proceed?', {
-              oldPrice: originalPrice.toFixed(2),
-              newPrice: newPrice.toFixed(2),
-              count: nonDoneTasks.length,
-            })
+            t('Price changed from {oldPrice} QAR to {newPrice} QAR. This will recalculate wages for {count} task(s). Proceed?')
+              .replace('{oldPrice}', originalPrice.toFixed(2))
+              .replace('{newPrice}', newPrice.toFixed(2))
+              .replace('{count}', String(nonDoneTasks.length))
+              .replaceAll('QAR', t(currency))
           );
           if (recalc) {
             await window.electronAPI.orders.recalculateTaskWages(order.id, newPrice);
@@ -106,21 +116,27 @@ export default function OrderDetailPage() {
   const handleAddTask = async () => {
     if (!newTask.assigned_to || !order) return;
     try {
-      const rate = await window.electronAPI.workers.getActiveRate(newTask.assigned_to, order.piece_type);
+      const pieceType = order.piece_type;
+      const rate = await window.electronAPI.workers.getActiveRate(newTask.assigned_to, pieceType);
       if (!rate) {
         alert(t('No rate configured for this worker and piece type. Please set the rate in Worker Rates first.'));
         return;
       }
+      const pt = pieceTypes.find((p: any) => p.name_en === pieceType);
+      const basePrice = pt?.base_price || Number(order.price);
+      const taskQty = (newTask as any).task_quantity || 1;
       const wageAmount = rate.wage_type === 'percentage'
-        ? Number(order.price) * (rate.rate / 100)
-        : rate.rate;
+        ? basePrice * (rate.rate / 100) * taskQty
+        : rate.rate * taskQty;
       await window.electronAPI.orders.createTask({
         order_id: Number(id),
+        order_item_id: (newTask as any).order_item_id || null,
         task_type: newTask.task_type,
         assigned_to: newTask.assigned_to,
         wage_type: rate.wage_type,
         wage_rate: rate.rate,
         wage_amount: wageAmount,
+        task_quantity: taskQty,
         status: 'pending',
       });
       setShowAddTask(false);
@@ -133,11 +149,16 @@ export default function OrderDetailPage() {
 
   const handleReassign = async (taskId: number, newWorkerId: number) => {
     try {
-      const rate = await window.electronAPI.workers.getActiveRate(newWorkerId, order.piece_type);
+      const pieceType = order.piece_type;
+      const rate = await window.electronAPI.workers.getActiveRate(newWorkerId, pieceType);
       if (!rate) return;
+      const pt = pieceTypes.find((p: any) => p.name_en === pieceType);
+      const basePrice = pt?.base_price || Number(order.price);
+      const task = tasks.find((t: any) => t.id === taskId);
+      const qty = task?.task_quantity || 1;
       const wageAmount = rate.wage_type === 'percentage'
-        ? Number(order.price) * (rate.rate / 100)
-        : rate.rate;
+        ? basePrice * (rate.rate / 100) * qty
+        : rate.rate * qty;
       await window.electronAPI.orders.reassignTask(
         taskId, newWorkerId, rate.wage_type, rate.rate, wageAmount
       );
@@ -156,7 +177,7 @@ export default function OrderDetailPage() {
     }
     const balance = Number(order.price) - Number(order.paid);
     if (amount > balance + 0.01) {
-      alert(t('Payment amount exceeds the balance due ({balance} QAR).', { balance: balance.toFixed(2) }));
+      alert(t('Payment amount exceeds the balance due ({balance} QAR).').replace('{balance}', balance.toFixed(2)).replaceAll('QAR', t(currency)));
       return;
     }
     try {
@@ -207,10 +228,6 @@ export default function OrderDetailPage() {
   const balance = (Number(order.price) || 0) - (Number(order.paid) || 0);
   const isFullyPaid = balance <= 0.01;
 
-  const [session, setSession] = React.useState<any>(null);
-  React.useEffect(() => {
-    window.electronAPI.auth.getSession().then((s: any) => setSession(s));
-  }, []);
   const isWorker = session?.role === 'worker';
 
   return (
@@ -250,16 +267,16 @@ export default function OrderDetailPage() {
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-surface-container-lowest rounded-xl p-5 text-center">
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Total Price')}</p>
-            <p className="text-2xl font-extrabold text-on-surface">{Number(order.price).toFixed(2)} <span className="text-sm font-semibold text-secondary">{t('QAR')}</span></p>
+            <p className="text-2xl font-extrabold text-on-surface">{Number(order.price).toFixed(2)} <span className="text-sm font-semibold text-secondary">{t(currency)}</span></p>
           </div>
           <div className="bg-surface-container-lowest rounded-xl p-5 text-center">
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Total Paid')}</p>
-            <p className="text-2xl font-extrabold text-tertiary">{Number(order.paid).toFixed(2)} <span className="text-sm font-semibold text-secondary">{t('QAR')}</span></p>
+            <p className="text-2xl font-extrabold text-tertiary">{Number(order.paid).toFixed(2)} <span className="text-sm font-semibold text-secondary">{t(currency)}</span></p>
           </div>
           <div className={`rounded-xl p-5 text-center ${balance > 0.01 ? 'bg-error/10 border-2 border-error/20' : 'bg-tertiary-container/20 border-2 border-tertiary-container/30'}`}>
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Balance Due')}</p>
             <p className={`text-2xl font-extrabold ${balance > 0.01 ? 'text-error' : 'text-tertiary'}`}>
-              {balance > 0.01 ? balance.toFixed(2) : '0.00'} <span className="text-sm font-semibold text-secondary">{t('QAR')}</span>
+              {balance > 0.01 ? balance.toFixed(2) : '0.00'} <span className="text-sm font-semibold text-secondary">{t(currency)}</span>
             </p>
             {balance <= 0.01 && (
               <span className="inline-flex items-center gap-1 text-xs text-tertiary font-semibold mt-1">
@@ -294,7 +311,7 @@ export default function OrderDetailPage() {
                 {!isWorker && (
                   <>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Price (QAR)')}</label>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{`${t('Price')} (${t(currency)})`}</label>
                       <input type="number" value={order.price} onChange={(e) => setOrder({...order, price: e.target.value})} className="input-field w-full" />
                     </div>
                     <div>
@@ -328,6 +345,43 @@ export default function OrderDetailPage() {
             )}
           </div>
 
+          {/* ── Order Items ── */}
+          {orderItems.length > 0 && (
+            <div className="bg-surface-container-lowest rounded-xl p-6">
+              <h3 className="text-lg font-headline font-bold mb-4">{t('Order Items')}</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-outline-variant/30">
+                      <th className="text-left py-2 text-xs font-semibold uppercase tracking-widest text-secondary">#</th>
+                      <th className="text-left py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Piece Type')}</th>
+                      <th className="text-center py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Qty')}</th>
+                      <th className="text-right py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Unit Price')}</th>
+                      <th className="text-right py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Total')}</th>
+                      <th className="text-center py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Fabric')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orderItems.map((item: any, idx: number) => (
+                      <tr key={item.id} className="border-b border-outline-variant/10">
+                        <td className="py-2 text-secondary">{idx + 1}</td>
+                        <td className="py-2 font-semibold">{item.piece_type}</td>
+                        <td className="py-2 text-center">{item.quantity}</td>
+                        <td className="py-2 text-right">{Number(item.unit_price).toFixed(2)}</td>
+                        <td className="py-2 text-right font-bold">{Number(item.total_price).toFixed(2)}</td>
+                        <td className="py-2 text-center">
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${item.fabric_source === 'customer' ? 'bg-primary-container/20 text-primary' : 'bg-tertiary-container/20 text-tertiary'}`}>
+                            {item.fabric_source === 'customer' ? t('Customer') : t('Shop')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* ── Payment History ── */}
           {!isWorker && (
             <div className="bg-surface-container-lowest rounded-xl p-6">
@@ -353,7 +407,7 @@ export default function OrderDetailPage() {
                       <div className="flex items-center gap-4">
                         <span className="text-xs text-secondary font-mono w-6">#{idx + 1}</span>
                         <div>
-                          <span className="font-bold text-on-surface">{Number(p.amount).toFixed(2)} {t('QAR')}</span>
+                          <span className="font-bold text-on-surface">{Number(p.amount).toFixed(2)} {t(currency)}</span>
                           <span className={`ml-3 text-xs px-2 py-0.5 rounded-full font-semibold ${p.method === 'cash' ? 'bg-tertiary-container/20 text-tertiary' : 'bg-primary-container/20 text-primary'}`}>
                             {p.method === 'cash' ? t('Cash') : t('Card')}
                           </span>
@@ -424,7 +478,7 @@ export default function OrderDetailPage() {
                   </div>
                   <div className="flex justify-between items-center text-xs text-secondary">
                     <span>{t('Worker:')}: {task.worker_name || t('Unassigned')}</span>
-                    {!isWorker && <span>{t('Wage:')} {Number(task.wage_amount || 0).toFixed(2)} {t('QAR')}</span>}
+                    {!isWorker && <span>{t('Wage:')} {Number(task.wage_amount || 0).toFixed(2)} {t(currency)}</span>}
                   </div>
                   {task.started_at && <div className="text-xs text-secondary">{t('Started:')} {new Date(task.started_at).toLocaleString()}</div>}
                   {task.completed_at && <div className="text-xs text-secondary">{t('Completed:')} {new Date(task.completed_at).toLocaleString()}</div>}
@@ -480,11 +534,11 @@ export default function OrderDetailPage() {
               <div className="px-6 py-6">
                 <h2 className="text-xl font-headline font-bold mb-2">{t('Record Payment')}</h2>
                 <p className="text-sm text-secondary mb-5">
-                  {t('Balance due')}: <span className="font-bold text-error">{balance.toFixed(2)} {t('QAR')}</span>
+                  {t('Balance due')}: <span className="font-bold text-error">{balance.toFixed(2)} {t(currency)}</span>
                 </p>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Amount (QAR)')}</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{`${t('Amount')} (${t(currency)})`}</label>
                     <input
                       type="number"
                       step="0.01"

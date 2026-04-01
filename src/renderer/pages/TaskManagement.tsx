@@ -6,6 +6,9 @@ interface Task {
   order_id: number;
   order_number: string;
   piece_type: string;
+  item_piece_type?: string;
+  task_quantity?: number;
+  base_price?: number;
   details?: string;
   task_type: string;
   status: string;
@@ -39,7 +42,7 @@ interface RecommendedWorker {
 }
 
 export default function TaskManagementPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workloads, setWorkloads] = useState<Workload[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
@@ -94,7 +97,7 @@ export default function TaskManagementPage() {
       const q = searchQuery.toLowerCase();
       const match = (task.order_number || '').toLowerCase().includes(q)
         || (task.customer_name || '').toLowerCase().includes(q)
-        || (task.piece_type || '').toLowerCase().includes(q);
+        || (task.item_piece_type || task.piece_type || '').toLowerCase().includes(q);
       if (!match) return false;
     }
     return true;
@@ -109,7 +112,7 @@ export default function TaskManagementPage() {
   // Assign modal
   const openAssignModal = async (task: Task) => {
     try {
-      const recommended = await window.electronAPI.workers.getRecommended(task.piece_type, task.task_type);
+      const recommended = await window.electronAPI.workers.getRecommended(task.item_piece_type || task.piece_type, task.task_type);
       setAssignModal({ task, recommended: (recommended || []) as RecommendedWorker[] });
       setSelectedWorkerId(task.assigned_to || null);
       setCalculatedWage(task.wage_amount || 0);
@@ -126,8 +129,9 @@ export default function TaskManagementPage() {
     if (rec && rec.has_rate) {
       setCalculatedWageType(rec.wage_type);
       setCalculatedWageRate(rec.rate);
-      const price = assignModal?.task.order_price || 0;
-      setCalculatedWage(rec.wage_type === 'percentage' ? price * (rec.rate / 100) : rec.rate);
+      const quantity = assignModal?.task.task_quantity || 1;
+      const price = assignModal?.task.base_price || assignModal?.task.order_price || 0;
+      setCalculatedWage(rec.wage_type === 'percentage' ? price * (rec.rate / 100) * quantity : rec.rate);
     }
   };
 
@@ -313,6 +317,7 @@ export default function TaskManagementPage() {
                     <th>{t('Order')}</th>
                     <th>{t('Customer')}</th>
                     <th>{t('Piece Type')}</th>
+                    <th>{t('Qty')}</th>
                     <th>{t('Task Type')}</th>
                     <th>{t('Worker')}</th>
                     <th>{t('Due Date')}</th>
@@ -328,7 +333,8 @@ export default function TaskManagementPage() {
                       <tr key={task.task_id} className={isOverdue ? 'bg-error/5' : ''}>
                         <td className="font-semibold">{task.order_number}</td>
                         <td className="text-secondary">{task.customer_name || '--'}</td>
-                        <td>{task.piece_type}</td>
+                        <td>{task.item_piece_type || task.piece_type}</td>
+                        <td>{task.task_quantity || 1}</td>
                         <td>
                           <span className="px-2 py-0.5 bg-surface-container text-on-surface-variant text-xs font-bold rounded-full capitalize">
                             {t(task.task_type)}
@@ -346,7 +352,7 @@ export default function TaskManagementPage() {
                         </td>
                         <td className="text-sm">
                           {task.wage_amount ? (
-                            <span className="font-semibold text-primary">{Number(task.wage_amount).toFixed(0)} {t('QAR')}</span>
+                            <span className="font-semibold text-primary">{Number(task.wage_amount).toFixed(0)} {t(currency)}</span>
                           ) : '--'}
                         </td>
                         <td>
@@ -412,7 +418,7 @@ export default function TaskManagementPage() {
                     <div>
                       <h2 className="text-xl font-headline font-extrabold text-on-surface">{t('Assign Worker')}</h2>
                       <p className="text-secondary text-xs mt-0.5">
-                        {assignModal.task.order_number} - {assignModal.task.piece_type} ({t(assignModal.task.task_type)})
+                        {assignModal.task.order_number} - {assignModal.task.item_piece_type || assignModal.task.piece_type} ({t(assignModal.task.task_type)})
                       </p>
                     </div>
                   </div>
@@ -446,7 +452,7 @@ export default function TaskManagementPage() {
                             <p className="font-bold text-on-surface text-sm truncate">{r.worker_name}</p>
                             <div className="flex items-center gap-2 text-xs text-secondary">
                               {r.has_rate ? (
-                                <span>{r.wage_type === 'percentage' ? `${r.rate}%` : `${r.rate} ${t('QAR')}`}</span>
+                                <span>{r.wage_type === 'percentage' ? `${r.rate}%` : `${r.rate} ${t(currency)}`}</span>
                               ) : (
                                 <span className="text-error">{t('No rate set')}</span>
                               )}
@@ -477,7 +483,7 @@ export default function TaskManagementPage() {
                         <option value="">{t('Select a worker to assign...')}</option>
                         {assignModal.recommended.map((r) => (
                           <option key={r.user_id} value={r.user_id}>
-                            {r.worker_name} {r.has_rate ? `(${r.wage_type === 'percentage' ? `${r.rate}%` : `${r.rate} QAR`})` : `(${t('No rate set')})`}
+                            {r.worker_name} {r.has_rate ? `(${r.wage_type === 'percentage' ? `${r.rate}%` : `${r.rate} ${t(currency)}`})` : `(${t('No rate set')})`}
                           </option>
                         ))}
                       </select>
@@ -494,9 +500,9 @@ export default function TaskManagementPage() {
                       </div>
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-extrabold text-primary">{calculatedWage.toFixed(0)}</span>
-                        <span className="text-secondary">{t('QAR')}</span>
+                        <span className="text-secondary">{t(currency)}</span>
                         <span className="text-xs text-secondary ml-2">
-                          ({calculatedWageType === 'percentage' ? `${calculatedWageRate}%` : `${calculatedWageRate} ${t('QAR')} ${t('Fixed')}`})
+                          ({calculatedWageType === 'percentage' ? `${calculatedWageRate}%` : `${calculatedWageRate} ${t(currency)} ${t('Fixed')}`})
                         </span>
                       </div>
                     </div>
