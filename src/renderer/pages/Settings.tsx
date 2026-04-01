@@ -789,10 +789,10 @@ export default function SettingsPage() {
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-4 text-outline">person</span>
                         <input
-                          {...register('name', { required: 'Name is required' })}
+                          {...register('name', { required: t('Name is required') })}
                           type="text"
                           className={`input-field pl-12 ${errors.name ? '!border-b-error' : ''}`}
-                          placeholder="e.g. Ahmad Ali"
+                          placeholder={t('e.g. Ahmad Ali')}
                         />
                       </div>
                       {errors.name && (
@@ -809,11 +809,11 @@ export default function SettingsPage() {
                           <span className="material-symbols-outlined absolute left-4 text-outline">alternate_email</span>
                           <input
                             {...register('username', {
-                              required: !editingUser ? 'Username is required' : false,
+                              required: !editingUser ? t('Username is required') : false,
                             })}
                             type="text"
                             className={`input-field pl-12 ${errors.username ? '!border-b-error' : ''}`}
-                            placeholder="Login ID"
+                            placeholder={t('Login ID')}
                             disabled={!!editingUser}
                           />
                         </div>
@@ -829,11 +829,11 @@ export default function SettingsPage() {
                           <span className="material-symbols-outlined absolute left-4 text-outline">lock</span>
                           <input
                             {...register('password', {
-                              required: !editingUser ? 'Password is required' : false,
+                              required: !editingUser ? t('Password is required') : false,
                             })}
                             type={showPassword ? 'text' : 'password'}
                             className={`input-field pl-12 pr-12 ${errors.password ? '!border-b-error' : ''}`}
-                            placeholder={editingUser ? 'Leave blank to keep' : 'Min 6 characters'}
+                            placeholder={editingUser ? t('Leave blank to keep') : t('Min 6 characters')}
                           />
                           <button
                             type="button"
@@ -921,8 +921,8 @@ export default function SettingsPage() {
                               {...register('worker_type')}
                               className="input-field pl-12 appearance-none"
                             >
-                              <option value="tailor">Tailor</option>
-                              <option value="master_cutter">Master Cutter</option>
+                              <option value="tailor">{t('Tailor')}</option>
+                              <option value="master_cutter">{t('Master Cutter')}</option>
                             </select>
                             <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                               expand_more
@@ -1018,11 +1018,11 @@ export default function SettingsPage() {
                       {t('Branch Name (Arabic)')}
                     </label>
                     <input
-                      {...regBranch('name_ar', { required: 'Arabic name is required' })}
+                      {...regBranch('name_ar', { required: t('Arabic name is required') })}
                       type="text"
                       dir="rtl"
                       className={`input-field ${branchErrors.name_ar ? '!border-b-error' : ''}`}
-                      placeholder="اسم الفرع"
+                      placeholder={t('اسم الفرع')}
                     />
                     {branchErrors.name_ar && (
                       <p className="text-error text-xs mt-1 ml-1">{branchErrors.name_ar.message}</p>
@@ -1034,10 +1034,10 @@ export default function SettingsPage() {
                       {t('Branch Name (English)')}
                     </label>
                     <input
-                      {...regBranch('name_en', { required: 'English name is required' })}
+                      {...regBranch('name_en', { required: t('English name is required') })}
                       type="text"
                       className={`input-field ${branchErrors.name_en ? '!border-b-error' : ''}`}
-                      placeholder="Branch name in English"
+                      placeholder={t('Branch name in English')}
                     />
                     {branchErrors.name_en && (
                       <p className="text-error text-xs mt-1 ml-1">{branchErrors.name_en.message}</p>
@@ -1051,11 +1051,11 @@ export default function SettingsPage() {
                     <div className="relative flex items-center">
                       <span className="material-symbols-outlined absolute left-4 text-outline">tag</span>
                       <input
-                        {...regBranch('prefix', { required: 'Prefix is required' })}
+                        {...regBranch('prefix', { required: t('Prefix is required') })}
                         type="text"
                         maxLength={3}
                         className={`input-field pl-12 uppercase ${branchErrors.prefix ? '!border-b-error' : ''}`}
-                        placeholder="e.g. C"
+                        placeholder={t('e.g. C')}
                       />
                     </div>
                     {branchErrors.prefix && (
@@ -1074,7 +1074,7 @@ export default function SettingsPage() {
                       {...regBranch('address')}
                       type="text"
                       className="input-field"
-                      placeholder="Street / area"
+                      placeholder={t('Street / area')}
                     />
                   </div>
 

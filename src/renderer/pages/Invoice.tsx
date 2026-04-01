@@ -247,12 +247,12 @@ export default function InvoicePage() {
                   className="text-[10px] font-bold"
                   style={{ fontFamily: "'Noto Sans Arabic', sans-serif", direction: 'rtl' }}
                 >
-                  الرصيد المتبقي
+                  {t('Balance Due')}
                 </p>
               </div>
               <div className="text-2xl font-headline font-black tracking-tight text-on-surface">
                 {formatCurrency(order.balance)}{' '}
-                <span className="text-xs font-medium ml-1">QAR</span>
+                <span className="text-xs font-medium ml-1">{t('QAR')}</span>
               </div>
             </div>
           </div>
@@ -274,7 +274,7 @@ export default function InvoicePage() {
               className="font-bold text-sm mb-4"
               style={{ fontFamily: "'Noto Sans Arabic', sans-serif", direction: 'rtl' }}
             >
-              شكراً لثقتكم بنا
+              {t('Thank You for your trust!')}
             </p>
             <div className="space-y-1 text-[9px] text-secondary font-medium uppercase tracking-tighter">
               <p>Building 4, Design District, Dubai, UAE</p>
