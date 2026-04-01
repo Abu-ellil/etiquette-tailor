@@ -202,7 +202,7 @@ export default function DashboardPage() {
 
   const safeStats = stats || { total: 0, in_progress: 0, ready: 0, delivered: 0, overdue: 0, revenue: 0 };
 
-  if (isTailor || isCutter) {
+  if (isWorker) {
     return <WorkerDashboard tasks={workerTasks} isCutter={isCutter} loading={loading} />;
   }
 

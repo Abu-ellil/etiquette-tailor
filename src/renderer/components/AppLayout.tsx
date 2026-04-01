@@ -27,6 +27,10 @@ const SIDEBAR_ITEMS = [
   { path: '/workers', labelKey: 'Workers', icon: 'badge' },
   { path: '/worker-rates', labelKey: 'Worker Rates', icon: 'payments' },
   { path: '/task-board', labelKey: 'Task Board', icon: 'view_kanban', roles: ['admin', 'manager'] },
+  { path: '/task-management', labelKey: 'Task Management', icon: 'manage_accounts', roles: ['admin', 'manager'] },
+  { path: '/worker-wage-report', labelKey: 'Worker Wage Report', icon: 'receipt_long', roles: ['admin', 'manager'] },
+  { path: '/salary-summary', labelKey: 'Salary Summary', icon: 'account_balance_wallet', roles: ['admin', 'manager'] },
+  { path: '/worker-productivity', labelKey: 'Worker Productivity', icon: 'speed', roles: ['admin', 'manager'] },
   { path: '/my-tasks', labelKey: 'My Tasks', icon: 'task_alt', workerTypes: ['tailor'] },
   { path: '/cutting-queue', labelKey: 'Cutting Queue', icon: 'content_cut', workerTypes: ['master_cutter'] },
   { path: '/reports', labelKey: 'Reports', icon: 'assessment' },
@@ -35,8 +39,8 @@ const SIDEBAR_ITEMS = [
 ];
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/reports'],
+  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports', '/backup', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports'],
   reception: ['/dashboard', '/customers', '/orders', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };

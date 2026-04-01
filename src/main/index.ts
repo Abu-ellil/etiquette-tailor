@@ -39,6 +39,12 @@ import {
   getWorkerAccount,
   addWorkerPayment,
   getWorkerPayments,
+  getWorkerEarnings,
+  batchWorkerPayments,
+  getAllWorkerProductivity,
+  getOverdueTasks,
+  getWorkerWorkloads,
+  getRecommendedWorkers,
   getAllSettings,
   setSettings,
   updateBranch,
@@ -182,6 +188,30 @@ function registerIpcHandlers() {
 
   ipcMain.handle('workers:getPayments', async (_event, userId: number) => {
     return getWorkerPayments(userId);
+  });
+
+  ipcMain.handle('workers:getWorkerEarnings', async (_event, userId: number, startDate: string, endDate: string) => {
+    return getWorkerEarnings(userId, startDate, endDate);
+  });
+
+  ipcMain.handle('workers:batchPayments', async (_event, payments: Array<{userId: number; amount: number; note: string | null}>) => {
+    return batchWorkerPayments(payments, currentSession?.userId ?? null);
+  });
+
+  ipcMain.handle('workers:getProductivity', async (_event, branchId?: number, startDate?: string, endDate?: string) => {
+    return getAllWorkerProductivity(branchId, startDate, endDate);
+  });
+
+  ipcMain.handle('workers:getOverdueTasks', async (_event, branchId?: number) => {
+    return getOverdueTasks(branchId);
+  });
+
+  ipcMain.handle('workers:getWorkloads', async (_event, branchId?: number) => {
+    return getWorkerWorkloads(branchId);
+  });
+
+  ipcMain.handle('workers:getRecommended', async (_event, pieceType: string, taskType: string) => {
+    return getRecommendedWorkers(pieceType, taskType);
   });
 
   ipcMain.handle('customers:getAll', async (_event, branchId?: number) => {

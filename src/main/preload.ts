@@ -37,6 +37,12 @@ export interface ElectronAPI {
     getAccount: (userId: number) => Promise<any>;
     addPayment: (userId: number, amount: number, note: string | null) => Promise<number>;
     getPayments: (userId: number) => Promise<any[]>;
+    getWorkerEarnings: (userId: number, startDate: string, endDate: string) => Promise<any>;
+    batchPayments: (payments: Array<{userId: number; amount: number; note: string | null}>) => Promise<number>;
+    getProductivity: (branchId?: number, startDate?: string, endDate?: string) => Promise<any[]>;
+    getOverdueTasks: (branchId?: number) => Promise<any[]>;
+    getWorkloads: (branchId?: number) => Promise<any[]>;
+    getRecommended: (pieceType: string, taskType: string) => Promise<any[]>;
   };
 
   customers: {
@@ -141,6 +147,12 @@ const api: ElectronAPI = {
     getAccount: (userId) => ipcRenderer.invoke('workers:getAccount', userId),
     addPayment: (userId, amount, note) => ipcRenderer.invoke('workers:addPayment', userId, amount, note),
     getPayments: (userId) => ipcRenderer.invoke('workers:getPayments', userId),
+    getWorkerEarnings: (userId, startDate, endDate) => ipcRenderer.invoke('workers:getWorkerEarnings', userId, startDate, endDate),
+    batchPayments: (payments) => ipcRenderer.invoke('workers:batchPayments', payments),
+    getProductivity: (branchId?, startDate?, endDate?) => ipcRenderer.invoke('workers:getProductivity', branchId, startDate, endDate),
+    getOverdueTasks: (branchId?) => ipcRenderer.invoke('workers:getOverdueTasks', branchId),
+    getWorkloads: (branchId?) => ipcRenderer.invoke('workers:getWorkloads', branchId),
+    getRecommended: (pieceType, taskType) => ipcRenderer.invoke('workers:getRecommended', pieceType, taskType),
   },
 
   customers: {
