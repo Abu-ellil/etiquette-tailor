@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import TitleBar from './TitleBar';
+import NotificationBell from './NotificationBell';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../contexts/I18nContext';
 
@@ -26,6 +27,10 @@ const SIDEBAR_ITEMS = [
   { path: '/workers', labelKey: 'Workers', icon: 'badge' },
   { path: '/worker-rates', labelKey: 'Worker Rates', icon: 'payments' },
   { path: '/task-board', labelKey: 'Task Board', icon: 'view_kanban', roles: ['admin', 'manager'] },
+  { path: '/task-management', labelKey: 'Task Management', icon: 'manage_accounts', roles: ['admin', 'manager'] },
+  { path: '/worker-wage-report', labelKey: 'Worker Wage Report', icon: 'receipt_long', roles: ['admin', 'manager'] },
+  { path: '/salary-summary', labelKey: 'Salary Summary', icon: 'account_balance_wallet', roles: ['admin', 'manager'] },
+  { path: '/worker-productivity', labelKey: 'Worker Productivity', icon: 'speed', roles: ['admin', 'manager'] },
   { path: '/my-tasks', labelKey: 'My Tasks', icon: 'task_alt', workerTypes: ['tailor'] },
   { path: '/cutting-queue', labelKey: 'Cutting Queue', icon: 'content_cut', workerTypes: ['master_cutter'] },
   { path: '/reports', labelKey: 'Reports', icon: 'assessment' },
@@ -34,8 +39,8 @@ const SIDEBAR_ITEMS = [
 ];
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/reports'],
+  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports', '/backup', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports'],
   reception: ['/dashboard', '/customers', '/orders', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };
@@ -92,7 +97,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
           />
         )}
 
-        <aside className={`fixed inset-y-0 ${sidebarPositionClass} z-50 flex flex-col py-6 space-y-2 bg-surface-container-low transition-transform duration-300 w-72 h-screen pt-[calc(var(--titlebar-h,32px)+20px)] lg:static lg:z-auto lg:translate-x-0 lg:h-full lg:shrink-0 lg:overflow-y-auto lg:w-72 ${sidebarOpen ? sidebarShowClass : sidebarHiddenClass} ${lgSidebarClass}`}>
+        <aside className={`fixed inset-y-0 ${sidebarPositionClass} z-50 flex flex-col py-6 space-y-2 bg-surface-container-low transition-transform duration-300 w-72 h-screen pt-[calc(var(--titlebar-h,32px)+20px)] lg:static lg:z-auto lg:translate-x-0 lg:h-full lg:shrink-0 lg:overflow-y-auto lg:w-62 ${sidebarOpen ? sidebarShowClass : sidebarHiddenClass} ${lgSidebarClass}`}>
           <div className="px-8 mb-8 flex justify-start">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-white shrink-0">
@@ -114,7 +119,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
             </div>
           </div>
 
-          <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-0 space-y-1 overflow-y-auto">
             {visibleItems.map((item) => {
               const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
               return (
@@ -137,12 +142,12 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
             })}
           </nav>
 
-          <div className="px-6 mt-8 space-y-3">
+          <div className="px-6 mt-4 space-y-3">
             {showNewOrder && (
               <button
                 onClick={() => handleNav('/orders/new')}
                 title={t('New Order')}
-                className="btn-primary w-full py-3 lg:py-4 text-sm tracking-wide flex items-center justify-center gap-2"
+                className="btn-primary w-full py-3 lg:py-2 text-sm tracking-wide flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-sm shrink-0">add_circle</span>
                 <span className="whitespace-nowrap">{t('New Order')}</span>
@@ -151,7 +156,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
             <button
               onClick={handleLogout}
               title={t('Logout')}
-              className="w-full py-2.5 text-on-surface-variant hover:bg-surface-container/50 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2 text-on-surface-variant hover:bg-surface-container/50 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
               <span className="whitespace-nowrap">{t('Logout')}</span>
             </button>
@@ -177,6 +182,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
               style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             >
               <span className="text-sm text-on-surface-variant font-medium">{session.name}</span>
+              <NotificationBell session={session} />
               <button
                 onClick={() => setTheme(isDark ? 'light' : 'dark')}
                 className="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"

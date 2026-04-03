@@ -61,7 +61,7 @@ const ROLE_LABELS: Record<string, string> = {
   manager: 'Manager',
   reception: 'Reception',
   worker: 'Worker',
-};
+} as const;
 
 const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
   admin: { bg: 'bg-primary-fixed', text: 'text-on-primary-fixed' },
@@ -77,7 +77,7 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('shop');
   const { theme, setTheme } = useTheme();
-  const { t, locale, setLocale } = useTranslation();
+  const { t, locale, setLocale, setCurrency } = useTranslation();
   const [settings, setSettingsState] = useState<Record<string, string>>({});
   const [users, setUsers] = useState<User[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -173,6 +173,8 @@ export default function SettingsPage() {
       setSaving(true);
       await window.electronAPI.settings.set(updates);
       setSettingsState((prev) => ({ ...prev, ...updates }));
+      if (updates.currency) setCurrency(updates.currency);
+      if (updates.locale) setLocale(updates.locale as 'en' | 'ar');
     } catch (err) {
       console.error('Failed to save preferences:', err);
     } finally {
@@ -458,7 +460,7 @@ export default function SettingsPage() {
                           <span className="font-bold text-on-surface">{user.name}</span>
                           {user.role === 'worker' && user.worker_type && (
                             <span className="text-xs text-secondary ml-2">
-                              ({user.worker_type === 'master_cutter' ? 'Master Cutter' : user.worker_type === 'tailor' ? 'Tailor' : user.worker_type})
+                              ({user.worker_type === 'master_cutter' ? t('Master Cutter') : user.worker_type === 'tailor' ? t('Tailor') : user.worker_type})
                             </span>
                           )}
                         </td>
@@ -467,7 +469,7 @@ export default function SettingsPage() {
                           <span
                             className={`px-3 py-1 ${roleColor.bg} ${roleColor.text} text-[11px] font-bold uppercase rounded-full`}
                           >
-                            {ROLE_LABELS[user.role] || user.role}
+                            {t(ROLE_LABELS[user.role] || user.role)}
                           </span>
                         </td>
                         <td className="text-sm">{branch?.name_en || '--'}</td>
@@ -675,10 +677,10 @@ export default function SettingsPage() {
                     className="input-field pl-12 appearance-none"
                     defaultValue={settings.currency || 'QAR'}
                   >
-                    <option value="QAR">QAR - Qatari Riyal</option>
-                    <option value="SAR">SAR - Saudi Riyal</option>
-                    <option value="AED">AED - UAE Dirham</option>
-                    <option value="USD">USD - US Dollar</option>
+                    <option value="QAR">{t('QAR - Qatari Riyal')}</option>
+                    <option value="SAR">{t('SAR - Saudi Riyal')}</option>
+                    <option value="AED">{t('AED - UAE Dirham')}</option>
+                    <option value="USD">{t('USD - US Dollar')}</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                     expand_more
@@ -714,7 +716,7 @@ export default function SettingsPage() {
                 rows={3}
                 className="input-field resize-none"
                 defaultValue={settings.receipt_footer || ''}
-                placeholder="Text shown at the bottom of printed invoices"
+                placeholder={t('Text shown at the bottom of printed invoices')}
               />
             </div>
           </div>
@@ -789,10 +791,10 @@ export default function SettingsPage() {
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-4 text-outline">person</span>
                         <input
-                          {...register('name', { required: 'Name is required' })}
+                          {...register('name', { required: t('Name is required') })}
                           type="text"
                           className={`input-field pl-12 ${errors.name ? '!border-b-error' : ''}`}
-                          placeholder="e.g. Ahmad Ali"
+                          placeholder={t('e.g. Ahmad Ali')}
                         />
                       </div>
                       {errors.name && (
@@ -809,11 +811,11 @@ export default function SettingsPage() {
                           <span className="material-symbols-outlined absolute left-4 text-outline">alternate_email</span>
                           <input
                             {...register('username', {
-                              required: !editingUser ? 'Username is required' : false,
+                              required: !editingUser ? t('Username is required') : false,
                             })}
                             type="text"
                             className={`input-field pl-12 ${errors.username ? '!border-b-error' : ''}`}
-                            placeholder="Login ID"
+                            placeholder={t('Login ID')}
                             disabled={!!editingUser}
                           />
                         </div>
@@ -829,11 +831,11 @@ export default function SettingsPage() {
                           <span className="material-symbols-outlined absolute left-4 text-outline">lock</span>
                           <input
                             {...register('password', {
-                              required: !editingUser ? 'Password is required' : false,
+                              required: !editingUser ? t('Password is required') : false,
                             })}
                             type={showPassword ? 'text' : 'password'}
                             className={`input-field pl-12 pr-12 ${errors.password ? '!border-b-error' : ''}`}
-                            placeholder={editingUser ? 'Leave blank to keep' : 'Min 6 characters'}
+                            placeholder={editingUser ? t('Leave blank to keep') : t('Min 6 characters')}
                           />
                           <button
                             type="button"
@@ -875,10 +877,10 @@ export default function SettingsPage() {
                             {...register('role')}
                             className="input-field pl-12 appearance-none"
                           >
-                            <option value="admin">Admin</option>
-                            <option value="manager">Manager</option>
-                            <option value="reception">Reception</option>
-                            <option value="worker">Worker</option>
+                            <option value="admin">{t('Admin')}</option>
+                            <option value="manager">{t('Manager')}</option>
+                            <option value="reception">{t('Reception')}</option>
+                            <option value="worker">{t('Worker')}</option>
                           </select>
                           <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                             expand_more
@@ -921,8 +923,8 @@ export default function SettingsPage() {
                               {...register('worker_type')}
                               className="input-field pl-12 appearance-none"
                             >
-                              <option value="tailor">Tailor</option>
-                              <option value="master_cutter">Master Cutter</option>
+                              <option value="tailor">{t('Tailor')}</option>
+                              <option value="master_cutter">{t('Master Cutter')}</option>
                             </select>
                             <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
                               expand_more
@@ -1018,11 +1020,11 @@ export default function SettingsPage() {
                       {t('Branch Name (Arabic)')}
                     </label>
                     <input
-                      {...regBranch('name_ar', { required: 'Arabic name is required' })}
+                      {...regBranch('name_ar', { required: t('Arabic name is required') })}
                       type="text"
                       dir="rtl"
                       className={`input-field ${branchErrors.name_ar ? '!border-b-error' : ''}`}
-                      placeholder="اسم الفرع"
+                      placeholder={t('اسم الفرع')}
                     />
                     {branchErrors.name_ar && (
                       <p className="text-error text-xs mt-1 ml-1">{branchErrors.name_ar.message}</p>
@@ -1034,10 +1036,10 @@ export default function SettingsPage() {
                       {t('Branch Name (English)')}
                     </label>
                     <input
-                      {...regBranch('name_en', { required: 'English name is required' })}
+                      {...regBranch('name_en', { required: t('English name is required') })}
                       type="text"
                       className={`input-field ${branchErrors.name_en ? '!border-b-error' : ''}`}
-                      placeholder="Branch name in English"
+                      placeholder={t('Branch name in English')}
                     />
                     {branchErrors.name_en && (
                       <p className="text-error text-xs mt-1 ml-1">{branchErrors.name_en.message}</p>
@@ -1051,11 +1053,11 @@ export default function SettingsPage() {
                     <div className="relative flex items-center">
                       <span className="material-symbols-outlined absolute left-4 text-outline">tag</span>
                       <input
-                        {...regBranch('prefix', { required: 'Prefix is required' })}
+                        {...regBranch('prefix', { required: t('Prefix is required') })}
                         type="text"
                         maxLength={3}
                         className={`input-field pl-12 uppercase ${branchErrors.prefix ? '!border-b-error' : ''}`}
-                        placeholder="e.g. C"
+                        placeholder={t('e.g. C')}
                       />
                     </div>
                     {branchErrors.prefix && (
@@ -1074,7 +1076,7 @@ export default function SettingsPage() {
                       {...regBranch('address')}
                       type="text"
                       className="input-field"
-                      placeholder="Street / area"
+                      placeholder={t('Street / area')}
                     />
                   </div>
 

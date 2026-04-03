@@ -234,14 +234,14 @@ export default function CustomersPage() {
                 <tr key={customer.id}>
                   {/* Name + Avatar */}
                   <td>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm ${getAvatarColor(customer.id)}`}
                       >
                         {getInitials(customer.name)}
                       </div>
-                      <div>
-                        <p className="font-headline font-bold text-on-surface">
+                      <div className="min-w-0">
+                        <p className="font-headline font-bold text-on-surface truncate">
                           {customer.name}
                         </p>
                       </div>

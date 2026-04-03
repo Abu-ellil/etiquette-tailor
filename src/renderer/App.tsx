@@ -13,6 +13,10 @@ import WorkerPayRatesPage from './pages/WorkerPayRates';
 import MyTasksPage from './pages/MyTasks';
 import CuttingQueuePage from './pages/CuttingQueue';
 import TaskBoardPage from './pages/TaskBoard';
+import WorkerWageReportPage from './pages/WorkerWageReport';
+import SalarySummaryPage from './pages/SalarySummary';
+import WorkerProductivityPage from './pages/WorkerProductivity';
+import TaskManagementPage from './pages/TaskManagement';
 import ReportsPage from './pages/Reports';
 import InvoicePage from './pages/Invoice';
 import BackupPage from './pages/Backup';
@@ -29,8 +33,8 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/reports'],
+  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports', '/backup', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports'],
   reception: ['/dashboard', '/customers', '/orders', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };
@@ -47,9 +51,13 @@ function ProtectedRoute({
   if (!session) return <Navigate to="/login" replace />;
   let allowed = ROLE_ROUTES[session.role] || [];
   if (session.role === 'worker') {
-    const tailorRoutes = ['/dashboard', '/my-tasks'];
-    const masterCutterRoutes = ['/dashboard', '/cutting-queue'];
+    const tailorRoutes = ['/dashboard', '/my-tasks', '/orders/:id'];
+    const masterCutterRoutes = ['/dashboard', '/cutting-queue', '/orders/:id'];
     allowed = session.worker_type === 'master_cutter' ? masterCutterRoutes : tailorRoutes;
+  }
+  // Special case: workers can view specific order details but not the orders list
+  if (session.role === 'worker' && path === '/orders/:id') {
+    return <>{children}</>;
   }
   if (!allowed.includes(path)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
@@ -147,7 +155,7 @@ export default function App() {
           <Route
             path="orders/:id"
             element={
-              <ProtectedRoute path="/orders" session={session}>
+              <ProtectedRoute path="/orders/:id" session={session}>
                 <OrderDetailPage />
               </ProtectedRoute>
             }
@@ -189,6 +197,38 @@ export default function App() {
             element={
               <ProtectedRoute path="/task-board" session={session}>
                 <TaskBoardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="task-management"
+            element={
+              <ProtectedRoute path="/task-management" session={session}>
+                <TaskManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="worker-wage-report"
+            element={
+              <ProtectedRoute path="/worker-wage-report" session={session}>
+                <WorkerWageReportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="salary-summary"
+            element={
+              <ProtectedRoute path="/salary-summary" session={session}>
+                <SalarySummaryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="worker-productivity"
+            element={
+              <ProtectedRoute path="/worker-productivity" session={session}>
+                <WorkerProductivityPage />
               </ProtectedRoute>
             }
           />

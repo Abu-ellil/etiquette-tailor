@@ -39,14 +39,14 @@ function getInitials(name?: string): string {
   return parts[0].substring(0, 2).toUpperCase();
 }
 
-function formatCurrency(amount: number): string {
-  return `QAR ${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
 type TimePeriod = 'daily' | 'weekly' | 'monthly';
 
 export default function ReportsPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
+
+  function formatCurrency(amount: number): string {
+    return `${t(currency)} ${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  }
   const [period, setPeriod] = useState<TimePeriod>('weekly');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);

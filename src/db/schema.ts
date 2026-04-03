@@ -20,6 +20,7 @@ export function initializeSchema() {
       category TEXT NOT NULL CHECK(category IN ('custom_wear','abaya','uniform','alteration','special')),
       active INTEGER DEFAULT 1,
       sort_order INTEGER DEFAULT 0,
+      base_price REAL DEFAULT 0,
       UNIQUE(name_en, category)
     )
   `);
@@ -78,9 +79,27 @@ export function initializeSchema() {
       receive_date DATE,
       delivery_date DATE,
       created_by INTEGER REFERENCES users(id),
+      fabric_source TEXT CHECK(fabric_source IN ('customer','shop')) DEFAULT 'customer',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS order_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      piece_type TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      unit_price REAL NOT NULL,
+      total_price REAL NOT NULL DEFAULT 0,
+      fabric_source TEXT CHECK(fabric_source IN ('customer','shop')) DEFAULT 'customer',
+      details TEXT,
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)`);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS order_measurements (
@@ -117,17 +136,21 @@ export function initializeSchema() {
     CREATE TABLE IF NOT EXISTS order_tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id INTEGER NOT NULL REFERENCES orders(id),
+      order_item_id INTEGER REFERENCES order_items(id) ON DELETE CASCADE,
       task_type TEXT NOT NULL CHECK(task_type IN ('cutting','sewing','design')),
       assigned_to INTEGER REFERENCES users(id),
       wage_type TEXT NOT NULL CHECK(wage_type IN ('percentage','fixed')),
       wage_rate REAL NOT NULL,
       wage_amount REAL NOT NULL,
+      task_quantity INTEGER DEFAULT 1,
       status TEXT NOT NULL CHECK(status IN ('pending','in_progress','done')) DEFAULT 'pending',
       started_at DATETIME,
       completed_at DATETIME,
       notes TEXT
     )
   `);
+
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_order_tasks_item ON order_tasks(order_item_id)`); } catch { /* column may not exist yet, created in migration */ }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS worker_rates (
@@ -182,6 +205,27 @@ export function initializeSchema() {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL CHECK(type IN (
+        'order_created','order_status_changed','order_overdue','payment_received','task_status_changed'
+      )),
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      order_id INTEGER REFERENCES orders(id),
+      task_id INTEGER REFERENCES order_tasks(id),
+      target_user_id INTEGER REFERENCES users(id),
+      target_role TEXT CHECK(target_role IN ('admin','manager','reception','worker',NULL)),
+      is_read INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(target_user_id, is_read, is_deleted, created_at DESC)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_role ON notifications(target_role, is_read, is_deleted, created_at DESC)`);
+
   const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get() as { count: number };
   if (branchCount.count === 0) {
     seedDatabase();
@@ -191,6 +235,8 @@ export function initializeSchema() {
   const pieceTypeCount = db.prepare('SELECT COUNT(*) as count FROM piece_types').get() as { count: number };
   if (pieceTypeCount.count === 0) {
     seedPieceTypes();
+  } else {
+    seedBasePrices();
   }
 
   // Seed default settings if empty
@@ -273,10 +319,56 @@ function migrateColumns() {
   }
 
   // Get existing columns for each table
-  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates']) {
+  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates', 'piece_types']) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     tables[table] = cols.map((c) => c.name);
   }
+
+  // ── Multi-item order migration ──
+  // Create order_items table if not exists
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS order_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        piece_type TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        unit_price REAL NOT NULL,
+        total_price REAL NOT NULL DEFAULT 0,
+        fabric_source TEXT CHECK(fabric_source IN ('customer','shop')) DEFAULT 'customer',
+        details TEXT,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)`);
+  } catch { /* table already exists */ }
+
+  // Add base_price to piece_types
+  if (!tables.piece_types?.includes('base_price')) {
+    console.log('Migrating: adding base_price to piece_types');
+    db.exec('ALTER TABLE piece_types ADD COLUMN base_price REAL DEFAULT 0');
+  }
+
+  // Add fabric_source to orders
+  if (!tables.orders?.includes('fabric_source')) {
+    console.log('Migrating: adding fabric_source to orders');
+    db.exec("ALTER TABLE orders ADD COLUMN fabric_source TEXT CHECK(fabric_source IN ('customer','shop')) DEFAULT 'customer'");
+  }
+
+  // Add order_item_id and task_quantity to order_tasks
+  if (!tables.order_tasks?.includes('order_item_id')) {
+    console.log('Migrating: adding order_item_id to order_tasks');
+    db.exec('ALTER TABLE order_tasks ADD COLUMN order_item_id INTEGER REFERENCES order_items(id) ON DELETE CASCADE');
+  }
+  if (!tables.order_tasks?.includes('task_quantity')) {
+    console.log('Migrating: adding task_quantity to order_tasks');
+    db.exec('ALTER TABLE order_tasks ADD COLUMN task_quantity INTEGER DEFAULT 1');
+  }
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_order_tasks_item ON order_tasks(order_item_id)`); } catch { /* ignore */ }
+
+  // Backfill order_items for existing orders
+  migrateToMultiItem();
 
   if (!tables.orders?.includes('branch_id')) {
     console.log('Migrating: adding branch_id to orders');
@@ -338,6 +430,7 @@ function migrateColumns() {
           receive_date DATE,
           delivery_date DATE,
           created_by INTEGER REFERENCES users(id),
+          fabric_source TEXT CHECK(fabric_source IN ('customer','shop')) DEFAULT 'customer',
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -415,6 +508,83 @@ function migrateColumns() {
   }
 }
 
+function migrateToMultiItem() {
+  // Check if already migrated
+  const count = db.prepare('SELECT COUNT(*) as c FROM order_items').get() as { c: number };
+  if (count.c > 0) return; // already done
+
+  const orders = db.prepare('SELECT id, piece_type, price FROM orders').all() as { id: number; piece_type: string; price: number }[];
+  if (orders.length === 0) return;
+
+  const insertItem = db.prepare(
+    "INSERT INTO order_items (order_id, piece_type, quantity, unit_price, total_price, fabric_source) VALUES (?, ?, 1, ?, ?, 'customer')"
+  );
+  const updateTask = db.prepare(
+    'UPDATE order_tasks SET order_item_id = ?, task_quantity = 1 WHERE order_id = ? AND order_item_id IS NULL'
+  );
+
+  const txn = db.transaction(() => {
+    for (const order of orders) {
+      const result = insertItem.run(order.id, order.piece_type, order.price, order.price);
+      updateTask.run(result.lastInsertRowid, order.id);
+    }
+  });
+  txn();
+  console.log(`Migrated ${orders.length} orders to multi-item structure`);
+}
+
+function seedBasePrices() {
+  // Only seed if all base_prices are 0
+  const zeroCount = db.prepare('SELECT COUNT(*) as c FROM piece_types WHERE base_price = 0').get() as { c: number };
+  const totalCount = db.prepare('SELECT COUNT(*) as c FROM piece_types').get() as { c: number };
+  if (zeroCount.c !== totalCount.c) return; // some already set
+
+  const updates: [number, string][] = [
+    [50, 'Jalabiya (No Lining)'],
+    [70, 'Jalabiya (With Lining)'],
+    [80, 'Dress'],
+    [120, 'Evening Dress'],
+    [60, 'Casual Dress'],
+    [90, 'Kaftan'],
+    [40, 'Skirt'],
+    [35, 'Blouse'],
+    [30, 'Top'],
+    [40, 'Pants'],
+    [120, 'Classic Abaya'],
+    [150, 'Embroidered Abaya'],
+    [130, 'Open Abaya'],
+    [180, 'Luxury Abaya'],
+    [100, 'Daily Abaya'],
+    [30, 'School Uniform (Primary)'],
+    [35, 'School Uniform (Middle)'],
+    [40, 'School Uniform (High School)'],
+    [50, 'Staff Uniform'],
+    [45, 'Nurse Uniform'],
+    [50, 'Company Uniform'],
+    [15, 'Shortening'],
+    [15, 'Length Adjustment'],
+    [15, 'Waist Adjustment'],
+    [15, 'Sleeve Adjustment'],
+    [10, 'Repair'],
+    [10, 'Zipper Change'],
+    [10, 'Button Fix'],
+    [100, 'Custom Design'],
+    [60, 'Embroidery Only'],
+    [40, 'Fabric Stitching'],
+    [50, 'Re-Stitch'],
+    [200, 'Bridal Dress'],
+    [40, 'Kids Wear'],
+  ];
+
+  const stmt = db.prepare('UPDATE piece_types SET base_price = ? WHERE name_en = ?');
+  const txn = db.transaction(() => {
+    for (const [price, name] of updates) {
+      stmt.run(price, name);
+    }
+  });
+  txn();
+}
+
 function migratePasswords() {
   const users = db.prepare('SELECT id, username, password_hash FROM users').all() as any[];
 
@@ -460,54 +630,54 @@ function seedSettings() {
 
 function seedPieceTypes() {
   const insert = db.prepare(
-    'INSERT INTO piece_types (name_en, name_ar, category, sort_order) VALUES (?, ?, ?, ?)'
+    'INSERT INTO piece_types (name_en, name_ar, category, sort_order, base_price) VALUES (?, ?, ?, ?, ?)'
   );
 
-  const types: [string, string, string, number][] = [
-    // Custom Wear
-    ['Jalabiya (No Lining)', 'جلابية بدون بطانة', 'custom_wear', 1],
-    ['Jalabiya (With Lining)', 'جلابية مع البطانة', 'custom_wear', 2],
-    ['Dress', 'فستان', 'custom_wear', 3],
-    ['Evening Dress', 'فستان سهرة', 'custom_wear', 4],
-    ['Casual Dress', 'فستان يومي', 'custom_wear', 5],
-    ['Kaftan', 'قفطان', 'custom_wear', 6],
-    ['Skirt', 'تنورة', 'custom_wear', 7],
-    ['Blouse', 'بلوزة', 'custom_wear', 8],
-    ['Top', 'توب', 'custom_wear', 9],
-    ['Pants', 'بنطلون', 'custom_wear', 10],
+  const types: [string, string, string, number, number][] = [
+    // Custom Wear: name_en, name_ar, category, sort_order, base_price
+    ['Jalabiya (No Lining)', 'جلابية بدون بطانة', 'custom_wear', 1, 50],
+    ['Jalabiya (With Lining)', 'جلابية مع البطانة', 'custom_wear', 2, 70],
+    ['Dress', 'فستان', 'custom_wear', 3, 80],
+    ['Evening Dress', 'فستان سهرة', 'custom_wear', 4, 120],
+    ['Casual Dress', 'فستان يومي', 'custom_wear', 5, 60],
+    ['Kaftan', 'قفطان', 'custom_wear', 6, 90],
+    ['Skirt', 'تنورة', 'custom_wear', 7, 40],
+    ['Blouse', 'بلوزة', 'custom_wear', 8, 35],
+    ['Top', 'توب', 'custom_wear', 9, 30],
+    ['Pants', 'بنطلون', 'custom_wear', 10, 40],
     // Abaya
-    ['Classic Abaya', 'عباية سادة', 'abaya', 11],
-    ['Embroidered Abaya', 'عباية مطرزة', 'abaya', 12],
-    ['Open Abaya', 'عباية مفتوحة', 'abaya', 13],
-    ['Luxury Abaya', 'عباية فخمة', 'abaya', 14],
-    ['Daily Abaya', 'عباية يومية', 'abaya', 15],
+    ['Classic Abaya', 'عباية سادة', 'abaya', 11, 120],
+    ['Embroidered Abaya', 'عباية مطرزة', 'abaya', 12, 150],
+    ['Open Abaya', 'عباية مفتوحة', 'abaya', 13, 130],
+    ['Luxury Abaya', 'عباية فخمة', 'abaya', 14, 180],
+    ['Daily Abaya', 'عباية يومية', 'abaya', 15, 100],
     // Uniforms
-    ['School Uniform (Primary)', 'يونفورم ابتدائي', 'uniform', 16],
-    ['School Uniform (Middle)', 'يونفورم إعدادي', 'uniform', 17],
-    ['School Uniform (High School)', 'يونفورم ثانوي', 'uniform', 18],
-    ['Staff Uniform', 'يونفورم موظفات', 'uniform', 19],
-    ['Nurse Uniform', 'يونفورم طبي', 'uniform', 20],
-    ['Company Uniform', 'يونفورم شركات', 'uniform', 21],
+    ['School Uniform (Primary)', 'يونفورم ابتدائي', 'uniform', 16, 30],
+    ['School Uniform (Middle)', 'يونفورم إعدادي', 'uniform', 17, 35],
+    ['School Uniform (High School)', 'يونفورم ثانوي', 'uniform', 18, 40],
+    ['Staff Uniform', 'يونفورم موظفات', 'uniform', 19, 50],
+    ['Nurse Uniform', 'يونفورم طبي', 'uniform', 20, 45],
+    ['Company Uniform', 'يونفورم شركات', 'uniform', 21, 50],
     // Alterations
-    ['Shortening', 'تقصير', 'alteration', 22],
-    ['Length Adjustment', 'تعديل طول', 'alteration', 23],
-    ['Waist Adjustment', 'تضييق / توسيع', 'alteration', 24],
-    ['Sleeve Adjustment', 'تعديل أكمام', 'alteration', 25],
-    ['Repair', 'إصلاح', 'alteration', 26],
-    ['Zipper Change', 'تغيير سحاب', 'alteration', 27],
-    ['Button Fix', 'تركيب أزرار', 'alteration', 28],
+    ['Shortening', 'تقصير', 'alteration', 22, 15],
+    ['Length Adjustment', 'تعديل طول', 'alteration', 23, 15],
+    ['Waist Adjustment', 'تضييق / توسيع', 'alteration', 24, 15],
+    ['Sleeve Adjustment', 'تعديل أكمام', 'alteration', 25, 15],
+    ['Repair', 'إصلاح', 'alteration', 26, 10],
+    ['Zipper Change', 'تغيير سحاب', 'alteration', 27, 10],
+    ['Button Fix', 'تركيب أزرار', 'alteration', 28, 10],
     // Special Orders
-    ['Custom Design', 'تصميم خاص', 'special', 29],
-    ['Embroidery Only', 'تطريز فقط', 'special', 30],
-    ['Fabric Stitching', 'تفصيل قماش جاهز', 'special', 31],
-    ['Re-Stitch', 'إعادة تفصيل', 'special', 32],
-    ['Bridal Dress', 'فستان عروس', 'special', 33],
-    ['Kids Wear', 'ملابس أطفال', 'special', 34],
+    ['Custom Design', 'تصميم خاص', 'special', 29, 100],
+    ['Embroidery Only', 'تطريز فقط', 'special', 30, 60],
+    ['Fabric Stitching', 'تفصيل قماش جاهز', 'special', 31, 40],
+    ['Re-Stitch', 'إعادة تفصيل', 'special', 32, 50],
+    ['Bridal Dress', 'فستان عروس', 'special', 33, 200],
+    ['Kids Wear', 'ملابس أطفال', 'special', 34, 40],
   ];
 
   const tx = db.transaction(() => {
     for (const t of types) {
-      insert.run(t[0], t[1], t[2], t[3]);
+      insert.run(t[0], t[1], t[2], t[3], t[4]);
     }
   });
   tx();

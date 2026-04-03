@@ -6,6 +6,8 @@ interface I18nContextValue {
   setLocale: (locale: Locale) => void;
   t: (key: string) => string;
   isRTL: boolean;
+  currency: string;
+  setCurrency: (c: string) => void;
 }
 
 const I18nContext = createContext<I18nContextValue>({
@@ -13,10 +15,13 @@ const I18nContext = createContext<I18nContextValue>({
   setLocale: () => {},
   t: (key: string) => key,
   isRTL: false,
+  currency: 'QAR',
+  setCurrency: () => {},
 });
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
+  const [currency, setCurrencyState] = useState('QAR');
 
   useEffect(() => {
     window.electronAPI.settings
@@ -27,6 +32,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
           setLocaleState(saved);
           document.documentElement.dir = saved === 'ar' ? 'rtl' : 'ltr';
           document.documentElement.lang = saved;
+        }
+        if (settings.currency) {
+          setCurrencyState(settings.currency);
         }
       })
       .catch(() => {});
@@ -39,13 +47,18 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     window.electronAPI.settings.set({ locale: l }).catch(() => {});
   }, []);
 
+  const setCurrency = useCallback((c: string) => {
+    setCurrencyState(c);
+    window.electronAPI.settings.set({ currency: c }).catch(() => {});
+  }, []);
+
   const t = useCallback(
     (key: string) => translate(locale, key),
     [locale]
   );
 
   return (
-    <I18nContext.Provider value={{ locale, setLocale, t, isRTL: locale === 'ar' }}>
+    <I18nContext.Provider value={{ locale, setLocale, t, isRTL: locale === 'ar', currency, setCurrency }}>
       {children}
     </I18nContext.Provider>
   );

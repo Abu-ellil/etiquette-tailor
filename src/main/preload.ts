@@ -37,6 +37,12 @@ export interface ElectronAPI {
     getAccount: (userId: number) => Promise<any>;
     addPayment: (userId: number, amount: number, note: string | null) => Promise<number>;
     getPayments: (userId: number) => Promise<any[]>;
+    getWorkerEarnings: (userId: number, startDate: string, endDate: string) => Promise<any>;
+    batchPayments: (payments: Array<{userId: number; amount: number; note: string | null}>) => Promise<number>;
+    getProductivity: (branchId?: number, startDate?: string, endDate?: string) => Promise<any[]>;
+    getOverdueTasks: (branchId?: number) => Promise<any[]>;
+    getWorkloads: (branchId?: number) => Promise<any[]>;
+    getRecommended: (pieceType: string, taskType: string) => Promise<any[]>;
   };
 
   customers: {
@@ -66,6 +72,11 @@ export interface ElectronAPI {
     addPayment: (orderId: number, amount: number, method: 'cash' | 'card', note: string | null) => Promise<number>;
     getPayments: (orderId: number) => Promise<any[]>;
     deletePayment: (paymentId: number) => Promise<void>;
+    getItems: (orderId: number) => Promise<any[]>;
+    createItem: (data: any) => Promise<any>;
+    updateItem: (id: number, data: any) => Promise<any>;
+    deleteItem: (id: number) => Promise<void>;
+    recalculateTotal: (orderId: number) => Promise<void>;
   };
 
   window: {
@@ -77,6 +88,8 @@ export interface ElectronAPI {
 
   pieceTypes: {
     getAll: () => Promise<any[]>;
+    updateBasePrice: (name_en: string, base_price: number) => Promise<void>;
+    getBasePrice: (name_en: string) => Promise<number>;
   };
 
   reports: {
@@ -92,6 +105,15 @@ export interface ElectronAPI {
     list: () => Promise<any[]>;
     lastDate: () => Promise<string | null>;
     dbSize: () => Promise<{ usedBytes: number; label: string }>;
+  };
+
+  notifications: {
+    getForUser: (userId: number, role: string, limit?: number) => Promise<any[]>;
+    getUnreadCount: (userId: number, role: string) => Promise<number>;
+    markAsRead: (notificationId: number) => Promise<void>;
+    markAllAsRead: (userId: number, role: string) => Promise<void>;
+    softDelete: (notificationId: number) => Promise<void>;
+    generateOverdue: () => Promise<number>;
   };
 }
 
@@ -132,6 +154,12 @@ const api: ElectronAPI = {
     getAccount: (userId) => ipcRenderer.invoke('workers:getAccount', userId),
     addPayment: (userId, amount, note) => ipcRenderer.invoke('workers:addPayment', userId, amount, note),
     getPayments: (userId) => ipcRenderer.invoke('workers:getPayments', userId),
+    getWorkerEarnings: (userId, startDate, endDate) => ipcRenderer.invoke('workers:getWorkerEarnings', userId, startDate, endDate),
+    batchPayments: (payments) => ipcRenderer.invoke('workers:batchPayments', payments),
+    getProductivity: (branchId?, startDate?, endDate?) => ipcRenderer.invoke('workers:getProductivity', branchId, startDate, endDate),
+    getOverdueTasks: (branchId?) => ipcRenderer.invoke('workers:getOverdueTasks', branchId),
+    getWorkloads: (branchId?) => ipcRenderer.invoke('workers:getWorkloads', branchId),
+    getRecommended: (pieceType, taskType) => ipcRenderer.invoke('workers:getRecommended', pieceType, taskType),
   },
 
   customers: {
@@ -161,6 +189,11 @@ const api: ElectronAPI = {
     addPayment: (orderId, amount, method, note) => ipcRenderer.invoke('orders:addPayment', orderId, amount, method, note),
     getPayments: (orderId) => ipcRenderer.invoke('orders:getPayments', orderId),
     deletePayment: (paymentId) => ipcRenderer.invoke('orders:deletePayment', paymentId),
+    getItems: (orderId: number) => ipcRenderer.invoke('orders:getItems', orderId),
+    createItem: (data: any) => ipcRenderer.invoke('orders:createItem', data),
+    updateItem: (id: number, data: any) => ipcRenderer.invoke('orders:updateItem', id, data),
+    deleteItem: (id: number) => ipcRenderer.invoke('orders:deleteItem', id),
+    recalculateTotal: (orderId: number) => ipcRenderer.invoke('orders:recalculateTotal', orderId),
   },
 
   window: {
@@ -172,6 +205,8 @@ const api: ElectronAPI = {
 
   pieceTypes: {
     getAll: () => ipcRenderer.invoke('pieceTypes:getAll'),
+    updateBasePrice: (name_en: string, base_price: number) => ipcRenderer.invoke('pieceTypes:updateBasePrice', name_en, base_price),
+    getBasePrice: (name_en: string) => ipcRenderer.invoke('pieceTypes:getBasePrice', name_en),
   },
 
   reports: {
@@ -187,6 +222,15 @@ const api: ElectronAPI = {
     list: () => ipcRenderer.invoke('backup:list'),
     lastDate: () => ipcRenderer.invoke('backup:lastDate'),
     dbSize: () => ipcRenderer.invoke('backup:dbSize'),
+  },
+
+  notifications: {
+    getForUser: (userId, role, limit?) => ipcRenderer.invoke('notifications:getForUser', userId, role, limit),
+    getUnreadCount: (userId, role) => ipcRenderer.invoke('notifications:getUnreadCount', userId, role),
+    markAsRead: (notificationId) => ipcRenderer.invoke('notifications:markAsRead', notificationId),
+    markAllAsRead: (userId, role) => ipcRenderer.invoke('notifications:markAllAsRead', userId, role),
+    softDelete: (notificationId) => ipcRenderer.invoke('notifications:softDelete', notificationId),
+    generateOverdue: () => ipcRenderer.invoke('notifications:generateOverdue'),
   },
 };
 

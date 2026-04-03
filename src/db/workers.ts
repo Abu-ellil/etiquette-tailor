@@ -115,11 +115,11 @@ export function getActiveRate(userId: number, pieceType: string): WorkerRate | u
   return standard;
 }
 
-export function calculateWage(price: number, wageType: string, rate: number): number {
+export function calculateWage(basePrice: number, wageType: string, rate: number, quantity: number = 1): number {
   if (wageType === 'percentage') {
-    return price * (rate / 100);
+    return basePrice * (rate / 100) * quantity;
   }
-  return rate;
+  return rate * quantity;
 }
 
 export function getWorkerEarnings(userId: number, startDate: string, endDate: string): { task_count: number; total_earnings: number; tasks_by_type: string } {
@@ -147,6 +147,7 @@ export interface WorkerTaskView {
   wage_type?: string;
   wage_rate?: number;
   wage_amount?: number;
+  task_quantity?: number;
   due_date?: string;
   customer_name?: string;
   started_at?: string;
@@ -161,8 +162,8 @@ export function getWorkerTasks(userId: number): WorkerTaskView[] {
       ot.id as task_id,
       ot.order_id,
       o.order_number,
-      o.piece_type,
-      o.details,
+      COALESCE(oi.piece_type, o.piece_type) as piece_type,
+      COALESCE(oi.details, o.details) as details,
       ot.task_type,
       ot.status,
       ot.assigned_to,
@@ -170,6 +171,7 @@ export function getWorkerTasks(userId: number): WorkerTaskView[] {
       ot.wage_type,
       ot.wage_rate,
       ot.wage_amount,
+      COALESCE(ot.task_quantity, 1) as task_quantity,
       o.delivery_date as due_date,
       c.name as customer_name,
       ot.started_at,
@@ -178,6 +180,7 @@ export function getWorkerTasks(userId: number): WorkerTaskView[] {
       o.price as order_price
     FROM order_tasks ot
     JOIN orders o ON ot.order_id = o.id
+    LEFT JOIN order_items oi ON ot.order_item_id = oi.id
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN users u ON ot.assigned_to = u.id
     WHERE ot.assigned_to = ?
@@ -235,6 +238,7 @@ export interface WorkerOrderDetail {
   wage_type: string;
   wage_rate: number;
   wage_amount: number;
+  task_quantity?: number;
   completed_at: string | null;
 }
 
@@ -244,15 +248,17 @@ export function getWorkerOrderDetails(userId: number, startDate: string, endDate
       ot.id as task_id,
       ot.order_id,
       o.order_number,
-      o.piece_type,
+      COALESCE(oi.piece_type, o.piece_type) as piece_type,
       o.price,
       ot.task_type,
       ot.wage_type,
       ot.wage_rate,
       ot.wage_amount,
+      COALESCE(ot.task_quantity, 1) as task_quantity,
       ot.completed_at
     FROM order_tasks ot
     JOIN orders o ON ot.order_id = o.id
+    LEFT JOIN order_items oi ON ot.order_item_id = oi.id
     WHERE ot.assigned_to = ? AND ot.status = 'done'
       AND ot.completed_at BETWEEN ? AND ?
     ORDER BY ot.completed_at DESC
@@ -261,9 +267,15 @@ export function getWorkerOrderDetails(userId: number, startDate: string, endDate
 }
 
 export function recalculateTaskWages(orderId: number, newPrice: number): number {
-  const tasks = db.prepare(
-    'SELECT id, wage_type, wage_rate FROM order_tasks WHERE order_id = ? AND status != ?'
-  ).all(orderId, 'done') as { id: number; wage_type: string; wage_rate: number }[];
+  // Get tasks with their base_price from order_items
+  const tasks = db.prepare(`
+    SELECT ot.id, ot.wage_type, ot.wage_rate, ot.task_quantity,
+      COALESCE(pt.base_price, ?) as base_price
+    FROM order_tasks ot
+    LEFT JOIN order_items oi ON ot.order_item_id = oi.id
+    LEFT JOIN piece_types pt ON oi.piece_type = pt.name_en
+    WHERE ot.order_id = ? AND ot.status != ?
+  `).all(newPrice, orderId, 'done') as { id: number; wage_type: string; wage_rate: number; task_quantity: number; base_price: number }[];
 
   const update = db.prepare(
     'UPDATE order_tasks SET wage_amount = ? WHERE id = ?'
@@ -272,9 +284,14 @@ export function recalculateTaskWages(orderId: number, newPrice: number): number 
   const txn = db.transaction(() => {
     let updated = 0;
     for (const task of tasks) {
-      if (task.wage_type === 'fixed') continue;
-      const newAmount = newPrice * (task.wage_rate / 100);
-      update.run(newAmount, task.id);
+      const qty = task.task_quantity || 1;
+      if (task.wage_type === 'fixed') {
+        const newAmount = task.wage_rate * qty;
+        update.run(newAmount, task.id);
+      } else {
+        const newAmount = task.base_price * (task.wage_rate / 100) * qty;
+        update.run(newAmount, task.id);
+      }
       updated++;
     }
     return updated;
@@ -340,4 +357,181 @@ export function getWorkerPayments(userId: number): WorkerPayment[] {
     'SELECT * FROM worker_payments WHERE user_id = ? ORDER BY created_at DESC'
   );
   return stmt.all(userId) as WorkerPayment[];
+}
+
+// ── Batch Payments ──────────────────────────────────────────────────────
+
+export function batchWorkerPayments(
+  payments: Array<{ userId: number; amount: number; note: string | null }>,
+  createdBy: number | null
+): number {
+  const stmt = db.prepare(
+    'INSERT INTO worker_payments (user_id, amount, note, created_by) VALUES (?, ?, ?, ?)'
+  );
+  const txn = db.transaction(() => {
+    let count = 0;
+    for (const p of payments) {
+      if (p.amount > 0) {
+        stmt.run(p.userId, p.amount, p.note, createdBy);
+        count++;
+      }
+    }
+    return count;
+  });
+  return txn();
+}
+
+// ── Productivity ────────────────────────────────────────────────────────
+
+export interface WorkerProductivity {
+  user_id: number;
+  worker_name: string;
+  worker_type: string | null;
+  branch_id: number;
+  total_assigned: number;
+  completed: number;
+  in_progress: number;
+  pending: number;
+  overdue: number;
+  efficiency: number;
+  cutting_completed: number;
+  sewing_completed: number;
+}
+
+export function getAllWorkerProductivity(branchId?: number, startDate?: string, endDate?: string): WorkerProductivity[] {
+  const branchFilter = branchId ? ' AND u.branch_id = ?' : '';
+  const dateFilter = startDate && endDate ? ' AND o.delivery_date BETWEEN ? AND ?' : '';
+
+  const workers = db.prepare(
+    `SELECT id, name, worker_type, branch_id FROM users WHERE role = 'worker' AND active = 1${branchFilter} ORDER BY name`
+  ).all(...(branchId ? [branchId] : [])) as { id: number; name: string; worker_type: string | null; branch_id: number }[];
+
+  return workers.map(w => {
+    const taskParams: any[] = [w.id];
+    if (branchId) taskParams.push(branchId);
+    if (startDate && endDate) { taskParams.push(startDate); taskParams.push(endDate); }
+
+    const stats = db.prepare(
+      `SELECT
+        COUNT(*) as total_assigned,
+        SUM(CASE WHEN ot.status = 'done' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN ot.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress,
+        SUM(CASE WHEN ot.status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN ot.status != 'done' AND o.delivery_date < date('now') THEN 1 ELSE 0 END) as overdue,
+        SUM(CASE WHEN ot.status = 'done' AND ot.task_type = 'cutting' THEN 1 ELSE 0 END) as cutting_completed,
+        SUM(CASE WHEN ot.status = 'done' AND ot.task_type = 'sewing' THEN 1 ELSE 0 END) as sewing_completed
+      FROM order_tasks ot
+      JOIN orders o ON ot.order_id = o.id
+      WHERE ot.assigned_to = ?${branchFilter}${dateFilter}`
+    ).get(...taskParams) as any;
+
+    const total = stats?.total_assigned || 0;
+    const completed = stats?.completed || 0;
+
+    return {
+      user_id: w.id,
+      worker_name: w.name,
+      worker_type: w.worker_type,
+      branch_id: w.branch_id,
+      total_assigned: total,
+      completed,
+      in_progress: stats?.in_progress || 0,
+      pending: stats?.pending || 0,
+      overdue: stats?.overdue || 0,
+      efficiency: total > 0 ? Math.round((completed / total) * 100) : 0,
+      cutting_completed: stats?.cutting_completed || 0,
+      sewing_completed: stats?.sewing_completed || 0,
+    };
+  });
+}
+
+export function getOverdueTasks(branchId?: number): WorkerTaskView[] {
+  const branchFilter = branchId ? ' AND o.branch_id = ?' : '';
+  const stmt = db.prepare(`
+    SELECT
+      ot.id as task_id, ot.order_id, o.order_number,
+      COALESCE(oi.piece_type, o.piece_type) as piece_type,
+      COALESCE(oi.details, o.details) as details,
+      ot.task_type, ot.status, ot.assigned_to, u.name as worker_name,
+      ot.wage_type, ot.wage_rate, ot.wage_amount,
+      COALESCE(ot.task_quantity, 1) as task_quantity,
+      o.delivery_date as due_date, c.name as customer_name,
+      ot.started_at, ot.completed_at, ot.notes, o.price as order_price
+    FROM order_tasks ot
+    JOIN orders o ON ot.order_id = o.id
+    LEFT JOIN order_items oi ON ot.order_item_id = oi.id
+    LEFT JOIN customers c ON o.customer_id = c.id
+    LEFT JOIN users u ON ot.assigned_to = u.id
+    WHERE ot.status != 'done' AND o.delivery_date < date('now')${branchFilter}
+    ORDER BY o.delivery_date ASC
+  `);
+  return stmt.all(...(branchId ? [branchId] : [])) as WorkerTaskView[];
+}
+
+// ── Workload & Recommendations ──────────────────────────────────────────
+
+export interface WorkerWorkload {
+  user_id: number;
+  worker_name: string;
+  worker_type: string | null;
+  pending_count: number;
+  in_progress_count: number;
+  done_count: number;
+  total_active: number;
+}
+
+export function getWorkerWorkloads(branchId?: number): WorkerWorkload[] {
+  const branchFilter = branchId ? ' AND u.branch_id = ?' : '';
+  const stmt = db.prepare(`
+    SELECT
+      u.id as user_id, u.name as worker_name, u.worker_type,
+      COALESCE(SUM(CASE WHEN ot.status = 'pending' THEN 1 ELSE 0 END), 0) as pending_count,
+      COALESCE(SUM(CASE WHEN ot.status = 'in_progress' THEN 1 ELSE 0 END), 0) as in_progress_count,
+      COALESCE(SUM(CASE WHEN ot.status = 'done' THEN 1 ELSE 0 END), 0) as done_count
+    FROM users u
+    LEFT JOIN order_tasks ot ON ot.assigned_to = u.id
+    WHERE u.role = 'worker' AND u.active = 1${branchFilter}
+    GROUP BY u.id
+    ORDER BY u.name
+  `);
+  const rows = stmt.all(...(branchId ? [branchId] : [])) as any[];
+  return rows.map(r => ({
+    ...r,
+    total_active: (r.pending_count || 0) + (r.in_progress_count || 0),
+  }));
+}
+
+export interface RecommendedWorker {
+  user_id: number;
+  worker_name: string;
+  worker_type: string | null;
+  has_rate: boolean;
+  rate: number;
+  wage_type: string;
+  active_tasks: number;
+}
+
+export function getRecommendedWorkers(pieceType: string, taskType: string): RecommendedWorker[] {
+  const typeFilter = taskType === 'cutting'
+    ? " AND (u.worker_type = 'master_cutter' OR u.worker_type IS NULL)"
+    : " AND (u.worker_type = 'tailor' OR u.worker_type IS NULL)";
+
+  const stmt = db.prepare(`
+    SELECT
+      u.id as user_id, u.name as worker_name, u.worker_type,
+      CASE WHEN wr.id IS NOT NULL THEN 1 ELSE 0 END as has_rate,
+      COALESCE(wr.rate, 0) as rate,
+      COALESCE(wr.wage_type, 'percentage') as wage_type,
+      COALESCE(active.count, 0) as active_tasks
+    FROM users u
+    LEFT JOIN worker_rates wr ON wr.user_id = u.id AND wr.piece_type = ?
+    LEFT JOIN (
+      SELECT assigned_to, COUNT(*) as count
+      FROM order_tasks WHERE status IN ('pending', 'in_progress')
+      GROUP BY assigned_to
+    ) active ON active.assigned_to = u.id
+    WHERE u.role = 'worker' AND u.active = 1${typeFilter}
+    ORDER BY has_rate DESC, active_tasks ASC, u.name ASC
+  `);
+  return stmt.all(pieceType) as RecommendedWorker[];
 }

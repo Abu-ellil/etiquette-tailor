@@ -56,11 +56,11 @@ function isOrderLate(order: Order): boolean {
   }
 }
 
-function formatRevenue(amount: number): string {
+function formatRevenue(amount: number, currencyLabel: string): string {
   if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(1)}k QAR`;
+    return `${(amount / 1000).toFixed(1)}k ${currencyLabel}`;
   }
-  return `${amount.toFixed(0)} QAR`;
+  return `${amount.toFixed(0)} ${currencyLabel}`;
 }
 
 function formatNumber(n: number): string {
@@ -90,14 +90,27 @@ function getAvatarColor(index: number) {
   return AVATAR_COLORS[index % AVATAR_COLORS.length];
 }
 
+function buildItemsSummary(items: any[] | undefined, fallback: string): string {
+  if (!items || items.length === 0) return fallback;
+  const totalQty = items.reduce((s, it) => s + (it.quantity || 1), 0);
+  if (items.length === 1) {
+    return `${items[0].piece_type} x${items[0].quantity || 1}`;
+  }
+  if (totalQty <= 6) {
+    return items.map((it) => `${it.piece_type} x${it.quantity || 1}`).join(', ');
+  }
+  return `${items.length} types, ${totalQty} pieces`;
+}
+
 export default function DashboardPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workerTasks, setWorkerTasks] = useState<any[]>([]);
   const [allTasks, setAllTasks] = useState<any[]>([]);
+  const [orderItemsMap, setOrderItemsMap] = useState<Record<number, any[]>>({});
 
   const session = React.useMemo(() => {
     try {
@@ -121,20 +134,39 @@ export default function DashboardPage() {
           const tasks = await window.electronAPI.workers.getWorkerTasks(session.userId);
           setWorkerTasks(tasks || []);
         } else {
+          try {
+            await window.electronAPI.notifications.generateOverdue();
+          } catch { /* non-critical */ }
+
           const branchFilter = isManager ? session.branch_id : undefined;
           const [statsData, ordersData] = await Promise.all([
             window.electronAPI.orders.getStats(branchFilter),
             window.electronAPI.orders.getAll(branchFilter),
           ]);
           setStats(statsData);
-          setOrders((ordersData || []).slice(0, 5));
+          const latestOrders = (ordersData || []).slice(0, 5);
+          setOrders(latestOrders);
+
+          // Fetch items for latest orders
+          const itemsMap: Record<number, any[]> = {};
+          await Promise.all(
+            latestOrders.map(async (order: any) => {
+              try {
+                const items = await window.electronAPI.orders.getItems(order.id);
+                if (items && items.length > 0) {
+                  itemsMap[order.id] = items;
+                }
+              } catch { /* ignore */ }
+            })
+          );
+          setOrderItemsMap(itemsMap);
 
           const tasks = await window.electronAPI.orders.getAllTasks(isManager ? { branchId: session.branch_id } : {});
           setAllTasks(tasks || []);
         }
       } catch (err: unknown) {
         console.error('Failed to load dashboard data:', err);
-        const message = err instanceof Error ? err.message : 'Failed to load dashboard data. Please try again.';
+        const message = err instanceof Error ? err.message : t('Failed to load dashboard data. Please try again.');
         setError(message);
       } finally {
         setLoading(false);
@@ -198,7 +230,7 @@ export default function DashboardPage() {
 
   const safeStats = stats || { total: 0, in_progress: 0, ready: 0, delivered: 0, overdue: 0, revenue: 0 };
 
-  if (isTailor || isCutter) {
+  if (isWorker) {
     return <WorkerDashboard tasks={workerTasks} isCutter={isCutter} loading={loading} />;
   }
 
@@ -206,6 +238,7 @@ export default function DashboardPage() {
     pending: allTasks.filter((t: any) => t.status === 'pending').length,
     in_progress: allTasks.filter((t: any) => t.status === 'in_progress').length,
     done: allTasks.filter((t: any) => t.status === 'done').length,
+    unassigned: allTasks.filter((t: any) => !t.assigned_to).length,
   };
 
   return (
@@ -317,7 +350,7 @@ export default function DashboardPage() {
             </div>
             <div className="mt-4">
               <span className="text-3xl font-headline font-extrabold text-on-surface">
-                {formatRevenue(safeStats.revenue)}
+                {formatRevenue(safeStats.revenue, t(currency))}
               </span>
               <p className="text-xs text-secondary mt-1">{t('Open order value')}</p>
             </div>
@@ -438,6 +471,36 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Unassigned Tasks Alert */}
+            <div
+              className={`p-5 rounded-lg border-l-4 flex gap-4 cursor-pointer transition-all hover:shadow-md ${
+                taskCounts.unassigned > 0
+                  ? 'bg-primary-container/20 border-primary hover:bg-primary-container/30'
+                  : 'bg-surface-container-low border-outline-variant'
+              }`}
+              onClick={() => { if (taskCounts.unassigned > 0) window.location.hash = '#/task-board'; }}
+            >
+              <span
+                className={`material-symbols-outlined ${
+                  taskCounts.unassigned > 0 ? 'text-primary' : 'text-on-surface-variant'
+                }`}
+              >
+                person_add
+              </span>
+              <div>
+                <h4 className="font-bold text-sm text-on-surface">
+                  {taskCounts.unassigned > 0
+                    ? `${taskCounts.unassigned} ${t('Unassigned Tasks')}`
+                    : t('All Tasks Assigned')}
+                </h4>
+                <p className="text-xs text-secondary mt-1">
+                  {taskCounts.unassigned > 0
+                    ? t('Click to assign workers from Task Board.')
+                    : t('All tasks have workers assigned.')}
+                </p>
+              </div>
+            </div>
+
             {/* Studio Insights Card */}
             <div className="bg-surface-container-low p-6 rounded-xl flex flex-col items-center justify-center text-center space-y-3 h-48">
               <span className="material-symbols-outlined text-4xl text-primary">
@@ -497,19 +560,19 @@ export default function DashboardPage() {
                           {order.order_number}
                         </td>
                         <td>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div
                               className={`w-8 h-8 rounded-full ${avatarColor.bg} flex items-center justify-center text-[10px] font-bold ${avatarColor.text}`}
                             >
                               {getInitials(order.customer_name)}
                             </div>
-                            <span className="text-sm font-semibold text-on-surface">
+                            <span className="text-sm font-semibold text-on-surface truncate">
                               {order.customer_name || t('Unknown')}
                             </span>
                           </div>
                         </td>
                         <td className="text-sm text-secondary">
-                          {order.piece_type}
+                          {buildItemsSummary(orderItemsMap[order.id], order.piece_type)}
                         </td>
                         <td>{getStatusChip(order.status, late, t)}</td>
                         <td
@@ -533,7 +596,7 @@ export default function DashboardPage() {
 }
 
 function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter: boolean; loading: boolean }) {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const session = React.useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('session') || '{}');
@@ -636,7 +699,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
             </span>
             <span className="flex items-center gap-1">
               <span className="material-symbols-outlined text-base">payments</span>
-              {(earnings?.fixed_salary || 0).toLocaleString()} {t('QAR base')}
+              {(earnings?.fixed_salary || 0).toLocaleString()} {t(currency)} {t('base')}
             </span>
           </div>
         </div>
@@ -648,7 +711,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
           <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('Total Profit')}</span>
           <div>
             <span className="text-3xl font-headline font-extrabold text-on-surface">{(account?.total_earnings || 0).toLocaleString()}</span>
-            <span className="text-sm text-secondary ml-1">QAR</span>
+            <span className="text-sm text-secondary ml-1">{t(currency)}</span>
           </div>
           <p className="text-xs text-secondary">{account?.task_count || 0} {t('completed tasks')}</p>
         </div>
@@ -656,7 +719,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
           <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('Total Paid')}</span>
           <div>
             <span className="text-3xl font-headline font-extrabold text-on-surface">{(account?.total_paid || 0).toLocaleString()}</span>
-            <span className="text-sm text-secondary ml-1">QAR</span>
+            <span className="text-sm text-secondary ml-1">{t(currency)}</span>
           </div>
           <p className="text-xs text-secondary">{t('Payments received')}</p>
         </div>
@@ -675,7 +738,7 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
                 }`}>{(account?.balance || 0).toLocaleString()}</span>
                 <span className={`text-sm ml-1 ${
                   hasBalance ? 'text-on-tertiary-fixed-variant' : 'text-secondary'
-                }`}>QAR</span>
+                }`}>{t(currency)}</span>
               </div>
               <p className="text-xs text-on-tertiary-fixed-variant">{t('Amount owed to you')}</p>
             </div>
@@ -716,16 +779,16 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-secondary">{t('Piece Earnings')}</span>
-                <span className="font-semibold">{(earnings?.piece_earnings || 0).toLocaleString()} QAR</span>
+                <span className="font-semibold">{(earnings?.piece_earnings || 0).toLocaleString()} {t(currency)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-secondary">{t('Base Salary')}</span>
-                <span className="font-semibold">{(earnings?.fixed_salary || 0).toLocaleString()} QAR</span>
+                <span className="font-semibold">{(earnings?.fixed_salary || 0).toLocaleString()} {t(currency)}</span>
               </div>
               <div className="h-px bg-outline-variant/20" />
               <div className="flex justify-between">
                 <span className="font-bold">{t('Total')}</span>
-                <span className="font-bold text-primary text-lg">{(earnings?.total_earnings || 0).toLocaleString()} QAR</span>
+                <span className="font-bold text-primary text-lg">{(earnings?.total_earnings || 0).toLocaleString()} {t(currency)}</span>
               </div>
             </div>
             <p className="text-xs text-secondary">{earnings?.task_count || 0} {t('completed tasks')}</p>
@@ -751,22 +814,30 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
                   return (order[a.status] ?? 3) - (order[b.status] ?? 3);
                 })
                 .map((task) => (
-                  <div key={task.task_id} className="bg-surface-container-lowest rounded-xl p-5 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  <div key={task.task_id} className="bg-surface-container-lowest rounded-xl p-5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 ${
                         task.status === 'done' ? 'bg-tertiary-fixed text-on-tertiary-fixed'
                         : task.status === 'in_progress' ? 'bg-primary-fixed text-on-primary-fixed'
                         : 'bg-surface-container-high text-on-surface-variant'
                       }`}>
                         {task.status === 'in_progress' ? t('In Progress') : task.status === 'done' ? t('Done') : t('Pending')}
                       </span>
-                      <div>
-                        <span className="font-bold text-on-surface">{task.order_number}</span>
-                        <span className="text-secondary mx-2">·</span>
-                        <span className="text-sm text-secondary">{task.piece_type}</span>
+                      <div className="min-w-0 flex items-center gap-2">
+                        <a
+                          href={`#/orders/${task.order_id}`}
+                          className="font-bold text-primary hover:underline whitespace-nowrap"
+                        >
+                          {task.order_number}
+                        </a>
+                        <span className="text-secondary">·</span>
+                        <span className="text-sm text-secondary truncate">{task.piece_type}</span>
+                        {task.task_quantity && task.task_quantity > 1 && (
+                          <span className="text-xs text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded">x{task.task_quantity}</span>
+                        )}
                       </div>
                     </div>
-                    <div className="text-sm text-secondary">
+                    <div className="text-sm text-secondary whitespace-nowrap shrink-0">
                       {task.due_date ? `${t('Due:')} ${formatDate(task.due_date)}` : ''}
                     </div>
                   </div>

@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { format, isPast, parseISO } from 'date-fns';
@@ -51,6 +52,13 @@ function displayStatusKey(order: Order): string {
   return 'inProgress';
 }
 
+const STATUS_DISPLAY_LABELS: Record<string, string> = {
+  inProgress: 'In Progress',
+  ready: 'Ready',
+  delivered: 'Delivered',
+  late: 'Late',
+};
+
 function statusChipClass(statusKey: string): string {
   switch (statusKey) {
     case 'inProgress':
@@ -96,6 +104,7 @@ function StatusDropdown({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   const key = current === 'inProgress' ? 'In_Progress'
     : current === 'ready' ? 'Ready'
@@ -112,9 +121,18 @@ function StatusDropdown({
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  useLayoutEffect(() => {
+    if (open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: rect.left });
+    } else {
+      setPos(null);
+    }
+  }, [open]);
+
   async function handleSelect(dbStatus: string) {
     if (dbStatus === 'delivered' && orderBalance > 0.01) {
-      setError(t('Cannot deliver: balance of {balance} QAR outstanding', { balance: orderBalance.toFixed(2) }));
+      setError(t('Cannot deliver: balance of {balance} QAR outstanding').replace('{balance}', orderBalance.toFixed(2)).replaceAll('QAR', t(currency)));
       setTimeout(() => setError(null), 4000);
       return;
     }
@@ -134,16 +152,19 @@ function StatusDropdown({
         onClick={() => setOpen((o) => !o)}
         className={`${statusChipClass(current)} cursor-pointer`}
       >
-        {t(`status.${current}`)}
+        {t(STATUS_DISPLAY_LABELS[current] || current)}
         <span className="material-symbols-outlined text-xs ml-1 align-middle">expand_more</span>
       </button>
-      {error && (
-        <div className="absolute z-50 mt-1 left-0 bg-error text-on-primary text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+      {error && pos && createPortal(
+        <div className="fixed z-[9999] bg-error text-on-primary text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap"
+          style={{ top: pos.top, left: pos.left }}>
           {error}
-        </div>
+        </div>,
+        document.body,
       )}
-      {open && next.length > 0 && (
-        <div className="absolute z-50 mt-1 left-0 bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/30 py-1 min-w-[140px]">
+      {open && next.length > 0 && pos && createPortal(
+        <div className="fixed z-[9999] bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/30 py-1 min-w-[140px]"
+          style={{ top: pos.top, left: pos.left }}>
           {next.map((s) => {
             const targetStatus = s === 'ready' ? 'ready' : 'delivered';
             const isBlocked = targetStatus === 'delivered' && orderBalance > 0.01;
@@ -159,12 +180,13 @@ function StatusDropdown({
                 }`}
                 title={isBlocked ? t('Order must be fully paid before delivery') : undefined}
               >
-                {t('Mark as')} {t(`status.${targetStatus}`)}
+                {t('Mark as')} {t(STATUS_DISPLAY_LABELS[targetStatus] || targetStatus)}
                 {isBlocked && <span className="ml-1 text-error text-xs">({t('Unpaid')})</span>}
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -175,7 +197,7 @@ function StatusDropdown({
 /* ------------------------------------------------------------------ */
 export default function OrdersPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const session = JSON.parse(localStorage.getItem('session') || '{}');
   const isWorker = session.role === 'worker';
   const [orders, setOrders] = useState<Order[]>([]);
@@ -184,6 +206,7 @@ export default function OrdersPage() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [orderItemsMap, setOrderItemsMap] = React.useState<Record<number, any[]>>({});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -194,6 +217,20 @@ export default function OrdersPage() {
       ]);
       setOrders(allOrders);
       setStats(orderStats);
+
+      // Fetch items for each order
+      const itemsMap: Record<number, any[]> = {};
+      await Promise.all(
+        allOrders.map(async (order: any) => {
+          try {
+            const items = await window.electronAPI.orders.getItems(order.id);
+            if (items && items.length > 0) {
+              itemsMap[order.id] = items;
+            }
+          } catch { /* ignore per-order errors */ }
+        })
+      );
+      setOrderItemsMap(itemsMap);
     } catch (err) {
       console.error('Failed to load orders:', err);
     } finally {
@@ -218,6 +255,20 @@ export default function OrdersPage() {
         try {
           const results = await window.electronAPI.orders.search(q);
           setOrders(results);
+
+          // Fetch items for search results
+          const itemsMap: Record<number, any[]> = {};
+          await Promise.all(
+            results.map(async (order: any) => {
+              try {
+                const items = await window.electronAPI.orders.getItems(order.id);
+                if (items && items.length > 0) {
+                  itemsMap[order.id] = items;
+                }
+              } catch { /* ignore */ }
+            })
+          );
+          setOrderItemsMap(itemsMap);
         } catch (err) {
           console.error('Search failed:', err);
         }
@@ -250,6 +301,18 @@ export default function OrdersPage() {
   ];
 
   /* Helpers */
+  function buildItemsSummary(items: any[] | undefined, fallback: string): string {
+    if (!items || items.length === 0) return fallback;
+    const totalQty = items.reduce((s, it) => s + (it.quantity || 1), 0);
+    if (items.length === 1) {
+      return `${items[0].piece_type} x${items[0].quantity || 1}`;
+    }
+    if (totalQty <= 6) {
+      return items.map((it) => `${it.piece_type} x${it.quantity || 1}`).join(', ');
+    }
+    return `${items.length} types, ${totalQty} pieces`;
+  }
+
   function formatCurrency(v: number) {
     return v.toLocaleString('en-US', { minimumFractionDigits: 0 });
   }
@@ -331,7 +394,7 @@ export default function OrdersPage() {
       </div>
 
       {/* ---- Table ---- */}
-      <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-[0px_20px_40px_rgba(25,28,29,0.06)] overflow-x-auto">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-[0px_20px_40px_rgba(25,28,29,0.06)] overflow-x-auto">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
@@ -377,17 +440,17 @@ export default function OrdersPage() {
 
                     {/* Customer */}
                     <td>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-bold flex items-center justify-center shrink-0">
                           {getInitials(order.customer_name)}
                         </div>
-                        <span className="font-medium">{order.customer_name || t('Unknown')}</span>
+                        <span className="font-medium truncate">{order.customer_name || t('Unknown')}</span>
                       </div>
                     </td>
 
                     {/* Item Type */}
                     <td className="text-secondary">
-                      {order.piece_type}
+                      {buildItemsSummary(orderItemsMap[order.id], order.piece_type)}
                     </td>
 
                     {/* Price */}
@@ -459,7 +522,7 @@ export default function OrdersPage() {
               <span className="text-xs text-outline">
                 {t('Revenue (open):')}{' '}
                 <span className="font-bold text-on-surface">
-                  {(stats?.revenue ?? 0).toLocaleString('en-US')} QAR
+                  {(stats?.revenue ?? 0).toLocaleString('en-US')} {t(currency)}
                 </span>
               </span>
             )}
