@@ -100,7 +100,7 @@ export default function BackupPage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="mb-8 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
+        <div className="mb-8 p-4 rounded-xl bg-error-container border border-error-container text-on-error-container text-sm">
           {error}
         </div>
       )}

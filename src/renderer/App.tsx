@@ -6,6 +6,7 @@ import DashboardPage from './pages/Dashboard';
 import CustomersPage from './pages/Customers';
 import OrdersPage from './pages/Orders';
 import NewOrderPage from './pages/NewOrder';
+import WorkflowWizard from './pages/WorkflowWizard';
 import OrderDetailPage from './pages/OrderDetail';
 import MeasurementsPage from './pages/Measurements';
 import WorkersPage from './pages/Workers';
@@ -33,9 +34,9 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports'],
-  reception: ['/dashboard', '/customers', '/orders', '/measurements'],
+  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports', '/backup', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports'],
+  reception: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };
 
@@ -144,6 +145,14 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+          <Route
+            path="workflow"
+            element={
+              <ProtectedRoute path="/workflow" session={session}>
+                <WorkflowWizard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="orders/new"
             element={

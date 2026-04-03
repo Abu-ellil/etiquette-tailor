@@ -48,6 +48,9 @@ export default function WorkerPayRatesPage() {
   const [dirty, setDirty] = useState(false);
   const [pieceTypes, setPieceTypes] = useState<PieceType[]>([]);
   const [calcPrice, setCalcPrice] = useState(50);
+  const [showBulkSet, setShowBulkSet] = useState(false);
+  const [bulkWageType, setBulkWageType] = useState<'percentage' | 'fixed'>('percentage');
+  const [bulkRate, setBulkRate] = useState<number>(0);
 
   /* ---- Load workers ---- */
 
@@ -122,6 +125,27 @@ export default function WorkerPayRatesPage() {
   };
 
   const configuredCount = Object.keys(rates).filter((k) => rates[k].rate > 0).length;
+
+  /* ---- Apply bulk rate to all piece types ---- */
+
+  const applyBulkRate = () => {
+    if (bulkRate <= 0) return;
+    const newRates = { ...rates };
+    for (const pt of pieceTypes) {
+      newRates[pt.name_en] = {
+        ...(newRates[pt.name_en] || {
+          user_id: selectedWorkerId!,
+          piece_type: pt.name_en,
+        }),
+        wage_type: bulkWageType,
+        rate: bulkRate,
+      };
+    }
+    setRates(newRates);
+    setDirty(true);
+    setShowBulkSet(false);
+    setBulkRate(0);
+  };
 
   /* ---- Save all rates ---- */
 
@@ -315,6 +339,96 @@ export default function WorkerPayRatesPage() {
         </div>
       ) : (
         <>
+          {/* ---- Bulk Set All Rates ---- */}
+          <div className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-secondary">tune</span>
+                <span className="font-semibold text-on-surface">{t('Set All Rates at Once')}</span>
+              </div>
+              <button
+                onClick={() => setShowBulkSet(!showBulkSet)}
+                className={`text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all ${
+                  showBulkSet
+                    ? 'bg-surface-container-high text-secondary'
+                    : 'bg-primary/10 text-primary hover:bg-primary/20'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">{showBulkSet ? 'close' : 'playlist_add_check'}</span>
+                {showBulkSet ? t('Close') : t('Set All')}
+              </button>
+            </div>
+
+            {showBulkSet && (
+              <div className="mt-4 pt-4 border-t border-outline-variant/10 flex flex-wrap items-center gap-4">
+                {/* Wage Type */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-secondary">{t('Type')}:</span>
+                  <button
+                    onClick={() => setBulkWageType('percentage')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      bulkWageType === 'percentage'
+                        ? 'bg-primary text-on-primary'
+                        : 'bg-surface-container-high text-secondary hover:bg-surface-container-highest'
+                    }`}
+                  >
+                    {t('Percentage')}
+                  </button>
+                  <button
+                    onClick={() => setBulkWageType('fixed')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      bulkWageType === 'fixed'
+                        ? 'bg-primary text-on-primary'
+                        : 'bg-surface-container-high text-secondary hover:bg-surface-container-highest'
+                    }`}
+                  >
+                    {t('Fixed')}
+                  </button>
+                </div>
+
+                {/* Rate Input */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-secondary">{t('Rate')}:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step={bulkWageType === 'percentage' ? '0.5' : '0.01'}
+                    value={bulkRate || ''}
+                    onChange={(e) => setBulkRate(parseFloat(e.target.value) || 0)}
+                    className="w-28 h-9 pl-3 pr-10 text-right font-bold text-on-surface bg-surface-container-high rounded-lg border-none focus:ring-2 focus:ring-primary/30 outline-none"
+                    placeholder="0"
+                    autoFocus
+                  />
+                  <span className="text-xs text-secondary font-medium">
+                    {bulkWageType === 'percentage' ? '%' : t(currency)}
+                  </span>
+                </div>
+
+                {/* Preview */}
+                {bulkRate > 0 && (
+                  <span className="text-xs text-secondary">
+                    {t('Preview')}: {pieceTypes.length} {t('piece types')} →{' '}
+                    <span className="font-bold text-primary">
+                      {bulkWageType === 'percentage'
+                        ? `${calcPrice} × ${bulkRate}% = ${(calcPrice * bulkRate / 100).toFixed(0)} ${t(currency)}`
+                        : `${bulkRate.toFixed(0)} ${t(currency)} each`}
+                    </span>
+                  </span>
+                )}
+
+                {/* Apply Button */}
+                <button
+                  onClick={applyBulkRate}
+                  disabled={bulkRate <= 0}
+                  className="btn-primary px-5 py-2 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">checklist</span>
+                  {t('Apply to All {count} Types').replace('{count}', String(pieceTypes.length))}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* ---- Rates Table ---- */}
           <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/10 overflow-hidden">
             <div className="overflow-x-auto">

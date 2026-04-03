@@ -58,6 +58,7 @@ export interface ElectronAPI {
     get: (id: number) => Promise<any>;
     search: (query: string) => Promise<any[]>;
     create: (data: any) => Promise<any>;
+    createWithTasks: (payload: any) => Promise<{ orderId: number; orderNumber: string }>;
     update: (id: number, data: any) => Promise<any>;
     updateStatus: (id: number, status: string) => Promise<any>;
     getMeasurements: (orderId: number) => Promise<any>;
@@ -175,6 +176,7 @@ const api: ElectronAPI = {
     get: (id) => ipcRenderer.invoke('orders:get', id),
     search: (query) => ipcRenderer.invoke('orders:search', query),
     create: (data) => ipcRenderer.invoke('orders:create', data),
+    createWithTasks: (payload: any) => ipcRenderer.invoke('orders:createWithTasks', payload),
     update: (id, data) => ipcRenderer.invoke('orders:update', id, data),
     updateStatus: (id, status) => ipcRenderer.invoke('orders:updateStatus', id, status),
     getMeasurements: (orderId) => ipcRenderer.invoke('orders:getMeasurements', orderId),
