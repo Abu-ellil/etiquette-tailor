@@ -76,6 +76,7 @@ export interface OrderItem {
   unit_price: number;
   total_price: number;
   fabric_source: 'customer' | 'shop';
+  fabric_price?: number;
   details?: string;
   sort_order?: number;
   created_at?: string;
@@ -96,17 +97,20 @@ export function getOrderItems(orderId: number): OrderItem[] {
 }
 
 export function createOrderItem(item: Omit<OrderItem, 'id'>): number {
+  const fabricPrice = item.fabric_price || 0;
+  const lineTotal = (item.unit_price * item.quantity) + (fabricPrice * item.quantity);
   const stmt = db.prepare(`
-    INSERT INTO order_items (order_id, piece_type, quantity, unit_price, total_price, fabric_source, details, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO order_items (order_id, piece_type, quantity, unit_price, total_price, fabric_source, fabric_price, details, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
     item.order_id,
     item.piece_type,
     item.quantity,
     item.unit_price,
-    item.total_price || (item.unit_price * item.quantity),
+    item.total_price || lineTotal,
     item.fabric_source || 'customer',
+    fabricPrice,
     item.details || null,
     item.sort_order || 0
   );
@@ -114,18 +118,21 @@ export function createOrderItem(item: Omit<OrderItem, 'id'>): number {
 }
 
 export function updateOrderItem(id: number, data: Partial<OrderItem>): void {
+  const fabricPrice = data.fabric_price || 0;
+  const lineTotal = (data.unit_price! * data.quantity!) + (fabricPrice * data.quantity!);
   const stmt = db.prepare(`
     UPDATE order_items SET
       piece_type = ?, quantity = ?, unit_price = ?,
-      total_price = ?, fabric_source = ?, details = ?
+      total_price = ?, fabric_source = ?, fabric_price = ?, details = ?
     WHERE id = ?
   `);
   stmt.run(
     data.piece_type,
     data.quantity,
     data.unit_price,
-    data.total_price || (data.unit_price! * data.quantity!),
+    data.total_price || lineTotal,
     data.fabric_source || 'customer',
+    fabricPrice,
     data.details || null,
     id
   );
@@ -225,18 +232,20 @@ export function createOrder(order: Omit<Order, 'id' | 'balance'>, measurements?:
     // Insert order items
     if (items && items.length > 0) {
       const itemStmt = db.prepare(`
-        INSERT INTO order_items (order_id, piece_type, quantity, unit_price, total_price, fabric_source, details, sort_order)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO order_items (order_id, piece_type, quantity, unit_price, total_price, fabric_source, fabric_price, details, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
+        const fabricPrice = item.fabric_price || 0;
         itemStmt.run(
           orderId,
           item.piece_type,
           item.quantity,
           item.unit_price,
-          item.unit_price * item.quantity,
+          (item.unit_price * item.quantity) + (fabricPrice * item.quantity),
           item.fabric_source || 'customer',
+          fabricPrice,
           item.details || null,
           i
         );
@@ -265,6 +274,128 @@ export function createOrder(order: Omit<Order, 'id' | 'balance'>, measurements?:
   });
 
   return transaction();
+}
+
+export interface WorkflowPayload {
+  branch_id: number;
+  customer_id: number;
+  created_by: number;
+  payment_method: 'cash' | 'card';
+  delivery_date: string;
+  receive_date?: string;
+  fabric_source?: 'customer' | 'shop';
+  notes?: string;
+  items: {
+    piece_type: string;
+    quantity: number;
+    unit_price: number;
+    fabric_source?: 'customer' | 'shop';
+    fabric_price?: number;
+    details?: string;
+    cutter_id?: number;
+    cutter_wage_type?: 'percentage' | 'fixed';
+    cutter_wage_rate?: number;
+    tailors?: {
+      worker_id: number;
+      quantity: number;
+      wage_type: 'percentage' | 'fixed';
+      wage_rate: number;
+    }[];
+  }[];
+  measurements?: {
+    chest?: number;
+    waist?: number;
+    hips?: number;
+    length?: number;
+    sleeve?: number;
+    shoulder?: number;
+    notes?: string;
+  };
+  initial_payment?: {
+    amount: number;
+    method: 'cash' | 'card';
+    note?: string;
+  };
+}
+
+export function createOrderWithTasks(payload: WorkflowPayload): { orderId: number; orderNumber: string } {
+  const result = db.transaction(() => {
+    const orderNumber = generateOrderNumber(payload.branch_id);
+    const totalPrice = payload.items.reduce((sum, i) => sum + (i.unit_price * i.quantity), 0);
+
+    db.prepare(`
+      INSERT INTO orders (order_number, branch_id, customer_id, piece_type, details, price, paid, payment_method, status, receive_date, delivery_date, created_by, fabric_source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'intake', ?, ?, ?, ?)
+    `).run(
+      orderNumber,
+      payload.branch_id,
+      payload.customer_id,
+      payload.items[0].piece_type,
+      payload.notes || null,
+      totalPrice,
+      payload.initial_payment?.amount || 0,
+      payload.payment_method,
+      payload.receive_date || new Date().toISOString().split('T')[0],
+      payload.delivery_date,
+      payload.created_by,
+      payload.fabric_source || 'customer'
+    );
+
+    const orderId = (db.prepare('SELECT last_insert_rowid() as id').get() as { id: number }).id;
+
+    if (payload.measurements) {
+      const m = payload.measurements;
+      db.prepare(`
+        INSERT INTO order_measurements (order_id, chest, waist, hips, length, sleeve, shoulder, notes, taken_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(orderId, m.chest || null, m.waist || null, m.hips || null, m.length || null, m.sleeve || null, m.shoulder || null, m.notes || null, payload.created_by);
+    }
+
+    for (const item of payload.items) {
+      const itemTotal = item.unit_price * item.quantity;
+      db.prepare(`
+        INSERT INTO order_items (order_id, piece_type, quantity, unit_price, total_price, fabric_source, fabric_price, details)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        orderId, item.piece_type, item.quantity, item.unit_price, itemTotal,
+        item.fabric_source || 'customer', item.fabric_price || 0, item.details || null
+      );
+      const itemId = (db.prepare('SELECT last_insert_rowid() as id').get() as { id: number }).id;
+
+      if (item.cutter_id && item.cutter_wage_type && item.cutter_wage_rate !== undefined) {
+        const wageAmount = item.cutter_wage_type === 'percentage'
+          ? (itemTotal * item.cutter_wage_rate / 100)
+          : item.cutter_wage_rate;
+        db.prepare(`
+          INSERT INTO order_tasks (order_id, order_item_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, task_quantity, status)
+          VALUES (?, ?, 'cutting', ?, ?, ?, ?, ?, 'pending')
+        `).run(orderId, itemId, item.cutter_id, item.cutter_wage_type, item.cutter_wage_rate, wageAmount, 1);
+      }
+
+      if (item.tailors && item.tailors.length > 0) {
+        for (const t of item.tailors) {
+          const wageAmount = t.wage_type === 'percentage'
+            ? (item.unit_price * t.quantity * t.wage_rate / 100)
+            : t.wage_rate;
+          db.prepare(`
+            INSERT INTO order_tasks (order_id, order_item_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, task_quantity, status)
+            VALUES (?, ?, 'sewing', ?, ?, ?, ?, ?, 'pending')
+          `).run(orderId, itemId, t.worker_id, t.wage_type, t.wage_rate, wageAmount, t.quantity);
+        }
+      }
+    }
+
+    if (payload.initial_payment && payload.initial_payment.amount > 0) {
+      db.prepare(`
+        INSERT INTO order_payments (order_id, amount, method, note, created_by)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(orderId, payload.initial_payment.amount, payload.initial_payment.method, payload.initial_payment.note || 'Initial payment', payload.created_by);
+    }
+
+    return { orderId, orderNumber };
+  })();
+
+  return result;
 }
 
 export function updateOrder(id: number, order: Partial<Order>): void {

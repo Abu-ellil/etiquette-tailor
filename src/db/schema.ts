@@ -93,6 +93,7 @@ export function initializeSchema() {
       unit_price REAL NOT NULL,
       total_price REAL NOT NULL DEFAULT 0,
       fabric_source TEXT CHECK(fabric_source IN ('customer','shop')) DEFAULT 'customer',
+      fabric_price REAL NOT NULL DEFAULT 0,
       details TEXT,
       sort_order INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -354,6 +355,12 @@ function migrateColumns() {
   if (!tables.orders?.includes('fabric_source')) {
     console.log('Migrating: adding fabric_source to orders');
     db.exec("ALTER TABLE orders ADD COLUMN fabric_source TEXT CHECK(fabric_source IN ('customer','shop')) DEFAULT 'customer'");
+  }
+
+  // Add fabric_price to order_items
+  if (!tables.order_items?.includes('fabric_price')) {
+    console.log('Migrating: adding fabric_price to order_items');
+    db.exec('ALTER TABLE order_items ADD COLUMN fabric_price REAL NOT NULL DEFAULT 0');
   }
 
   // Add order_item_id and task_quantity to order_tasks

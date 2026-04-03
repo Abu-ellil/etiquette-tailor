@@ -23,6 +23,7 @@ import {
   getOrder,
   searchOrders,
   createOrder,
+  createOrderWithTasks,
   updateOrder,
   updateOrderStatus,
   getOrderMeasurements,
@@ -265,6 +266,10 @@ function registerIpcHandlers() {
       }
     } catch (e) { console.error('Notification error:', e); }
     return result;
+  });
+
+  ipcMain.handle('orders:createWithTasks', (_e, payload) => {
+    return createOrderWithTasks(payload);
   });
 
   ipcMain.handle('orders:update', async (_event, id: number, data: any) => {

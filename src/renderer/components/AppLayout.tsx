@@ -80,7 +80,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
 
   const showNewOrder = !['tailor', 'master_cutter'].includes(session.worker_type || '') || session.role !== 'worker';
 
-  const sidebarHiddenClass = isRTL ? '-translate-x-full' : '-translate-x-full';
+  const sidebarHiddenClass = isRTL ? 'translate-x-full' : '-translate-x-full';
   const sidebarShowClass = 'translate-x-0';
   const sidebarPositionClass = isRTL ? 'end-0' : 'start-0';
   const lgSidebarClass = isRTL ? 'lg:end-0' : 'lg:start-0';
@@ -145,7 +145,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
           <div className="px-6 mt-4 space-y-3">
             {showNewOrder && (
               <button
-                onClick={() => handleNav('/orders/new')}
+                onClick={() => handleNav('/workflow')}
                 title={t('New Order')}
                 className="btn-primary w-full py-3 lg:py-2 text-sm tracking-wide flex items-center justify-center gap-2"
               >

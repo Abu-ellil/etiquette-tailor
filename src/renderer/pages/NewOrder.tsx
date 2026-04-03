@@ -33,6 +33,7 @@ interface ItemForm {
   quantity: number;
   unit_price: number;
   fabric_source: 'customer' | 'shop';
+  fabric_price: number;
   details: string;
 }
 
@@ -54,6 +55,7 @@ function createEmptyItem(): ItemForm {
     quantity: 1,
     unit_price: 0,
     fabric_source: 'customer',
+    fabric_price: 0,
     details: '',
   };
 }
@@ -89,7 +91,10 @@ export default function NewOrderPage() {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
   /* Computed */
-  const totalPrice = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+  const totalPrice = items.reduce((sum, item) => {
+    const fabricCost = item.fabric_source === 'shop' ? item.fabric_price * item.quantity : 0;
+    return sum + item.unit_price * item.quantity + fabricCost;
+  }, 0);
   const balance = totalPrice - paid;
 
   const getBasePrice = (pieceTypeName: string): number => {
@@ -206,6 +211,7 @@ export default function NewOrderPage() {
         unit_price: item.unit_price,
         total_price: item.unit_price * item.quantity,
         fabric_source: item.fabric_source,
+        fabric_price: item.fabric_source === 'shop' ? item.fabric_price : 0,
         details: item.details || undefined,
         sort_order: idx,
       }));
@@ -398,7 +404,7 @@ export default function NewOrderPage() {
                     </div>
 
                     {/* Item details grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className={`grid grid-cols-1 gap-3 ${item.fabric_source === 'shop' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
                       {/* Piece type */}
                       <div className="space-y-1">
                         <label className="block text-[10px] font-semibold uppercase tracking-widest text-secondary">
@@ -450,12 +456,21 @@ export default function NewOrderPage() {
                           ))}
                         </div>
                       </div>
+
+                      {/* Fabric price - only when fabric from shop */}
+                      {item.fabric_source === 'shop' && (
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-semibold uppercase tracking-widest text-secondary">{t('Fabric Price')} ({t(currency)})</label>
+                          <input type="number" step="0.01" min={0} className="input-field text-sm" value={item.fabric_price}
+                            onChange={e => updateItem(idx, { fabric_price: Number(e.target.value) })} />
+                        </div>
+                      )}
                     </div>
 
                     {/* Line total */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-secondary">
-                        {t('Line Total')}: <strong className="text-on-surface">{(item.unit_price * item.quantity).toFixed(2)} {t(currency)}</strong>
+                        {t('Line Total')}: <strong className="text-on-surface">{((item.unit_price * item.quantity) + (item.fabric_source === 'shop' ? item.fabric_price * item.quantity : 0)).toFixed(2)} {t(currency)}</strong>
                       </span>
                       {basePrice > 0 && (
                         <span className="text-xs text-outline">

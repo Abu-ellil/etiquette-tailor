@@ -1,37 +1,48 @@
-# Implementation Plan: Workers, Tasks & Wage Calculation
+# Implementation Plan: UI/UX Revision & Enhancement
 
-**Branch**: `002-workers-tasks-wages` | **Date**: 2026-03-29 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/specs/002-workers-tasks-wages/spec.md`
+**Branch**: `002-workers-tasks-wages` | **Date**: 2026-04-03 | **Spec**: `specs/002-workers-tasks-wages/spec.md`
+**Input**: User request to revise app UI using frontend-design skill, focusing on weaknesses and UX
 
 ## Summary
 
-Build production tracking and worker management features: Order Detail page with full task management, Tailor "My Tasks" view, Cutter "Cutting Queue", Task Board for admin/manager, seasonal rate override UI, monthly wage totals, and role-specific dashboard enhancements. Leverages existing DB layer and IPC handlers.
+Comprehensive UI/UX audit and revision of the Etiquette Tailor desktop management system. The app has a functional "Bespoke Atelier" design system (Plum primary, Slate secondary, Manrope headlines, Inter body) with Material Design 3 token naming, but suffers from multiple critical issues: undefined CSS variables causing broken rendering, hardcoded colors bypassing the theme system, missing font weights, dual status chip systems, RTL bugs, no modal animations, inconsistent form styling, accessibility gaps, and UX friction patterns (window.confirm dialogs, broken dropdown menus, missing error boundaries).
+
+The revision focuses on: (1) fixing all broken/undefined tokens, (2) unifying the component system, (3) enhancing micro-interactions and transitions, (4) improving form UX patterns, (5) adding proper empty/loading/error states everywhere, (6) polishing the visual design for a premium boutique feel.
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x with React 19
-**Primary Dependencies**: Electron (Forge + Vite), React, react-router-dom v7, react-hook-form, date-fns, Tailwind CSS v4
+**Language/Version**: TypeScript 5.x
+**Primary Dependencies**: Electron, React 19, Tailwind CSS v4 (via @theme), shadcn/ui (listed in CLAUDE.md but not currently used), react-hook-form, date-fns, react-to-print
 **Storage**: SQLite via better-sqlite3 (local app.db)
-**Testing**: Manual testing via dev server (`npm run dev`)
-**Target Platform**: Windows desktop (Electron)
-**Project Type**: Desktop application (Electron + React)
-**Performance Goals**: Page loads under 1 second, task list renders under 500ms
-**Constraints**: Offline-first, no internet required, single-window single-session
-**Scale/Scope**: ~200 orders, ~10 workers, ~500 tasks maximum
+**Testing**: npm test (framework TBD in project)
+**Target Platform**: Windows/macOS desktop (Electron)
+**Project Type**: Desktop app (Electron + React SPA)
+**Performance Goals**: Fast local UI, offline-first, <100ms page transitions
+**Constraints**: Light mode only (per CLAUDE.md), English UI with Arabic data support, RTL on invoice print only
+**Scale/Scope**: 2-branch tailor shop, ~10 concurrent users, ~50 pages/components
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-| Gate | Status | Notes |
+| Rule | Status | Notes |
 |------|--------|-------|
-| Approved packages only | PASS | All dependencies already in package.json |
-| Tech stack unchanged | PASS | Electron + React + TS + SQLite + Tailwind |
-| DB access through /src/db/ only | PASS | All new queries use existing DB functions |
-| Balance = Price - Paid auto-calculated | PASS | No changes to balance logic |
-| Order status flow unchanged | PASS | No new statuses added |
-| UI language: English only | PASS | All UI text in English |
-| No dark mode | PASS | Light mode only |
+| Balance = Price - Paid (auto-calculated) | PASS | No change to business logic |
+| Order statuses: In Progress → Ready → Delivered only | PASS | UI-only revision |
+| Payment types: Cash or Card only | PASS | No change |
+| Tech stack locked (Electron + React + TS + SQLite + Tailwind + shadcn/ui) | PASS | Only using approved packages |
+| All queries through /src/db/ layer | PASS | No DB changes |
+| Interface language: English only | PASS | No i18n changes |
+| Light mode only | **VIOLATION** | Dark mode system exists; recommend removal per constitution |
+| Never invent features | PASS | Only enhancing existing UI |
+| Never add packages not listed | PASS | No new packages |
+| Folder structure unchanged | PASS | Same directories |
+
+### Violation Justification
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| Dark mode removal | CLAUDE.md says "light mode only" but full dark mode exists with toggle | Partial removal would leave dead code; full removal aligns with constitution |
 
 ## Project Structure
 
@@ -39,48 +50,59 @@ Build production tracking and worker management features: Order Detail page with
 
 ```text
 specs/002-workers-tasks-wages/
-├── plan.md
-├── spec.md
-├── checklists/
-│   └── requirements.md
-├── research.md
-├── data-model.md
-├── quickstart.md
-└── tasks.md             (generated by /speckit.tasks)
+├── plan.md              # This file
+├── research.md          # UI/UX audit findings and enhancement decisions
+├── data-model.md        # Design token system and component specifications
+├── quickstart.md        # Implementation guide for developers
+└── contracts/           # Component API contracts
+    └── components.md    # Shared component props/interfaces
 ```
 
 ### Source Code (repository root)
 
 ```text
-src/
-├── main/
-│   ├── index.ts                    # ADD: workers:getEarnings, workers:getWorkerTasks IPC handlers
-│   └── preload.ts                  # UPDATE: add getEarnings, getWorkerTasks to workers API
-├── db/
-│   ├── workers.ts                  # UPDATE: add getWorkerTasks(), getMonthlyEarnings()
-│   ├── orders.ts                   # EXISTING: all task CRUD already implemented
-│   └── ...
-├── renderer/
-│   ├── App.tsx                     # UPDATE: add routes /orders/:id, /my-tasks, /cutting-queue, /task-board
-│   ├── pages/
-│   │   ├── OrderDetail.tsx         # NEW: full order detail with task management
-│   │   ├── MyTasks.tsx             # NEW: tailor's task list view
-│   │   ├── CuttingQueue.tsx        # NEW: cutter's cutting queue view
-│   │   ├── TaskBoard.tsx           # NEW: admin/manager task overview
-│   │   ├── Dashboard.tsx           # UPDATE: role-specific dashboard content
-│   │   ├── Workers.tsx             # UPDATE: add monthly earnings display
-│   │   ├── WorkerPayRates.tsx      # UPDATE: add seasonal date range fields
-│   │   └── ...
-│   ├── components/
-│   │   ├── AppLayout.tsx           # UPDATE: add My Tasks / Cutting Queue to sidebar per role
-│   │   ├── TaskCard.tsx            # NEW: reusable task display component
-│   │   └── ...
-│   └── ...
-└── ...
+src/renderer/
+├── index.css                    # Design tokens (@theme), component layer
+├── assets/fonts/                # Inter, Manrope, Material Symbols
+├── components/
+│   ├── AppLayout.tsx            # Main layout (sidebar + header + content)
+│   ├── TitleBar.tsx             # Electron window title bar
+│   ├── StatusChip.tsx           # Unified status chip (task + order)
+│   ├── NotificationBell.tsx     # Notification dropdown
+│   └── [existing components]
+├── pages/
+│   ├── Dashboard.tsx
+│   ├── Orders.tsx
+│   ├── Customers.tsx
+│   ├── NewOrder.tsx
+│   ├── OrderDetail.tsx
+│   ├── Workers.tsx
+│   ├── Measurements.tsx
+│   ├── TaskBoard.tsx
+│   ├── TaskManagement.tsx
+│   ├── Invoice.tsx
+│   ├── Reports.tsx
+│   ├── Settings.tsx
+│   ├── Backup.tsx
+│   ├── WorkerPayRates.tsx
+│   ├── WorkerWageReport.tsx
+│   ├── SalarySummary.tsx
+│   ├── WorkerProductivity.tsx
+│   ├── MyTasks.tsx
+│   ├── CuttingQueue.tsx
+│   └── Login.tsx
+├── contexts/
+│   ├── I18nContext.tsx
+│   └── ThemeContext.tsx
+└── i18n/
+    ├── index.ts
+    └── ar.ts
 ```
 
-**Structure Decision**: Follows existing project structure. New pages go in `src/renderer/pages/`, new shared components in `src/renderer/components/`. DB layer additions in `src/db/workers.ts`. Route and navigation updates in `App.tsx` and `AppLayout.tsx`.
+**Structure Decision**: No structural changes. All revisions happen in-place within existing files. The only new file is a potential shared `StatusBadge.tsx` to unify the dual status systems.
 
 ## Complexity Tracking
 
-No violations — all changes use existing patterns and approved dependencies.
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| Dark mode removal | Constitution says light-only; existing dark mode contradicts | Hiding toggle still leaves dead CSS/code |
