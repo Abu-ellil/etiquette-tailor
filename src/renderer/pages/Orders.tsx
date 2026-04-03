@@ -486,7 +486,7 @@ export default function OrdersPage() {
                     <td>
                       <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => navigate(`/orders/edit/${order.id}`)}
+                          onClick={() => navigate(`/orders/${order.id}`)}
                           className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary"
                           title={t('Edit')}
                         >
