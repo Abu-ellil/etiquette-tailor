@@ -238,6 +238,7 @@ export default function DashboardPage() {
     pending: allTasks.filter((t: any) => t.status === 'pending').length,
     in_progress: allTasks.filter((t: any) => t.status === 'in_progress').length,
     done: allTasks.filter((t: any) => t.status === 'done').length,
+    unassigned: allTasks.filter((t: any) => !t.assigned_to).length,
   };
 
   return (
@@ -466,6 +467,36 @@ export default function DashboardPage() {
                   {safeStats.ready > 0
                     ? t('Orders awaiting customer collection.')
                     : t('All ready orders have been picked up.')}
+                </p>
+              </div>
+            </div>
+
+            {/* Unassigned Tasks Alert */}
+            <div
+              className={`p-5 rounded-lg border-l-4 flex gap-4 cursor-pointer transition-all hover:shadow-md ${
+                taskCounts.unassigned > 0
+                  ? 'bg-primary-container/20 border-primary hover:bg-primary-container/30'
+                  : 'bg-surface-container-low border-outline-variant'
+              }`}
+              onClick={() => { if (taskCounts.unassigned > 0) window.location.hash = '#/task-board'; }}
+            >
+              <span
+                className={`material-symbols-outlined ${
+                  taskCounts.unassigned > 0 ? 'text-primary' : 'text-on-surface-variant'
+                }`}
+              >
+                person_add
+              </span>
+              <div>
+                <h4 className="font-bold text-sm text-on-surface">
+                  {taskCounts.unassigned > 0
+                    ? `${taskCounts.unassigned} ${t('Unassigned Tasks')}`
+                    : t('All Tasks Assigned')}
+                </h4>
+                <p className="text-xs text-secondary mt-1">
+                  {taskCounts.unassigned > 0
+                    ? t('Click to assign workers from Task Board.')
+                    : t('All tasks have workers assigned.')}
                 </p>
               </div>
             </div>
@@ -793,7 +824,12 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
                         {task.status === 'in_progress' ? t('In Progress') : task.status === 'done' ? t('Done') : t('Pending')}
                       </span>
                       <div className="min-w-0 flex items-center gap-2">
-                        <span className="font-bold text-on-surface whitespace-nowrap">{task.order_number}</span>
+                        <a
+                          href={`#/orders/${task.order_id}`}
+                          className="font-bold text-primary hover:underline whitespace-nowrap"
+                        >
+                          {task.order_number}
+                        </a>
                         <span className="text-secondary">·</span>
                         <span className="text-sm text-secondary truncate">{task.piece_type}</span>
                         {task.task_quantity && task.task_quantity > 1 && (

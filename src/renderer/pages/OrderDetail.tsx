@@ -16,16 +16,21 @@ export default function OrderDetailPage() {
   const [payments, setPayments] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [editing, setEditing] = React.useState(false);
-  const [showAddTask, setShowAddTask] = React.useState(false);
   const [showAddPayment, setShowAddPayment] = React.useState(false);
   const [originalPrice, setOriginalPrice] = React.useState(0);
-  const [newTask, setNewTask] = React.useState({ task_type: 'sewing', assigned_to: null });
   const [newPayment, setNewPayment] = React.useState<{ amount: string; method: 'cash' | 'card'; note: string }>({
     amount: '',
     method: 'cash',
     note: '',
   });
   const [session, setSession] = React.useState<any>(null);
+
+  // Inline assignment state per item
+  const [assigningItem, setAssigningItem] = React.useState<number | null>(null); // order_item_id
+  const [recommendedWorkers, setRecommendedWorkers] = React.useState<any[]>([]);
+  const [workerRates, setWorkerRates] = React.useState<Record<string, any>>({}); // key: `${workerId}-${pieceType}`
+  const [inlineRate, setInlineRate] = React.useState<{ workerId: number; pieceType: string; wageType: 'percentage' | 'fixed'; rate: number } | null>(null);
+
   React.useEffect(() => {
     window.electronAPI.auth.getSession().then((s: any) => setSession(s));
   }, []);
@@ -57,6 +62,37 @@ export default function OrderDetailPage() {
   }, [id]);
 
   React.useEffect(() => { loadOrder(); }, [loadOrder]);
+
+  const getCutters = () => workers.filter((w: any) => w.worker_type === 'master_cutter');
+  const getTailors = () => workers.filter((w: any) => w.worker_type === 'tailor' || !w.worker_type);
+
+  const getWorkerRate = async (workerId: number, pieceType: string): Promise<any> => {
+    const key = `${workerId}-${pieceType}`;
+    if (workerRates[key]) return workerRates[key];
+    try {
+      const rate = await window.electronAPI.workers.getActiveRate(workerId, pieceType);
+      if (rate) {
+        setWorkerRates(prev => ({ ...prev, [key]: rate }));
+      }
+      return rate;
+    } catch { return null; }
+  };
+
+  const getBasePrice = (pieceType: string): number => {
+    const pt = pieceTypes.find((p: any) => p.name_en === pieceType);
+    return pt?.base_price || 0;
+  };
+
+  const calcWage = (basePrice: number, wageType: string, rate: number, qty: number): number => {
+    return wageType === 'percentage' ? basePrice * (rate / 100) * qty : rate * qty;
+  };
+
+  const loadRecommended = async (pieceType: string, taskType: string) => {
+    try {
+      const recs = await window.electronAPI.workers.getRecommended(pieceType, taskType);
+      setRecommendedWorkers(recs || []);
+    } catch { setRecommendedWorkers([]); }
+  };
 
   const handleStatusChange = async (taskId: number, currentStatus: string) => {
     const next: string | undefined = {
@@ -113,37 +149,75 @@ export default function OrderDetailPage() {
     }
   };
 
-  const handleAddTask = async () => {
-    if (!newTask.assigned_to || !order) return;
+  // Assign cutter to an item
+  const handleAssignCutter = async (itemId: number, pieceType: string, workerId: number) => {
+    const rate = await getWorkerRate(workerId, pieceType);
+    if (!rate) {
+      setInlineRate({ workerId, pieceType, wageType: 'percentage', rate: 0 });
+      return;
+    }
+    const item = orderItems.find((i: any) => i.id === itemId);
+    const qty = item?.quantity || 1;
+    const bp = getBasePrice(pieceType);
+    const wageAmount = calcWage(bp, rate.wage_type, rate.rate, qty);
+    await window.electronAPI.orders.createTask({
+      order_id: Number(id),
+      order_item_id: itemId,
+      task_type: 'cutting',
+      assigned_to: workerId,
+      wage_type: rate.wage_type,
+      wage_rate: rate.rate,
+      wage_amount: wageAmount,
+      task_quantity: qty,
+      status: 'pending',
+    });
+    await loadOrder();
+  };
+
+  // Assign tailor to an item with specific quantity
+  const handleAssignTailor = async (itemId: number, pieceType: string, workerId: number, qty: number) => {
+    if (qty <= 0) return;
+    const rate = await getWorkerRate(workerId, pieceType);
+    if (!rate) {
+      setInlineRate({ workerId, pieceType, wageType: 'percentage', rate: 0 });
+      return;
+    }
+    const bp = getBasePrice(pieceType);
+    const wageAmount = calcWage(bp, rate.wage_type, rate.rate, qty);
+    await window.electronAPI.orders.createTask({
+      order_id: Number(id),
+      order_item_id: itemId,
+      task_type: 'sewing',
+      assigned_to: workerId,
+      wage_type: rate.wage_type,
+      wage_rate: rate.rate,
+      wage_amount: wageAmount,
+      task_quantity: qty,
+      status: 'pending',
+    });
+    await loadOrder();
+  };
+
+  // Save inline rate and then assign
+  const handleSaveInlineRate = async () => {
+    if (!inlineRate || inlineRate.rate <= 0) return;
     try {
-      const pieceType = order.piece_type;
-      const rate = await window.electronAPI.workers.getActiveRate(newTask.assigned_to, pieceType);
-      if (!rate) {
-        alert(t('No rate configured for this worker and piece type. Please set the rate in Worker Rates first.'));
-        return;
-      }
-      const pt = pieceTypes.find((p: any) => p.name_en === pieceType);
-      const basePrice = pt?.base_price || Number(order.price);
-      const taskQty = (newTask as any).task_quantity || 1;
-      const wageAmount = rate.wage_type === 'percentage'
-        ? basePrice * (rate.rate / 100) * taskQty
-        : rate.rate * taskQty;
-      await window.electronAPI.orders.createTask({
-        order_id: Number(id),
-        order_item_id: (newTask as any).order_item_id || null,
-        task_type: newTask.task_type,
-        assigned_to: newTask.assigned_to,
-        wage_type: rate.wage_type,
-        wage_rate: rate.rate,
-        wage_amount: wageAmount,
-        task_quantity: taskQty,
-        status: 'pending',
+      await window.electronAPI.workers.setRate({
+        user_id: inlineRate.workerId,
+        piece_type: inlineRate.pieceType,
+        wage_type: inlineRate.wageType,
+        rate: inlineRate.rate,
       });
-      setShowAddTask(false);
-      setNewTask({ task_type: 'sewing', assigned_to: null });
-      await loadOrder();
+      // Clear rate cache
+      const key = `${inlineRate.workerId}-${inlineRate.pieceType}`;
+      setWorkerRates(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setInlineRate(null);
     } catch (err) {
-      console.error('Failed to add task:', err);
+      console.error('Failed to save rate:', err);
     }
   };
 
@@ -151,7 +225,10 @@ export default function OrderDetailPage() {
     try {
       const pieceType = order.piece_type;
       const rate = await window.electronAPI.workers.getActiveRate(newWorkerId, pieceType);
-      if (!rate) return;
+      if (!rate) {
+        setInlineRate({ workerId: newWorkerId, pieceType, wageType: 'percentage', rate: 0 });
+        return;
+      }
       const pt = pieceTypes.find((p: any) => p.name_en === pieceType);
       const basePrice = pt?.base_price || Number(order.price);
       const task = tasks.find((t: any) => t.id === taskId);
@@ -175,9 +252,9 @@ export default function OrderDetailPage() {
       alert(t('Please enter a valid amount.'));
       return;
     }
-    const balance = Number(order.price) - Number(order.paid);
-    if (amount > balance + 0.01) {
-      alert(t('Payment amount exceeds the balance due ({balance} QAR).').replace('{balance}', balance.toFixed(2)).replaceAll('QAR', t(currency)));
+    const bal = Number(order.price) - Number(order.paid);
+    if (amount > bal + 0.01) {
+      alert(t('Payment amount exceeds the balance due ({balance} QAR).').replace('{balance}', bal.toFixed(2)).replaceAll('QAR', t(currency)));
       return;
     }
     try {
@@ -226,9 +303,12 @@ export default function OrderDetailPage() {
   }
 
   const balance = (Number(order.price) || 0) - (Number(order.paid) || 0);
-  const isFullyPaid = balance <= 0.01;
-
   const isWorker = session?.role === 'worker';
+
+  // Calculate assigned quantities per item
+  const getItemTasks = (itemId: number) => tasks.filter((t: any) => t.order_item_id === itemId);
+  const getItemAssignedQty = (itemId: number, taskType: string) =>
+    getItemTasks(itemId).filter((t: any) => t.task_type === taskType).reduce((s: number, t: any) => s + (t.task_quantity || 1), 0);
 
   return (
     <div className="space-y-8">
@@ -262,7 +342,7 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      {/* ── Payment Summary Bar ── */}
+      {/* Payment Summary Bar */}
       {!isWorker && (
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-surface-container-lowest rounded-xl p-5 text-center">
@@ -290,6 +370,7 @@ export default function OrderDetailPage() {
 
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
+          {/* Order Details */}
           <div className="bg-surface-container-lowest rounded-xl p-6">
             <h3 className="text-lg font-headline font-bold mb-4">{t('Order Details')}</h3>
             {editing ? (
@@ -345,44 +426,231 @@ export default function OrderDetailPage() {
             )}
           </div>
 
-          {/* ── Order Items ── */}
+          {/* Order Items with inline worker assignment */}
           {orderItems.length > 0 && (
             <div className="bg-surface-container-lowest rounded-xl p-6">
               <h3 className="text-lg font-headline font-bold mb-4">{t('Order Items')}</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-outline-variant/30">
-                      <th className="text-left py-2 text-xs font-semibold uppercase tracking-widest text-secondary">#</th>
-                      <th className="text-left py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Piece Type')}</th>
-                      <th className="text-center py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Qty')}</th>
-                      <th className="text-right py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Unit Price')}</th>
-                      <th className="text-right py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Total')}</th>
-                      <th className="text-center py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Fabric')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orderItems.map((item: any, idx: number) => (
-                      <tr key={item.id} className="border-b border-outline-variant/10">
-                        <td className="py-2 text-secondary">{idx + 1}</td>
-                        <td className="py-2 font-semibold">{item.piece_type}</td>
-                        <td className="py-2 text-center">{item.quantity}</td>
-                        <td className="py-2 text-right">{Number(item.unit_price).toFixed(2)}</td>
-                        <td className="py-2 text-right font-bold">{Number(item.total_price).toFixed(2)}</td>
-                        <td className="py-2 text-center">
+              <div className="space-y-4">
+                {orderItems.map((item: any, idx: number) => {
+                  const itemTasks = getItemTasks(item.id);
+                  const cutterTasks = itemTasks.filter((t: any) => t.task_type === 'cutting');
+                  const sewingTasks = itemTasks.filter((t: any) => t.task_type === 'sewing');
+                  const bp = getBasePrice(item.piece_type);
+                  const isAssigning = assigningItem === item.id;
+
+                  return (
+                    <div key={item.id} className="border border-outline-variant/20 rounded-xl overflow-hidden">
+                      {/* Item header */}
+                      <div className="bg-surface-container-low p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <span className="text-sm font-bold text-primary">#{idx + 1}</span>
+                          <span className="font-semibold text-on-surface">{item.piece_type}</span>
+                          <span className="text-xs text-secondary">×{item.quantity}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${item.fabric_source === 'customer' ? 'bg-primary-container/20 text-primary' : 'bg-tertiary-container/20 text-tertiary'}`}>
                             {item.fabric_source === 'customer' ? t('Customer') : t('Shop')}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                        {!isWorker && (
+                          <button
+                            onClick={() => {
+                              if (isAssigning) {
+                                setAssigningItem(null);
+                              } else {
+                                setAssigningItem(item.id);
+                                loadRecommended(item.piece_type, 'sewing');
+                              }
+                            }}
+                            className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all ${
+                              isAssigning ? 'bg-surface-container-high text-secondary' : 'bg-primary/10 text-primary hover:bg-primary/20'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-sm">{isAssigning ? 'close' : 'person_add'}</span>
+                            {isAssigning ? t('Close') : t('Assign Workers')}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Existing tasks for this item */}
+                      {itemTasks.length > 0 && (
+                        <div className="border-t border-outline-variant/10 p-4 space-y-2">
+                          {cutterTasks.map((task: any) => (
+                            <div key={task.id} className="flex items-center justify-between text-sm bg-surface p-2 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary text-base">content_cut</span>
+                                <span className="font-semibold capitalize">{t('cutting')}</span>
+                                <span className="text-secondary">· {task.worker_name || t('Unassigned')}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {!isWorker && <span className="text-xs text-secondary">{Number(task.wage_amount || 0).toFixed(2)} {t(currency)}</span>}
+                                <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
+                              </div>
+                            </div>
+                          ))}
+                          {sewingTasks.map((task: any) => (
+                            <div key={task.id} className="flex items-center justify-between text-sm bg-surface p-2 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary text-base">print</span>
+                                <span className="font-semibold capitalize">{t('sewing')}</span>
+                                <span className="text-secondary">· {task.worker_name || t('Unassigned')}</span>
+                                {task.task_quantity > 1 && <span className="text-xs text-secondary">(×{task.task_quantity})</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {!isWorker && <span className="text-xs text-secondary">{Number(task.wage_amount || 0).toFixed(2)} {t(currency)}</span>}
+                                <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Inline assignment panel */}
+                      {isAssigning && (
+                        <div className="border-t border-outline-variant/10 p-4 space-y-4 bg-surface-container-lowest/50">
+                          {/* Cutter assignment */}
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-widest text-secondary mb-2">{t('Assign Cutter')}</label>
+                            {hasCutter ? (
+                              <p className="text-xs text-secondary flex items-center gap-1">
+                                <span className="material-symbols-outlined text-tertiary text-sm">check_circle</span>
+                                {t('Cutter assigned')} ({cutterTasks[0].worker_name})
+                              </p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {getCutters().map((w: any) => {
+                                  const rec = recommendedWorkers.find((r: any) => r.user_id === w.id && r.worker_type === 'master_cutter');
+                                  return (
+                                    <button
+                                      key={w.id}
+                                      onClick={() => handleAssignCutter(item.id, item.piece_type, w.id)}
+                                      className={`px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${
+                                        rec?.has_rate
+                                          ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                                          : 'bg-surface-container-high text-secondary hover:bg-surface-container-highest'
+                                      }`}
+                                    >
+                                      {w.name}
+                                      {rec?.has_rate && <span className="text-xs opacity-70">({rec.rate}{rec.wage_type === 'percentage' ? '%' : ` ${t(currency)}`})</span>}
+                                    </button>
+                                  );
+                                })}
+                                {getCutters().length === 0 && (
+                                  <p className="text-xs text-secondary">{t('No cutters available. Add workers first.')}</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Tailor assignment */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs font-semibold uppercase tracking-widest text-secondary">
+                                {t('Assign Tailors')} ({assignedSewingQty}/{item.quantity})
+                              </label>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="w-full h-2 bg-surface-container-high rounded-full mb-3 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${sewingComplete ? 'bg-tertiary' : 'bg-primary'}`}
+                                style={{ width: `${Math.min(100, (assignedSewingQty / item.quantity) * 100)}%` }}
+                              />
+                            </div>
+
+                            {sewingComplete ? (
+                              <p className="text-xs text-secondary flex items-center gap-1">
+                                <span className="material-symbols-outlined text-tertiary text-sm">check_circle</span>
+                                {t('All pieces assigned')}
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {/* Recommended tailors first */}
+                                {recommendedWorkers
+                                  .filter((r: any) => r.worker_type !== 'master_cutter' && r.has_rate)
+                                  .map((rec: any) => {
+                                    const alreadyAssigned = sewingTasks.some((t: any) => t.assigned_to === rec.user_id);
+                                    if (alreadyAssigned) return null;
+                                    const remaining = item.quantity - assignedSewingQty;
+                                    const wage = calcWage(bp, rec.wage_type, rec.rate, 1);
+                                    return (
+                                      <div key={rec.user_id} className="flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-lg p-2">
+                                        <span className="material-symbols-outlined text-primary text-sm">recommend</span>
+                                        <span className="text-sm font-semibold text-on-surface flex-1">{rec.worker_name}</span>
+                                        <span className="text-xs text-secondary">{rec.rate}{rec.wage_type === 'percentage' ? '%' : ` ${t(currency)}`}</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          max={remaining}
+                                          defaultValue={Math.min(remaining, 1)}
+                                          className="input-field w-16 text-sm text-center py-1"
+                                          id={`tailor-qty-${rec.user_id}`}
+                                        />
+                                        <span className="text-xs text-secondary">× {bp} =</span>
+                                        <span className="text-xs font-bold text-primary" id={`tailor-wage-${rec.user_id}`}>{wage.toFixed(2)}</span>
+                                        <button
+                                          onClick={async () => {
+                                            const qtyInput = document.getElementById(`tailor-qty-${rec.user_id}`) as HTMLInputElement;
+                                            const qty = Math.max(1, Math.min(remaining, Number(qtyInput?.value || 1)));
+                                            await handleAssignTailor(item.id, item.piece_type, rec.user_id, qty);
+                                          }}
+                                          className="btn-primary px-3 py-1 text-xs rounded-lg"
+                                        >
+                                          {t('Assign')}
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+
+                                {/* All other tailors */}
+                                {getTailors()
+                                  .filter((w: any) => !sewingTasks.some((t: any) => t.assigned_to === w.id))
+                                  .filter((w: any) => !recommendedWorkers.some((r: any) => r.user_id === w.id && r.has_rate))
+                                  .map((w: any) => {
+                                    const remaining = item.quantity - assignedSewingQty;
+                                    return (
+                                      <div key={w.id} className="flex items-center gap-2 bg-surface rounded-lg p-2">
+                                        <span className="text-sm text-on-surface flex-1">{w.name}</span>
+                                        <span className="text-xs text-secondary">{t('No rate set')}</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          max={remaining}
+                                          defaultValue={Math.min(remaining, 1)}
+                                          className="input-field w-16 text-sm text-center py-1"
+                                          id={`tailor-qty-${w.id}`}
+                                        />
+                                        <button
+                                          onClick={async () => {
+                                            const qtyInput = document.getElementById(`tailor-qty-${w.id}`) as HTMLInputElement;
+                                            const qty = Math.max(1, Math.min(remaining, Number(qtyInput?.value || 1)));
+                                            await handleAssignTailor(item.id, item.piece_type, w.id, qty);
+                                          }}
+                                          className="px-3 py-1 text-xs rounded-lg bg-surface-container-high text-secondary hover:bg-surface-container-highest transition-colors"
+                                        >
+                                          {t('Assign')}
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* ── Payment History ── */}
+          {/* Items fallback when no order_items */}
+          {orderItems.length === 0 && (
+            <div className="bg-surface-container-lowest rounded-xl p-6">
+              <h3 className="text-lg font-headline font-bold mb-4">{t('Piece Type')}</h3>
+              <p className="text-sm font-semibold">{order.piece_type}</p>
+            </div>
+          )}
+
+          {/* Payment History */}
           {!isWorker && (
             <div className="bg-surface-container-lowest rounded-xl p-6">
               <div className="flex justify-between items-center mb-4">
@@ -433,6 +701,7 @@ export default function OrderDetailPage() {
             </div>
           )}
 
+          {/* Measurements */}
           <div className="bg-surface-container-lowest rounded-xl p-6">
             <h3 className="text-lg font-headline font-bold mb-4">{t('Measurements')}</h3>
             {measurements ? (
@@ -464,61 +733,95 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
+        {/* Right sidebar - Tasks overview */}
         <div className="space-y-6">
           <div className="bg-surface-container-lowest rounded-xl p-6">
             <h3 className="text-lg font-headline font-bold mb-3">{t('Tasks')}</h3>
             <div className="space-y-2">
               {tasks.length === 0 ? (
-                <p className="text-secondary text-sm py-4">{t('No tasks assigned yet.')}</p>
+                <div className="text-center py-6">
+                  <span className="material-symbols-outlined text-4xl text-outline mb-2 block">assignment_ind</span>
+                  <p className="text-secondary text-sm">{t('No tasks assigned yet.')}</p>
+                  {!isWorker && orderItems.length > 0 && (
+                    <p className="text-xs text-primary mt-1">{t('Use "Assign Workers" on each item above.')}</p>
+                  )}
+                </div>
               ) : tasks.map((task: any) => (
-                <div key={task.id} className="bg-surface rounded-lg p-4 space-y-2">
+                <div key={task.id} className="bg-surface rounded-lg p-3 space-y-1">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-sm capitalize">{t(task.task_type)}</span>
                     <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
                   </div>
                   <div className="flex justify-between items-center text-xs text-secondary">
-                    <span>{t('Worker:')}: {task.worker_name || t('Unassigned')}</span>
-                    {!isWorker && <span>{t('Wage:')} {Number(task.wage_amount || 0).toFixed(2)} {t(currency)}</span>}
+                    <span>{task.worker_name || t('Unassigned')}</span>
+                    {!isWorker && <span>{Number(task.wage_amount || 0).toFixed(2)} {t(currency)}</span>}
                   </div>
-                  {task.started_at && <div className="text-xs text-secondary">{t('Started:')} {new Date(task.started_at).toLocaleString()}</div>}
-                  {task.completed_at && <div className="text-xs text-secondary">{t('Completed:')} {new Date(task.completed_at).toLocaleString()}</div>}
+                  {task.task_quantity > 1 && (
+                    <div className="text-xs text-secondary">×{task.task_quantity}</div>
+                  )}
                 </div>
               ))}
             </div>
-            <button onClick={() => setShowAddTask(true)} className="mt-4 w-full py-2 text-sm font-semibold text-primary hover:bg-primary/10 rounded-lg flex items-center justify-center gap-1">
-              <span className="material-symbols-outlined text-base">add</span>
-              {t('Add Task')}
-            </button>
           </div>
+
+          {/* Total wages summary */}
+          {!isWorker && tasks.length > 0 && (
+            <div className="bg-surface-container-lowest rounded-xl p-6">
+              <h3 className="text-sm font-headline font-bold mb-2 uppercase tracking-widest text-secondary">{t('Wage Summary')}</h3>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-secondary">{t('Total Wages')}</span>
+                <span className="text-lg font-extrabold text-on-surface">
+                  {tasks.reduce((s: number, t: any) => s + Number(t.wage_amount || 0), 0).toFixed(2)} {t(currency)}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── Add Task Modal ── */}
-      {showAddTask && (
-        <div className="modal-backdrop" onClick={() => setShowAddTask(false)}>
+      {/* Inline Rate Creation Modal */}
+      {inlineRate && (
+        <div className="modal-backdrop" onClick={() => setInlineRate(null)}>
           <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-6">
-                <h2 className="text-xl font-headline font-bold mb-4">{t('Add Task')}</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Task Type')}</label>
-                    <select value={newTask.task_type} onChange={(e) => setNewTask({...newTask, task_type: e.target.value})} className="input-field w-full appearance-none">
-                      <option value="cutting">{t('Cutting')}</option>
-                      <option value="sewing">{t('Sewing')}</option>
-                    </select>
+                <h2 className="text-lg font-headline font-bold mb-1">{t('Set Worker Rate')}</h2>
+                <p className="text-sm text-secondary mb-4">
+                  {t('No rate configured for this worker and piece type. Create one now.')}
+                </p>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setInlineRate({ ...inlineRate, wageType: 'percentage' })}
+                      className={`flex-1 py-2 rounded-lg font-bold text-sm ${inlineRate.wageType === 'percentage' ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-secondary'}`}
+                    >
+                      {t('Percentage')}
+                    </button>
+                    <button
+                      onClick={() => setInlineRate({ ...inlineRate, wageType: 'fixed' })}
+                      className={`flex-1 py-2 rounded-lg font-bold text-sm ${inlineRate.wageType === 'fixed' ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-secondary'}`}
+                    >
+                      {t('Fixed')}
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Assign Worker')}</label>
-                    <select value={newTask.assigned_to || ''} onChange={(e) => setNewTask({...newTask, assigned_to: e.target.value ? Number(e.target.value) : null})} className="input-field w-full appearance-none">
-                      <option value="">{t('Select worker...')}</option>
-                      {workers.map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                    </select>
-                  </div>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="input-field w-full"
+                    placeholder={inlineRate.wageType === 'percentage' ? t('e.g. 18') : t('Amount')}
+                    value={inlineRate.rate || ''}
+                    onChange={(e) => setInlineRate({ ...inlineRate, rate: Number(e.target.value) })}
+                    autoFocus
+                  />
+                  {inlineRate.rate > 0 && (
+                    <p className="text-xs text-secondary">
+                      {t('Preview')}: {getBasePrice(inlineRate.pieceType)} × {inlineRate.rate}{inlineRate.wageType === 'percentage' ? '%' : ` ${t(currency)}`} = <strong className="text-primary">{calcWage(getBasePrice(inlineRate.pieceType), inlineRate.wageType, inlineRate.rate, 1).toFixed(2)} {t(currency)}</strong>
+                    </p>
+                  )}
                 </div>
                 <div className="flex justify-end gap-3 mt-6">
-                  <button onClick={() => setShowAddTask(false)} className="px-4 py-2 text-sm text-secondary">{t('Cancel')}</button>
-                  <button onClick={handleAddTask} disabled={!newTask.assigned_to} className="btn-primary px-6 py-2 text-sm disabled:opacity-50">{t('Add Task')}</button>
+                  <button onClick={() => setInlineRate(null)} className="px-4 py-2 text-sm text-secondary">{t('Cancel')}</button>
+                  <button onClick={handleSaveInlineRate} disabled={inlineRate.rate <= 0} className="btn-primary px-6 py-2 text-sm disabled:opacity-50">{t('Save & Assign')}</button>
                 </div>
               </div>
             </div>
@@ -526,7 +829,7 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* ── Add Payment Modal ── */}
+      {/* Add Payment Modal */}
       {showAddPayment && (
         <div className="modal-backdrop" onClick={() => setShowAddPayment(false)}>
           <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>

@@ -98,7 +98,12 @@ export default function MyTasksPage() {
               <div key={task.task_id} className="bg-surface-container-lowest rounded-xl p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <span className="font-headline font-bold text-on-surface">{task.order_number}</span>
+                    <a
+                      href={`#/orders/${task.order_id}`}
+                      className="font-headline font-bold text-primary hover:underline"
+                    >
+                      {task.order_number}
+                    </a>
                     <span className="text-secondary">{task.piece_type}</span>
                     {isOverdue && <span className="px-2 py-0.5 bg-error-container text-on-error-container text-xs font-bold rounded-full">{t('Overdue')}</span>}
                   </div>

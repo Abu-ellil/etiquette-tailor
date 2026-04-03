@@ -19,13 +19,6 @@ interface Customer {
   phone?: string;
 }
 
-interface Worker {
-  id: number;
-  name: string;
-  worker_type?: string | null;
-  branch_id: number;
-}
-
 interface PieceType {
   id: number;
   name_en: string;
@@ -41,8 +34,6 @@ interface ItemForm {
   unit_price: number;
   fabric_source: 'customer' | 'shop';
   details: string;
-  cutter_id: number | null;
-  tailor_assignments: { worker_id: number; quantity: number }[];
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -64,8 +55,6 @@ function createEmptyItem(): ItemForm {
     unit_price: 0,
     fabric_source: 'customer',
     details: '',
-    cutter_id: null,
-    tailor_assignments: [],
   };
 }
 
@@ -79,7 +68,6 @@ export default function NewOrderPage() {
   /* Data */
   const [branches, setBranches] = useState<Branch[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [workers, setWorkers] = useState<Worker[]>([]);
   const [pieceTypes, setPieceTypes] = useState<PieceType[]>([]);
 
   /* Form state */
@@ -100,9 +88,6 @@ export default function NewOrderPage() {
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
-  /* Worker rates cache: key = `${workerId}-${pieceType}` */
-  const [workerRateCache, setWorkerRateCache] = useState<Record<string, { wage_type: string; rate: number }>>({});
-
   /* Computed */
   const totalPrice = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
   const balance = totalPrice - paid;
@@ -112,27 +97,16 @@ export default function NewOrderPage() {
     return pt?.base_price || 0;
   };
 
-  const getWorkerRate = (workerId: number, pieceType: string): { wage_type: string; rate: number } | null => {
-    return workerRateCache[`${workerId}-${pieceType}`] || null;
-  };
-
-  const calcWage = (basePrice: number, wageType: string, rate: number, qty: number): number => {
-    if (wageType === 'percentage') return basePrice * (rate / 100) * qty;
-    return rate * qty;
-  };
-
   /* Load reference data */
   useEffect(() => {
     async function load() {
       try {
-        const [br, wr, pt, cust] = await Promise.all([
+        const [br, pt, cust] = await Promise.all([
           window.electronAPI.branches.getAll(),
-          window.electronAPI.workers.getAll(),
           window.electronAPI.pieceTypes.getAll(),
           window.electronAPI.customers.getAll(),
         ]);
         setBranches(br);
-        setWorkers(wr);
         setPieceTypes(pt);
         setCustomers(cust);
         if (br.length > 0) setBranchId(br[0].id);
@@ -159,40 +133,6 @@ export default function NewOrderPage() {
     const t = setTimeout(() => searchCust(customerSearch), 250);
     return () => clearTimeout(t);
   }, [customerSearch, searchCust]);
-
-  /* Load worker rates when items change */
-  useEffect(() => {
-    async function loadRates() {
-      const newEntries: Record<string, { wage_type: string; rate: number }> = {};
-      for (const item of items) {
-        if (!item.piece_type) continue;
-        // Load cutter rate
-        if (item.cutter_id) {
-          const key = `${item.cutter_id}-${item.piece_type}`;
-          if (!workerRateCache[key]) {
-            try {
-              const rate = await window.electronAPI.workers.getActiveRate(item.cutter_id, item.piece_type);
-              if (rate) newEntries[key] = { wage_type: rate.wage_type, rate: rate.rate };
-            } catch { /* ignore */ }
-          }
-        }
-        // Load tailor rates
-        for (const ta of item.tailor_assignments) {
-          const key = `${ta.worker_id}-${item.piece_type}`;
-          if (!workerRateCache[key] && !newEntries[key]) {
-            try {
-              const rate = await window.electronAPI.workers.getActiveRate(ta.worker_id, item.piece_type);
-              if (rate) newEntries[key] = { wage_type: rate.wage_type, rate: rate.rate };
-            } catch { /* ignore */ }
-          }
-        }
-      }
-      if (Object.keys(newEntries).length > 0) {
-        setWorkerRateCache(prev => ({ ...prev, ...newEntries }));
-      }
-    }
-    loadRates();
-  }, [items]);
 
   /* Create new customer */
   const handleCreateCustomer = async () => {
@@ -226,31 +166,11 @@ export default function NewOrderPage() {
     setItems(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const addTailorToItem = (idx: number) => {
-    setItems(prev => prev.map((item, i) =>
-      i === idx ? { ...item, tailor_assignments: [...item.tailor_assignments, { worker_id: 0, quantity: 0 }] } : item
-    ));
+  /* Auto-fill unit price from base_price when piece type changes */
+  const handlePieceTypeChange = (idx: number, pieceTypeName: string) => {
+    const bp = getBasePrice(pieceTypeName);
+    updateItem(idx, { piece_type: pieceTypeName, unit_price: bp });
   };
-
-  const updateTailorAssignment = (itemIdx: number, taIdx: number, updates: Partial<{ worker_id: number; quantity: number }>) => {
-    setItems(prev => prev.map((item, i) => {
-      if (i !== itemIdx) return item;
-      const newAssignments = item.tailor_assignments.map((ta, j) =>
-        j === taIdx ? { ...ta, ...updates } : ta
-      );
-      return { ...item, tailor_assignments: newAssignments };
-    }));
-  };
-
-  const removeTailorAssignment = (itemIdx: number, taIdx: number) => {
-    setItems(prev => prev.map((item, i) => {
-      if (i !== itemIdx) return item;
-      return { ...item, tailor_assignments: item.tailor_assignments.filter((_, j) => j !== taIdx) };
-    }));
-  };
-
-  const getTailors = () => workers.filter(w => w.worker_type === 'tailor' || !w.worker_type);
-  const getCutters = () => workers.filter(w => w.worker_type === 'master_cutter');
 
   /* Submit */
   const onSubmit = async () => {
@@ -259,20 +179,8 @@ export default function NewOrderPage() {
     if (items.length === 0 || items.every(i => !i.piece_type)) {
       alert(t('Please add at least one item.')); return;
     }
-    // Validate tailor assignments
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
+    for (const item of items) {
       if (!item.piece_type) { alert(t('Please select a piece type for all items.')); return; }
-      if (item.tailor_assignments.length > 0) {
-        const totalAssigned = item.tailor_assignments.reduce((s, ta) => s + ta.quantity, 0);
-        if (totalAssigned !== item.quantity) {
-          alert(t('Tailor assignments must equal item quantity for') + ' ' + item.piece_type);
-          return;
-        }
-        for (const ta of item.tailor_assignments) {
-          if (!ta.worker_id) { alert(t('Please select a worker for all assignments.')); return; }
-        }
-      }
     }
 
     setSubmitting(true);
@@ -291,9 +199,8 @@ export default function NewOrderPage() {
         fabric_source: items[0]?.fabric_source || 'customer',
       };
 
-      // Prepare items array for createOrder
       const orderItems = items.map((item, idx) => ({
-        order_id: 0, // will be set by createOrder
+        order_id: 0,
         piece_type: item.piece_type,
         quantity: item.quantity,
         unit_price: item.unit_price,
@@ -303,58 +210,7 @@ export default function NewOrderPage() {
         sort_order: idx,
       }));
 
-      const orderId = await window.electronAPI.orders.create(orderData, undefined, orderItems);
-
-      // Create tasks for each item
-      for (let idx = 0; idx < items.length; idx++) {
-        const item = items[idx];
-        // Get the order_item_id (items were created in order)
-        const orderItemId = await window.electronAPI.orders.getItems(orderId).then(
-          (items: any[]) => items[idx]?.id
-        );
-
-        // Create cutting task
-        if (item.cutter_id) {
-          const rate = getWorkerRate(item.cutter_id, item.piece_type);
-          if (rate) {
-            const bp = getBasePrice(item.piece_type);
-            const wageAmount = calcWage(bp, rate.wage_type, rate.rate, item.quantity);
-            await window.electronAPI.orders.createTask({
-              order_id: orderId,
-              order_item_id: orderItemId,
-              task_type: 'cutting',
-              assigned_to: item.cutter_id,
-              wage_type: rate.wage_type,
-              wage_rate: rate.rate,
-              wage_amount: wageAmount,
-              task_quantity: item.quantity,
-              status: 'pending',
-            });
-          }
-        }
-
-        // Create sewing tasks
-        for (const ta of item.tailor_assignments) {
-          if (!ta.worker_id || ta.quantity <= 0) continue;
-          const rate = getWorkerRate(ta.worker_id, item.piece_type);
-          const bp = getBasePrice(item.piece_type);
-          const wageType = rate?.wage_type || 'percentage';
-          const wageRate = rate?.rate || 0;
-          const wageAmount = calcWage(bp, wageType, wageRate, ta.quantity);
-          await window.electronAPI.orders.createTask({
-            order_id: orderId,
-            order_item_id: orderItemId,
-            task_type: 'sewing',
-            assigned_to: ta.worker_id,
-            wage_type: wageType,
-            wage_rate: wageRate,
-            wage_amount: wageAmount,
-            task_quantity: ta.quantity,
-            status: 'pending',
-          });
-        }
-      }
-
+      await window.electronAPI.orders.create(orderData, undefined, orderItems);
       navigate('/orders');
     } catch (err) {
       console.error('Failed to create order:', err);
@@ -528,10 +384,6 @@ export default function NewOrderPage() {
 
               {items.map((item, idx) => {
                 const basePrice = getBasePrice(item.piece_type);
-                const cutters = getCutters();
-                const tailors = getTailors();
-                const totalAssigned = item.tailor_assignments.reduce((s, ta) => s + ta.quantity, 0);
-                const assignmentComplete = totalAssigned === item.quantity && item.tailor_assignments.length > 0;
 
                 return (
                   <div key={item.key} className="bg-surface-container-low p-4 md:p-6 rounded-xl space-y-4">
@@ -555,7 +407,7 @@ export default function NewOrderPage() {
                         <select
                           className="input-field text-sm"
                           value={item.piece_type}
-                          onChange={e => updateItem(idx, { piece_type: e.target.value })}
+                          onChange={e => handlePieceTypeChange(idx, e.target.value)}
                         >
                           <option value="">{t('Select...')}</option>
                           {[...new Set(pieceTypes.map(pt => pt.category))].map(cat => (
@@ -600,92 +452,29 @@ export default function NewOrderPage() {
                       </div>
                     </div>
 
-                    {/* Line total + base price info */}
+                    {/* Line total */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-secondary">
                         {t('Line Total')}: <strong className="text-on-surface">{(item.unit_price * item.quantity).toFixed(2)} {t(currency)}</strong>
                       </span>
                       {basePrice > 0 && (
                         <span className="text-xs text-outline">
-                          {t('Base Price')}: {basePrice} {t(currency)} × {item.quantity} = {(basePrice * item.quantity).toFixed(2)}
+                          {t('Base Price')}: {basePrice} {t(currency)}
                         </span>
                       )}
                     </div>
-
-                    {/* Worker Assignment */}
-                    {item.piece_type && (
-                      <div className="space-y-3 pt-3 border-t border-outline-variant/20">
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-secondary">{t('Worker Assignment')}</h4>
-
-                        {/* Cutter */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-semibold uppercase tracking-widest text-secondary">{t('Cutter')}</label>
-                            <select className="input-field text-sm"
-                              value={item.cutter_id || 0}
-                              onChange={e => updateItem(idx, { cutter_id: Number(e.target.value) || null })}
-                            >
-                              <option value={0}>{t('Select Cutter...')}</option>
-                              {cutters.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                            </select>
-                          </div>
-                          {item.cutter_id && basePrice > 0 && (() => {
-                            const rate = getWorkerRate(item.cutter_id, item.piece_type);
-                            if (!rate) return <div className="text-xs text-error">{t('No rate configured')}</div>;
-                            const wage = calcWage(basePrice, rate.wage_type, rate.rate, item.quantity);
-                            return (
-                              <div className="bg-primary-container/10 border border-primary-container/30 rounded-lg p-2 text-xs">
-                                {t('Cutter Wage')}: {basePrice} × {rate.rate}% × {item.quantity} = <strong className="text-primary">{wage.toFixed(2)} {t(currency)}</strong>
-                              </div>
-                            );
-                          })()}
-                        </div>
-
-                        {/* Tailors */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[10px] font-semibold uppercase tracking-widest text-secondary">
-                              {t('Tailors')} ({totalAssigned}/{item.quantity})
-                            </label>
-                            <button type="button" onClick={() => addTailorToItem(idx)} className="text-xs text-primary font-semibold hover:underline flex items-center gap-0.5">
-                              <span className="material-symbols-outlined text-sm">add</span>{t('Add Tailor')}
-                            </button>
-                          </div>
-
-                          {!assignmentComplete && item.tailor_assignments.length > 0 && totalAssigned !== item.quantity && (
-                            <div className="text-xs text-error">{t('Assigned quantity must equal item quantity')}: {totalAssigned}/{item.quantity}</div>
-                          )}
-
-                          {item.tailor_assignments.map((ta, taIdx) => {
-                            const rate = ta.worker_id ? getWorkerRate(ta.worker_id, item.piece_type) : null;
-                            const wage = rate && basePrice > 0 ? calcWage(basePrice, rate.wage_type, rate.rate, ta.quantity) : 0;
-                            return (
-                              <div key={taIdx} className="grid grid-cols-[1fr_80px_auto_auto] gap-2 items-center bg-surface-container-lowest p-2 rounded-lg">
-                                <select className="input-field text-sm" value={ta.worker_id}
-                                  onChange={e => updateTailorAssignment(idx, taIdx, { worker_id: Number(e.target.value) })}
-                                >
-                                  <option value={0}>{t('Select Tailor...')}</option>
-                                  {tailors.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
-                                <input type="number" min={1} max={item.quantity} className="input-field text-sm text-center"
-                                  value={ta.quantity || ''} placeholder={t('Qty')}
-                                  onChange={e => updateTailorAssignment(idx, taIdx, { quantity: Math.max(0, Number(e.target.value)) })}
-                                />
-                                <span className="text-xs text-on-surface min-w-[80px] text-right">
-                                  {wage > 0 ? `${wage.toFixed(2)} ${t(currency)}` : '—'}
-                                </span>
-                                <button type="button" onClick={() => removeTailorAssignment(idx, taIdx)} className="text-error hover:bg-error/10 p-1 rounded-full">
-                                  <span className="material-symbols-outlined text-sm">close</span>
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
+            </div>
+
+            {/* Hint: Worker assignment happens after creation */}
+            <div className="bg-primary-container/10 border border-primary-container/20 rounded-xl p-4 flex items-start gap-3">
+              <span className="material-symbols-outlined text-primary text-xl mt-0.5">info</span>
+              <div>
+                <p className="text-sm font-semibold text-on-surface">{t('Worker Assignment After Creation')}</p>
+                <p className="text-xs text-secondary mt-1">{t('Workers will be assigned to each item after the order is created from the order detail page.')}</p>
+              </div>
             </div>
 
             {/* Description */}
@@ -780,17 +569,14 @@ export default function NewOrderPage() {
             <p className="text-sm text-outline">{branches.map(b => `${t('Branch')} ${b.prefix}`).join(' & ')}</p>
           </div>
           <div className="bg-surface-container-low p-6 rounded-xl border-l-4 border-primary">
-            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Workers')}</p>
-            <p className="font-bold text-on-surface">{workers.length} {t('Available')}</p>
-            <p className="text-sm text-outline">
-              {workers.slice(0, 3).map(w => w.name).join(', ')}
-              {workers.length > 3 ? ` +${workers.length - 3} ${t('more')}` : ''}
-            </p>
-          </div>
-          <div className="bg-surface-container-low p-6 rounded-xl border-l-4 border-secondary">
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Quick Note')}</p>
             <p className="font-bold text-on-surface">{t('Balance Auto-Calculated')}</p>
-            <p className="text-sm text-outline">{t('Wage = Base Price × Rate × Qty')}</p>
+            <p className="text-sm text-outline">{t('Workers assigned after order creation')}</p>
+          </div>
+          <div className="bg-surface-container-low p-6 rounded-xl border-l-4 border-secondary">
+            <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Total Items')}</p>
+            <p className="font-bold text-on-surface">{items.length} {t('item(s)')}</p>
+            <p className="text-sm text-outline">{totalPrice.toFixed(2)} {t(currency)}</p>
           </div>
         </div>
       </section>

@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { format, isPast, parseISO } from 'date-fns';
@@ -51,6 +52,13 @@ function displayStatusKey(order: Order): string {
   return 'inProgress';
 }
 
+const STATUS_DISPLAY_LABELS: Record<string, string> = {
+  inProgress: 'In Progress',
+  ready: 'Ready',
+  delivered: 'Delivered',
+  late: 'Late',
+};
+
 function statusChipClass(statusKey: string): string {
   switch (statusKey) {
     case 'inProgress':
@@ -96,6 +104,7 @@ function StatusDropdown({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   const key = current === 'inProgress' ? 'In_Progress'
     : current === 'ready' ? 'Ready'
@@ -111,6 +120,15 @@ function StatusDropdown({
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  useLayoutEffect(() => {
+    if (open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: rect.left });
+    } else {
+      setPos(null);
+    }
+  }, [open]);
 
   async function handleSelect(dbStatus: string) {
     if (dbStatus === 'delivered' && orderBalance > 0.01) {
@@ -134,16 +152,19 @@ function StatusDropdown({
         onClick={() => setOpen((o) => !o)}
         className={`${statusChipClass(current)} cursor-pointer`}
       >
-        {t(`status.${current}`)}
+        {t(STATUS_DISPLAY_LABELS[current] || current)}
         <span className="material-symbols-outlined text-xs ml-1 align-middle">expand_more</span>
       </button>
-      {error && (
-        <div className="absolute z-50 mt-1 left-0 bg-error text-on-primary text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+      {error && pos && createPortal(
+        <div className="fixed z-[9999] bg-error text-on-primary text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap"
+          style={{ top: pos.top, left: pos.left }}>
           {error}
-        </div>
+        </div>,
+        document.body,
       )}
-      {open && next.length > 0 && (
-        <div className="absolute z-50 mt-1 left-0 bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/30 py-1 min-w-[140px]">
+      {open && next.length > 0 && pos && createPortal(
+        <div className="fixed z-[9999] bg-surface-container-lowest rounded-lg shadow-lg border border-outline-variant/30 py-1 min-w-[140px]"
+          style={{ top: pos.top, left: pos.left }}>
           {next.map((s) => {
             const targetStatus = s === 'ready' ? 'ready' : 'delivered';
             const isBlocked = targetStatus === 'delivered' && orderBalance > 0.01;
@@ -159,12 +180,13 @@ function StatusDropdown({
                 }`}
                 title={isBlocked ? t('Order must be fully paid before delivery') : undefined}
               >
-                {t('Mark as')} {t(`status.${targetStatus}`)}
+                {t('Mark as')} {t(STATUS_DISPLAY_LABELS[targetStatus] || targetStatus)}
                 {isBlocked && <span className="ml-1 text-error text-xs">({t('Unpaid')})</span>}
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -372,7 +394,7 @@ export default function OrdersPage() {
       </div>
 
       {/* ---- Table ---- */}
-      <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-[0px_20px_40px_rgba(25,28,29,0.06)] overflow-x-auto">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-[0px_20px_40px_rgba(25,28,29,0.06)] overflow-x-auto">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-secondary">
             <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>

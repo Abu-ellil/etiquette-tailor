@@ -51,9 +51,13 @@ function ProtectedRoute({
   if (!session) return <Navigate to="/login" replace />;
   let allowed = ROLE_ROUTES[session.role] || [];
   if (session.role === 'worker') {
-    const tailorRoutes = ['/dashboard', '/my-tasks'];
-    const masterCutterRoutes = ['/dashboard', '/cutting-queue'];
+    const tailorRoutes = ['/dashboard', '/my-tasks', '/orders/:id'];
+    const masterCutterRoutes = ['/dashboard', '/cutting-queue', '/orders/:id'];
     allowed = session.worker_type === 'master_cutter' ? masterCutterRoutes : tailorRoutes;
+  }
+  // Special case: workers can view specific order details but not the orders list
+  if (session.role === 'worker' && path === '/orders/:id') {
+    return <>{children}</>;
   }
   if (!allowed.includes(path)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
@@ -151,7 +155,7 @@ export default function App() {
           <Route
             path="orders/:id"
             element={
-              <ProtectedRoute path="/orders" session={session}>
+              <ProtectedRoute path="/orders/:id" session={session}>
                 <OrderDetailPage />
               </ProtectedRoute>
             }
