@@ -153,6 +153,8 @@ export default function WorkerPayRatesPage() {
     if (!selectedWorkerId) return;
     try {
       setSaving(true);
+      let savedCount = 0;
+
       for (const pt of pieceTypes) {
         const rate = rates[pt.name_en];
         if (rate && rate.rate > 0) {
@@ -164,11 +166,31 @@ export default function WorkerPayRatesPage() {
             season_start: rate.season_start || undefined,
             season_end: rate.season_end || undefined,
           });
+          savedCount++;
         }
       }
+
       setDirty(false);
+
+      // Reload rates from database to verify they were saved
+      const data: WorkerRate[] = await window.electronAPI.workers.getRates(selectedWorkerId);
+      const rateMap: Record<string, WorkerRate> = {};
+      for (const r of data || []) {
+        rateMap[r.piece_type] = r;
+      }
+      setRates(rateMap);
+
+      // Show success message
+      if (savedCount > 0) {
+        alert(`${t('Successfully saved {count} rates.').replace('{count}', String(savedCount))}`);
+        console.log(`✅ Saved ${savedCount} rates for worker ${selectedWorkerId}`);
+        console.log('📦 Reloaded rates from DB:', rateMap);
+      } else {
+        alert(t('No rates to save. Please set at least one rate greater than 0.'));
+      }
     } catch (err) {
       console.error('Failed to save rates:', err);
+      alert(`${t('Failed to save rates:')} ${(err as Error).message}`);
     } finally {
       setSaving(false);
     }

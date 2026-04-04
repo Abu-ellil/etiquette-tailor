@@ -320,7 +320,7 @@ function migrateColumns() {
   }
 
   // Get existing columns for each table
-  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates', 'piece_types']) {
+  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates', 'piece_types', 'order_items']) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     tables[table] = cols.map((c) => c.name);
   }
