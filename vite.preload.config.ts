@@ -7,6 +7,7 @@ export default defineConfig({
       entry: './src/main/preload.ts',
       formats: ['cjs'],
     },
+    sourcemap: false,
     minify: 'terser',
     terserOptions: {
       compress: {

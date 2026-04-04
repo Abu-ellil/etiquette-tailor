@@ -8,6 +8,7 @@ export default defineConfig({
         main: './src/renderer/main.tsx',
       },
     },
+    sourcemap: false,
     minify: 'terser',
     terserOptions: {
       compress: {

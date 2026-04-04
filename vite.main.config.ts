@@ -13,6 +13,7 @@ export default defineConfig({
         inlineDynamicImports: true,
       },
     },
+    sourcemap: false,
     minify: 'terser',
     terserOptions: {
       compress: {

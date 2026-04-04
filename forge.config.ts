@@ -1,8 +1,6 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
-import { MakerDeb } from '@electron-forge/maker-deb';
-import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
@@ -13,9 +11,36 @@ const config: ForgeConfig = {
     asar: {
       unpack: '**/node_modules/better-sqlite3/**/*',
     },
+    prune: true,
     ignore: (file: string) => {
       if (!file) {
         return false;
+      }
+
+      // Exclude non-essential files from the package
+      const excludedPatterns = [
+        '/.map',
+        '/.md',
+        '/.ts',
+        '/LICENSE',
+        '/changelog',
+        '/CHANGELOG',
+        '/.eslintrc',
+        '/tsconfig',
+        '/.prettierrc',
+        '/forge.config',
+        '/postcss.config',
+        '/tailwind.config',
+        '/vite.',
+        '/src/',
+      ];
+
+      for (const pattern of excludedPatterns) {
+        if (file.endsWith(pattern) || file.includes(pattern)) {
+          // Don't exclude if it's under /.vite (these are built files)
+          if (file.includes('/.vite/')) continue;
+          return true;
+        }
       }
 
       // The Vite plugin defaults to excluding everything except `/.vite`,
@@ -33,8 +58,6 @@ const config: ForgeConfig = {
       compression: 'maximum',
     }),
     new MakerZIP({}, ['darwin']),
-    new MakerRpm({}),
-    new MakerDeb({}),
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),
