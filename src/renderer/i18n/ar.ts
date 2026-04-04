@@ -688,6 +688,12 @@ export default {
   'Select...': 'اختر...',
   'Unassigned Tasks': 'مهام غير معينة',
   'All Tasks Assigned': 'جميع المهام معينة',
+
+  // Wizard
+  'Continue': 'متابعة',
+  'Required': 'مطلوب',
+  'Please enter at least one measurement.': 'يرجى إدخال قياس واحد على الأقل.',
+  'Review & Submit': 'مراجعة وإرسال',
   'Click to assign workers from Task Board.': 'انقر لتعيين العمال من لوحة المهام.',
   'All tasks have workers assigned.': 'جميع المهام لديها عمال معينين.',
   'No payments recorded yet.': 'لا توجد مدفوعات مسجلة بعد.',
