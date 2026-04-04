@@ -356,7 +356,7 @@ export default function OrdersPage() {
 
           {/* New Order */}
           <button
-            onClick={() => navigate('/orders/new')}
+            onClick={() => navigate('/workflow')}
             className="btn-primary h-10 px-5 text-sm rounded-lg flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>

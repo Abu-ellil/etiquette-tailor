@@ -42,7 +42,7 @@ export default function WorkflowWizard() {
   const [showCustomerResults, setShowCustomerResults] = useState(false);
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [showMeasurements, setShowMeasurements] = useState(false);
+  const [showMeasurements, setShowMeasurements] = useState(true);
   const [measurements, setMeasurements] = useState<MeasurementData>({});
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -184,6 +184,8 @@ export default function WorkflowWizard() {
     if (!deliveryDate) { alert(t('Please set a delivery date.')); return; }
     const allCuttersAssigned = validItems.every((_, idx) => assignments[idx]?.cutter_id);
     if (!allCuttersAssigned) { alert(t('Please assign a cutter for each item.')); return; }
+    const hasMeasurements = Object.values(measurements).some(v => v !== undefined && v !== null);
+    if (!hasMeasurements) { alert(t('Please enter at least one measurement.')); return; }
 
     setSubmitting(true);
     try {
@@ -305,7 +307,7 @@ export default function WorkflowWizard() {
                 <button onClick={() => setShowMeasurements(!showMeasurements)}
                   className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
                   <span className="material-symbols-outlined text-sm">{showMeasurements ? 'expand_less' : 'expand_more'}</span>
-                  {t('Measurements')} <span className="text-secondary font-normal">({t('Optional')})</span>
+                  {t('Measurements')} <span className="text-error font-normal">({t('Required')})</span>
                 </button>
                 {showMeasurements && (
                   <div className="mt-3 grid grid-cols-6 gap-3">

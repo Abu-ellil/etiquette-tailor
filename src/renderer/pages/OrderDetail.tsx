@@ -94,7 +94,13 @@ export default function OrderDetailPage() {
     } catch { setRecommendedWorkers([]); }
   };
 
-  const handleStatusChange = async (taskId: number, currentStatus: string) => {
+  const handleStatusChange = async (taskId: number, currentStatus: string, taskType?: string) => {
+    // Workers can only change tasks matching their type
+    if (session?.role === 'worker' && taskType) {
+      const taskTypeMap: Record<string, string> = { tailor: 'sewing', master_cutter: 'cutting' };
+      const allowed = taskTypeMap[session.worker_type || ''];
+      if (!allowed || taskType !== allowed) return;
+    }
     const next: string | undefined = {
       pending: 'in_progress',
       in_progress: 'done',
@@ -482,7 +488,7 @@ export default function OrderDetailPage() {
                               </div>
                               <div className="flex items-center gap-2">
                                 {!isWorker && <span className="text-xs text-secondary">{Number(task.wage_amount || 0).toFixed(2)} {t(currency)}</span>}
-                                <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
+                                <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status, 'cutting')} />
                               </div>
                             </div>
                           ))}
@@ -496,7 +502,7 @@ export default function OrderDetailPage() {
                               </div>
                               <div className="flex items-center gap-2">
                                 {!isWorker && <span className="text-xs text-secondary">{Number(task.wage_amount || 0).toFixed(2)} {t(currency)}</span>}
-                                <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
+                                <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status, 'sewing')} />
                               </div>
                             </div>
                           ))}
@@ -750,8 +756,7 @@ export default function OrderDetailPage() {
                 <div key={task.id} className="bg-surface rounded-lg p-3 space-y-1">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-sm capitalize">{t(task.task_type)}</span>
-                    <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status)} />
-                  </div>
+                    <StatusChip status={task.status} onClick={() => handleStatusChange(task.id, task.status, task.task_type)} />                  </div>
                   <div className="flex justify-between items-center text-xs text-secondary">
                     <span>{task.worker_name || t('Unassigned')}</span>
                     {!isWorker && <span>{Number(task.wage_amount || 0).toFixed(2)} {t(currency)}</span>}

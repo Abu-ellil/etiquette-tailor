@@ -312,6 +312,17 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('orders:updateTaskStatus', async (_event, taskId: number, status: string) => {
+    // Worker permission check: only allow updating tasks matching their type
+    if (currentSession?.role === 'worker') {
+      const task = db.prepare('SELECT task_type FROM order_tasks WHERE id = ?').get(taskId) as any;
+      if (task) {
+        const allowedType: Record<string, string> = { master_cutter: 'cutting', tailor: 'sewing' };
+        const expected = allowedType[currentSession.worker_type || ''];
+        if (!expected || task.task_type !== expected) {
+          throw new Error('You are not authorized to update this task type');
+        }
+      }
+    }
     const result = updateTaskStatus(taskId, status);
     try {
       const tasks = db.prepare('SELECT * FROM order_tasks WHERE id = ?').get(taskId) as any;

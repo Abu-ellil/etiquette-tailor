@@ -15,7 +15,11 @@ export default function MyTasksPage() {
       const session = await window.electronAPI.auth.getSession();
       if (!session) return;
       const data = await window.electronAPI.workers.getWorkerTasks(session.userId);
-      setTasks(data || []);
+      // Filter tasks by worker type: tailor sees sewing only, cutter sees cutting only
+      const taskTypeMap: Record<string, string> = { tailor: 'sewing', master_cutter: 'cutting' };
+      const allowedType = taskTypeMap[session.worker_type || ''];
+      const filtered = allowedType ? (data || []).filter((t: any) => t.task_type === allowedType) : (data || []);
+      setTasks(filtered);
     } catch (err) {
       console.error('Failed to load tasks:', err);
     } finally {
