@@ -330,10 +330,16 @@ export default function OrderDetailPage() {
         <div className="flex gap-3">
           {!isWorker && (
             !editing ? (
-              <button onClick={() => { setEditing(true); setOriginalPrice(Number(order.price)); }} className="btn-primary px-6 py-3 text-sm flex items-center gap-2">
-                <span className="material-symbols-outlined text-base">edit</span>
-                {t('Edit Order')}
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => { setEditing(true); setOriginalPrice(Number(order.price)); }} className="btn-primary px-6 py-3 text-sm flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base">edit</span>
+                  {t('Edit Order')}
+                </button>
+                <button onClick={() => navigate(`/invoice/${order.id}`)} className="px-6 py-3 text-sm font-semibold bg-surface-container-high hover:bg-surface-container-highest rounded-lg flex items-center gap-2 transition-colors">
+                  <span className="material-symbols-outlined text-base">print</span>
+                  {t('Print Invoice')}
+                </button>
+              </div>
             ) : (
               <div className="flex gap-2">
                 <button onClick={() => { setEditing(false); loadOrder(); }} className="px-6 py-3 text-sm text-secondary hover:bg-surface-container-high rounded-lg">{t('Cancel')}</button>
