@@ -186,9 +186,9 @@ export default function WorkflowWizard() {
   };
 
   const onCreateCustomer = async (data: { name: string; phone: string; notes: string }) => {
-    const c = await window.electronAPI.customers.create({ name: data.name, phone: data.phone, notes: data.notes, branch_id: session?.branch_id || 1 });
-    setSelectedCustomer(c);
-    setCustomerQuery(c.name);
+    const newId = await window.electronAPI.customers.create({ name: data.name, phone: customerQuery, notes: data.notes, branch_id: session?.branch_id || 1 });
+    setSelectedCustomer({ id: newId, name: data.name, phone: customerQuery, notes: data.notes || '' });
+    setCustomerQuery(data.name);
     setShowNewCustomer(false);
     resetCreateForm();
   };
@@ -312,7 +312,7 @@ export default function WorkflowWizard() {
                     <label className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-1 block">{t('Customer Name')}</label>
                     <input {...register('name', { required: true })} className="input-field" placeholder={t('Full name')} autoFocus />
                   </div>
-                  <input type="hidden" {...register('phone')} value={customerQuery} />
+                  <input type="hidden" name="phone" value={customerQuery} />
                   <div className="flex gap-2">
                     <button type="submit" className="btn-primary text-xs py-2">{t('Create Customer')}</button>
                     <button type="button" onClick={() => setShowNewCustomer(false)} className="text-xs text-secondary hover:text-on-surface py-2">{t('Cancel')}</button>

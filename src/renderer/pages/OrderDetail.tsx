@@ -443,6 +443,9 @@ export default function OrderDetailPage() {
                   const sewingTasks = itemTasks.filter((t: any) => t.task_type === 'sewing');
                   const bp = getBasePrice(item.piece_type);
                   const isAssigning = assigningItem === item.id;
+                  const hasCutter = cutterTasks.length > 0;
+                  const assignedSewingQty = sewingTasks.reduce((s: number, t: any) => s + (t.task_quantity || 1), 0);
+                  const sewingComplete = assignedSewingQty >= item.quantity;
 
                   return (
                     <div key={item.id} className="border border-outline-variant/20 rounded-xl overflow-hidden">
