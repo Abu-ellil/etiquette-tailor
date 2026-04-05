@@ -5,9 +5,7 @@ import { useTranslation } from '../contexts/I18nContext';
 import StepIndicator from '../components/StepIndicator';
 
 interface Customer { id: number; name: string; phone: string; notes: string; }
-interface Worker { id: number; name: string; worker_type: string | null; active: number; }
 interface PieceType { id: number; name_en: string; category: string; base_price: number; active: number; }
-interface WorkerRate { wage_type: 'percentage' | 'fixed'; rate: number; }
 
 interface MeasurementData {
   chest?: number; waist?: number; hips?: number; length?: number; sleeve?: number; shoulder?: number; notes?: string;
@@ -15,11 +13,6 @@ interface MeasurementData {
 
 interface OrderItem {
   piece_type: string; quantity: number; unit_price: number; fabric_source: 'customer' | 'shop'; details: string;
-}
-
-interface TailorAssignment { worker_id: number; quantity: number; wage_type: 'percentage' | 'fixed'; wage_rate: number; }
-interface ItemAssignment {
-  cutter_id?: number; cutter_wage_type?: 'percentage' | 'fixed'; cutter_wage_rate?: number; tailors: TailorAssignment[];
 }
 
 const MEASUREMENT_FIELDS = [
@@ -102,29 +95,21 @@ export default function WorkflowWizard() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [orderNotes, setOrderNotes] = useState('');
 
-  const [workers, setWorkers] = useState<Worker[]>([]);
-  const [assignments, setAssignments] = useState<ItemAssignment[]>([{ tailors: [] }]);
-  const [rateCache, setRateCache] = useState<Record<string, WorkerRate>>({});
   const [initialPayment, setInitialPayment] = useState(0);
 
   const { register, handleSubmit: handleCreateCustomerSubmit, reset: resetCreateForm } = useForm({ mode: 'onSubmit' as const, defaultValues: { name: '', phone: '', notes: '' } });
 
   useEffect(() => {
     window.electronAPI.auth.getSession().then((s: any) => setSession(s));
-    window.electronAPI.workers.getAll().then((w: any[]) => setWorkers(w.filter((x: any) => x.active === 1)));
     window.electronAPI.pieceTypes.getAll().then((pt: any[]) => setPieceTypes(pt));
   }, []);
 
-  const cutters = workers.filter(w => w.worker_type === 'master_cutter');
-  const tailors = workers.filter(w => w.worker_type === 'tailor');
   const totalPrice = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
-  const getWorkerName = (id: number) => workers.find(w => w.id === id)?.name || `#${id}`;
 
   const WIZARD_STEPS = [
     { label: t('Customer'), icon: 'person' },
     { label: t('Measurements'), icon: 'straighten' },
-    { label: t('Items'), icon: 'shopping_bag' },
-    { label: t('Workers'), icon: 'content_cut' },
+    { label: t('Items & Details'), icon: 'shopping_bag' },
     { label: t('Review'), icon: 'receipt' },
   ];
 
@@ -143,11 +128,9 @@ export default function WorkflowWizard() {
     switch (step) {
       case 0: return selectedCustomer ? null : 'Please select or create a customer.';
       case 1: return Object.values(measurements).some(v => v !== undefined && v !== null) ? null : 'Please enter at least one measurement.';
-      case 2: return items.filter(i => i.piece_type).length > 0 ? null : 'Please add at least one item.';
-      case 3: {
-        const validItems = items.filter(i => i.piece_type);
+      case 2: {
+        if (items.filter(i => i.piece_type).length === 0) return 'Please add at least one item.';
         if (!deliveryDate) return 'Please set a delivery date.';
-        if (!validItems.every((_, idx) => assignments[idx]?.cutter_id)) return 'Please assign a cutter for each item.';
         return null;
       }
       default: return null;
@@ -228,64 +211,9 @@ export default function WorkflowWizard() {
 
   const addItem = () => {
     setItems(prev => [...prev, emptyItem()]);
-    setAssignments(prev => [...prev, { tailors: [] }]);
   };
   const removeItem = (idx: number) => {
     setItems(prev => prev.filter((_, i) => i !== idx));
-    setAssignments(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  // ─── Workers ───
-  const getRate = async (workerId: number, pieceType: string): Promise<WorkerRate | null> => {
-    const key = `${workerId}-${pieceType}`;
-    if (rateCache[key]) return rateCache[key];
-    try {
-      const rate = await window.electronAPI.workers.getActiveRate(workerId, pieceType);
-      if (rate) setRateCache(prev => ({ ...prev, [key]: rate }));
-      return rate;
-    } catch { return null; }
-  };
-
-  const handleAssignCutter = async (itemIdx: number, cutterId: number) => {
-    const rate = await getRate(cutterId, items[itemIdx].piece_type);
-    setAssignments(prev => prev.map((a, i) => i === itemIdx ? {
-      ...a, cutter_id: cutterId, cutter_wage_type: rate?.wage_type || 'fixed', cutter_wage_rate: rate?.rate || 0,
-    } : a));
-  };
-
-  const handleAddTailor = async (itemIdx: number, tailorId: number) => {
-    const item = items[itemIdx];
-    const rate = await getRate(tailorId, item.piece_type);
-    const currentQty = assignments[itemIdx].tailors.reduce((s, tl) => s + tl.quantity, 0);
-    const remaining = item.quantity - currentQty;
-    if (remaining <= 0) return;
-    setAssignments(prev => prev.map((a, i) => i === itemIdx ? {
-      ...a, tailors: [...a.tailors, { worker_id: tailorId, quantity: Math.min(remaining, 1), wage_type: rate?.wage_type || 'fixed', wage_rate: rate?.rate || 0 }],
-    } : a));
-  };
-
-  const removeTailor = (itemIdx: number, tailorIdx: number) => {
-    setAssignments(prev => prev.map((a, i) => i === itemIdx ? {
-      ...a, tailors: a.tailors.filter((_, ti) => ti !== tailorIdx),
-    } : a));
-  };
-
-  const updateTailorQty = (itemIdx: number, tailorIdx: number, qty: number) => {
-    setAssignments(prev => prev.map((a, i) => i === itemIdx ? {
-      ...a, tailors: a.tailors.map((tl, ti) => ti === tailorIdx ? { ...tl, quantity: Math.max(1, qty) } : tl),
-    } : a));
-  };
-
-  const calcCutterWage = (idx: number) => {
-    const a = assignments[idx]; const item = items[idx];
-    if (!a?.cutter_wage_rate) return 0;
-    return a.cutter_wage_type === 'percentage' ? (item.unit_price * item.quantity * a.cutter_wage_rate / 100) : a.cutter_wage_rate;
-  };
-
-  const calcTailorWage = (itemIdx: number, tailorIdx: number) => {
-    const a = assignments[itemIdx]; const item = items[itemIdx]; const tl = a?.tailors[tailorIdx];
-    if (!tl) return 0;
-    return tl.wage_type === 'percentage' ? (item.unit_price * tl.quantity * tl.wage_rate / 100) : tl.wage_rate;
   };
 
   // ─── Submit ───
@@ -302,12 +230,8 @@ export default function WorkflowWizard() {
         delivery_date: deliveryDate,
         receive_date: new Date().toISOString().split('T')[0],
         notes: orderNotes || undefined,
-        items: validItems.map((item, idx) => ({
+        items: validItems.map((item) => ({
           ...item,
-          cutter_id: assignments[idx]?.cutter_id,
-          cutter_wage_type: assignments[idx]?.cutter_wage_type,
-          cutter_wage_rate: assignments[idx]?.cutter_wage_rate,
-          tailors: assignments[idx]?.tailors || [],
         })),
         measurements: hasMeasurements ? measurements : undefined,
         initial_payment: initialPayment > 0 ? { amount: initialPayment, method: paymentMethod, note: 'Initial payment' } : undefined,
@@ -336,21 +260,30 @@ export default function WorkflowWizard() {
         <StepIndicator steps={WIZARD_STEPS} current={currentStep} onStepClick={handleStepClick} />
       </div>
 
-      {/* ─── STEP 0: Customer ─── */}
+      {/* ─── STEP 0: Customer (Phone-first) ─── */}
       {currentStep === 0 && (
         <StepCard icon="person" title={t('Customer')} {...sc}>
           {!selectedCustomer ? (
             <>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-                <input
-                  type="text" value={customerQuery} onChange={e => onSearchChange(e.target.value)}
-                  placeholder={t('Search by name or phone...')} className="input-field pl-12"
-                  onFocus={() => doSearch(customerQuery)}
-                  onBlur={() => setTimeout(() => setShowCustomerResults(false), 150)}
-                />
+              {/* Phone number as primary input */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-1 block">{t('Phone Number')}</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">phone</span>
+                  <input
+                    type="tel"
+                    value={customerQuery}
+                    onChange={e => onSearchChange(e.target.value)}
+                    placeholder={t('Enter phone number...')}
+                    className="input-field pl-12 text-lg font-semibold"
+                    autoFocus
+                    onFocus={() => doSearch(customerQuery)}
+                    onBlur={() => setTimeout(() => setShowCustomerResults(false), 150)}
+                  />
+                </div>
               </div>
 
+              {/* Search results dropdown */}
               {showCustomerResults && customers.length > 0 && (
                 <div className="mt-2 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-lg max-h-40 overflow-y-auto z-10 relative">
                   {customers.map(c => (
@@ -363,9 +296,10 @@ export default function WorkflowWizard() {
                 </div>
               )}
 
+              {/* No customer found → create new inline */}
               {!showNewCustomer && customerQuery.length >= 2 && customers.length === 0 && (
                 <div className="mt-3 text-center">
-                  <p className="text-secondary text-sm mb-2">{t('No customer found.')}</p>
+                  <p className="text-secondary text-sm mb-2">{t('No customer found with this phone.')}</p>
                   <button onClick={() => setShowNewCustomer(true)} className="btn-primary text-xs px-4 py-2">
                     <span className="material-symbols-outlined text-xs mr-1 align-middle">person_add</span>{t('Create New Customer')}
                   </button>
@@ -374,18 +308,13 @@ export default function WorkflowWizard() {
 
               {showNewCustomer && (
                 <form onSubmit={handleCreateCustomerSubmit(onCreateCustomer)} className="mt-4 bg-surface-container-low rounded-xl p-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-1 block">{t('Name')}</label>
-                      <input {...register('name', { required: true })} className="input-field" placeholder={t('Full name')} />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-1 block">{t('Phone')}</label>
-                      <input {...register('phone')} className="input-field" placeholder={t('Phone number')} />
-                    </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-1 block">{t('Customer Name')}</label>
+                    <input {...register('name', { required: true })} className="input-field" placeholder={t('Full name')} autoFocus />
                   </div>
+                  <input type="hidden" {...register('phone')} value={customerQuery} />
                   <div className="flex gap-2">
-                    <button type="submit" className="btn-primary text-xs py-2">{t('Create')}</button>
+                    <button type="submit" className="btn-primary text-xs py-2">{t('Create Customer')}</button>
                     <button type="button" onClick={() => setShowNewCustomer(false)} className="text-xs text-secondary hover:text-on-surface py-2">{t('Cancel')}</button>
                   </div>
                 </form>
@@ -423,9 +352,9 @@ export default function WorkflowWizard() {
         </StepCard>
       )}
 
-      {/* ─── STEP 2: Items ─── */}
+      {/* ─── STEP 2: Items, Delivery & Payment ─── */}
       {currentStep === 2 && (
-        <StepCard icon="shopping_bag" title={t('Items')} {...sc}>
+        <StepCard icon="shopping_bag" title={t('Items & Details')} {...sc}>
           <div className="space-y-4">
             {items.map((item, idx) => (
               <div key={idx} className="bg-surface-container-low rounded-xl overflow-hidden">
@@ -485,83 +414,9 @@ export default function WorkflowWizard() {
             className="mt-3 w-full py-2.5 border-2 border-dashed border-outline-variant/40 rounded-xl text-secondary hover:text-primary hover:border-primary transition-colors text-xs font-bold">
             <span className="material-symbols-outlined text-sm mr-1 align-middle">add</span>{t('Add Item')}
           </button>
-        </StepCard>
-      )}
 
-      {/* ─── STEP 3: Workers & Delivery ─── */}
-      {currentStep === 3 && (
-        <StepCard icon="content_cut" title={t('Workers')} {...sc}>
-          {/* Worker Assignments */}
-          <div className="space-y-4 mb-6">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('Assign Workers')}</h3>
-            {items.filter(i => i.piece_type).map((item) => {
-              const origIdx = items.indexOf(item);
-              const assignment = assignments[origIdx] || { tailors: [] };
-              const assignedTailorQty = (assignment.tailors || []).reduce((s: number, tl: TailorAssignment) => s + tl.quantity, 0);
-              const remainingQty = item.quantity - assignedTailorQty;
-
-              return (
-                <div key={origIdx} className="bg-surface-container-low rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-semibold">{item.piece_type} × {item.quantity}</span>
-                    <span className="text-xs font-bold text-primary">{(item.unit_price * item.quantity).toFixed(2)} {t('QAR')}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-1 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">content_cut</span>{t('Cutter')}
-                      </label>
-                      <select value={assignment.cutter_id || ''} onChange={e => e.target.value && handleAssignCutter(origIdx, parseInt(e.target.value))} className="input-field text-sm">
-                        <option value="">{t('Select...')}</option>
-                        {cutters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                      {assignment.cutter_id && (
-                        <span className="text-[10px] text-secondary mt-0.5 block">{calcCutterWage(origIdx).toFixed(2)} {t('QAR')}</span>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-1 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">styler</span>{t('Tailors')}
-                        {item.quantity > 1 && <span className="font-normal">({assignedTailorQty}/{item.quantity})</span>}
-                      </label>
-                      {(assignment.tailors || []).map((tl: TailorAssignment, ti: number) => {
-                        const worker = tailors.find(w => w.id === tl.worker_id);
-                        return (
-                          <div key={ti} className="flex items-center gap-2 mb-1.5 bg-surface-container-lowest rounded-lg px-2.5 py-1.5">
-                            <span className="text-xs font-medium flex-1 truncate">{worker?.name || `#${tl.worker_id}`}</span>
-                            <input type="number" min={1} max={item.quantity} value={tl.quantity}
-                              onChange={e => updateTailorQty(origIdx, ti, parseInt(e.target.value) || 1)}
-                              className="input-field-sm w-12 text-center" />
-                            <span className="text-[10px] text-secondary">{calcTailorWage(origIdx, ti).toFixed(2)}</span>
-                            <button onClick={() => removeTailor(origIdx, ti)} className="text-outline hover:text-error">
-                              <span className="material-symbols-outlined text-xs">close</span>
-                            </button>
-                          </div>
-                        );
-                      })}
-                      {remainingQty > 0 && (
-                        <select value="" onChange={e => e.target.value && handleAddTailor(origIdx, parseInt(e.target.value))} className="input-field text-xs !h-9">
-                          <option value="">{t('+ Add tailor...')}</option>
-                          {tailors.filter(w => !(assignment.tailors || []).some((at: TailorAssignment) => at.worker_id === w.id)).map(w => (
-                            <option key={w.id} value={w.id}>{w.name}</option>
-                          ))}
-                        </select>
-                      )}
-                      {remainingQty <= 0 && (assignment.tailors || []).length > 0 && (
-                        <span className="text-[10px] text-tertiary font-semibold flex items-center gap-0.5">
-                          <span className="material-symbols-outlined text-[10px]">check_circle</span>{t('All assigned')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Delivery & Payment */}
-          <div className="border-t border-outline-variant/20 pt-4">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-3">{t('Delivery & Payment')}</h3>
+          {/* Delivery Date & Payment */}
+          <div className="border-t border-outline-variant/20 pt-4 mt-4">
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-1 block">{t('Delivery Date')}</label>
@@ -587,8 +442,8 @@ export default function WorkflowWizard() {
         </StepCard>
       )}
 
-      {/* ─── STEP 4: Review & Submit ─── */}
-      {currentStep === 4 && (
+      {/* ─── STEP 3: Review & Submit ─── */}
+      {currentStep === 3 && (
         <StepCard icon="receipt" title={t('Review')} {...sc}>
           <div className="space-y-4">
             {/* Customer summary */}
@@ -616,27 +471,18 @@ export default function WorkflowWizard() {
               </div>
             </div>
 
-            {/* Items & Workers summary */}
+            {/* Items summary */}
             <div className="bg-surface-container-low rounded-xl p-4">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-3">{t('Order Items')}</h3>
               <div className="space-y-2">
-                {items.filter(i => i.piece_type).map((item, idx) => {
-                  const a = assignments[items.indexOf(item)];
-                  return (
-                    <div key={idx} className="text-xs">
-                      <div className="flex justify-between">
-                        <span className="font-medium">{item.piece_type} × {item.quantity}</span>
-                        <span className="font-bold">{(item.unit_price * item.quantity).toFixed(2)} {t('QAR')}</span>
-                      </div>
-                      <div className="text-secondary space-y-0.5 mt-0.5">
-                        {a?.cutter_id && <div className="flex items-center gap-0.5"><span className="material-symbols-outlined" style={{fontSize:'10px'}}>content_cut</span>{getWorkerName(a.cutter_id)}</div>}
-                        {(a?.tailors || []).map((tl: TailorAssignment, ti: number) => (
-                          <div key={ti} className="flex items-center gap-0.5"><span className="material-symbols-outlined" style={{fontSize:'10px'}}>styler</span>{getWorkerName(tl.worker_id)} × {tl.quantity}</div>
-                        ))}
-                      </div>
+                {items.filter(i => i.piece_type).map((item, idx) => (
+                  <div key={idx} className="text-xs">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{item.piece_type} × {item.quantity}</span>
+                      <span className="font-bold">{(item.unit_price * item.quantity).toFixed(2)} {t('QAR')}</span>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
 
