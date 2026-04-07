@@ -34,11 +34,12 @@ interface StepCardProps {
   validationError: string | null;
   onBack: () => void;
   onNext: () => void;
+  onSkip?: () => void;
   children: React.ReactNode;
   t: (key: string) => string;
 }
 
-function StepCard({ icon, title, currentStep, isLastStep, submitting, validationError, onBack, onNext, children, t }: StepCardProps) {
+function StepCard({ icon, title, currentStep, isLastStep, submitting, validationError, onBack, onNext, onSkip, children, t }: StepCardProps) {
   return (
     <section className="bg-surface-container-lowest rounded-2xl p-6 shadow-[0px_4px_16px_rgba(25,28,29,0.04)] animate-fadeIn">
       <div className="flex items-center gap-2 mb-6">
@@ -56,6 +57,11 @@ function StepCard({ icon, title, currentStep, isLastStep, submitting, validation
         {currentStep > 0 && (
           <button onClick={onBack} className="px-6 py-3 text-sm font-semibold text-secondary hover:text-on-surface transition-colors flex items-center gap-1">
             <span className="material-symbols-outlined text-sm">arrow_back</span>{t('Back')}
+          </button>
+        )}
+        {onSkip && (
+          <button onClick={onSkip} className="px-6 py-3 rounded-xl text-sm font-semibold text-outline bg-surface-container-high hover:bg-surface-container-highest transition-colors flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm">skip_next</span>{t('Skip')}
           </button>
         )}
         <button onClick={onNext} disabled={submitting} className="btn-primary flex-1 flex items-center justify-center gap-2">
@@ -113,6 +119,12 @@ export default function WorkflowWizard() {
     { label: t('Review'), icon: 'receipt' },
   ];
 
+  const skipMeasurements = () => {
+    setMeasurements({});
+    setValidationError(null);
+    setCurrentStep(2);
+  };
+
   const stepCardProps = {
     currentStep,
     isLastStep: currentStep === WIZARD_STEPS.length - 1,
@@ -127,7 +139,7 @@ export default function WorkflowWizard() {
   const validateStep = (step: number): string | null => {
     switch (step) {
       case 0: return selectedCustomer ? null : 'Please select or create a customer.';
-      case 1: return Object.values(measurements).some(v => v !== undefined && v !== null) ? null : 'Please enter at least one measurement.';
+      case 1: return null; // Measurements are optional — skip allowed
       case 2: {
         if (items.filter(i => i.piece_type).length === 0) return 'Please add at least one item.';
         if (!deliveryDate) return 'Please set a delivery date.';
@@ -336,10 +348,10 @@ export default function WorkflowWizard() {
         </StepCard>
       )}
 
-      {/* ─── STEP 1: Measurements ─── */}
+      {/* ─── STEP 1: Measurements (Optional — can skip) ─── */}
       {currentStep === 1 && (
-        <StepCard icon="straighten" title={t('Measurements')} {...sc}>
-          <p className="text-secondary text-xs mb-4">{selectedCustomer?.name} — {t('Required')}</p>
+        <StepCard icon="straighten" title={t('Measurements')} {...sc} onSkip={skipMeasurements}>
+          <p className="text-secondary text-xs mb-4">{selectedCustomer?.name} — {t('Optional')}</p>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
             {MEASUREMENT_FIELDS.map(f => (
               <div key={f.key}>
@@ -461,14 +473,18 @@ export default function WorkflowWizard() {
             {/* Measurements summary */}
             <div className="bg-surface-container-low rounded-xl p-4">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-3">{t('Measurements')}</h3>
-              <div className="flex flex-wrap gap-3">
-                {MEASUREMENT_FIELDS.map(f => {
-                  const val = measurements[f.key as keyof MeasurementData];
-                  return val !== undefined ? (
-                    <span key={f.key} className="text-xs"><span className="text-secondary">{t(f.label)}:</span> <span className="font-semibold">{val}</span></span>
-                  ) : null;
-                })}
-              </div>
+              {Object.values(measurements).some(v => v !== undefined && v !== null) ? (
+                <div className="flex flex-wrap gap-3">
+                  {MEASUREMENT_FIELDS.map(f => {
+                    const val = measurements[f.key as keyof MeasurementData];
+                    return val !== undefined ? (
+                      <span key={f.key} className="text-xs"><span className="text-secondary">{t(f.label)}:</span> <span className="font-semibold">{val}</span></span>
+                    ) : null;
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-secondary italic">{t('Skipped — can be added later from order details')}</p>
+              )}
             </div>
 
             {/* Items summary */}

@@ -1,5 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
 import started from 'electron-squirrel-startup';
 import { initializeSchema } from '../db/schema';
 import {
@@ -66,7 +68,16 @@ import {
   updateOrderItem,
   deleteOrderItem,
   recalculateOrderTotal,
+  getAdvancedReport,
+  getDailyStats,
+  getWorkerContribution,
 } from '../db';
+import {
+  createExpense,
+  getExpenses,
+  deleteExpense,
+  getProfitReport,
+} from '../db/expenses';
 import {
   createNotification,
   getNotificationsForUser,
@@ -77,6 +88,7 @@ import {
   generateOverdueNotifications,
 } from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
+import { checkActivation, verifyAndActivate } from './activation';
 import db from '../db/schema';
 
 let currentSession: {
@@ -99,6 +111,7 @@ const createWindow = () => {
     width: 1280,
     height: 800,
     frame: false,
+    icon: path.join(__dirname, '../../icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -362,6 +375,32 @@ function registerIpcHandlers() {
     return getRecentOrders(limit, branchId, period);
   });
 
+  ipcMain.handle('reports:getAdvanced', async (_event, filter: any) => {
+    return getAdvancedReport(filter);
+  });
+
+  ipcMain.handle('reports:getDailyStats', async (_event, days: number, branchId?: number) => {
+    return getDailyStats(days, branchId);
+  });
+
+  ipcMain.handle('reports:getWorkerContribution', async (_event, branchId?: number, startDate?: string, endDate?: string) => {
+    return getWorkerContribution(branchId, startDate, endDate);
+  });
+
+  ipcMain.handle('reports:exportPDF', async (_event, htmlContent: string, filename: string) => {
+    const filePath = path.join(os.tmpdir(), filename);
+    fs.writeFileSync(filePath, htmlContent, 'utf-8');
+    await shell.openPath(filePath);
+    return filePath;
+  });
+
+  ipcMain.handle('reports:sendEmail', async (_event, to: string, subject: string, body: string) => {
+    const encodedSubject = encodeURIComponent(subject);
+    const encodedBody = encodeURIComponent(body);
+    await shell.openExternal(`mailto:${to}?subject=${encodedSubject}&body=${encodedBody}`);
+    return true;
+  });
+
   ipcMain.handle('orders:getAllTasks', async (_event, filters?: { branchId?: number; workerId?: number; taskType?: string }) => {
     return getAllTasks(filters);
   });
@@ -451,6 +490,23 @@ function registerIpcHandlers() {
     return getDbFileSize();
   });
 
+  // Expenses
+  ipcMain.handle('expenses:create', async (_event, data: any) => {
+    return createExpense({ ...data, created_by: currentSession?.userId ?? null });
+  });
+
+  ipcMain.handle('expenses:getAll', async (_event, filters?: any) => {
+    return getExpenses(filters);
+  });
+
+  ipcMain.handle('expenses:delete', async (_event, id: number) => {
+    return deleteExpense(id);
+  });
+
+  ipcMain.handle('expenses:getProfitReport', async (_event, startDate: string, endDate: string, branchId?: number) => {
+    return getProfitReport(startDate, endDate, branchId);
+  });
+
   ipcMain.handle('window:minimize', () => mainWindow?.minimize());
 
   // Piece types
@@ -489,6 +545,15 @@ function registerIpcHandlers() {
 
   ipcMain.handle('notifications:generateOverdue', async () => {
     return generateOverdueNotifications();
+  });
+
+  // Activation
+  ipcMain.handle('activation:check', async () => {
+    return checkActivation();
+  });
+
+  ipcMain.handle('activation:activate', async (_event, code: string) => {
+    return verifyAndActivate(code);
   });
   ipcMain.handle('window:maximize', () => {
     if (mainWindow?.isMaximized()) {

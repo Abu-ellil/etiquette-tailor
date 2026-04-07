@@ -98,6 +98,11 @@ export interface ElectronAPI {
     getPaymentSplit: (branchId?: number, period?: string) => Promise<any>;
     getMonthlyRevenue: (months?: number, branchId?: number) => Promise<any[]>;
     getRecentOrders: (limit?: number, branchId?: number, period?: string) => Promise<any[]>;
+    getAdvanced: (filter: any) => Promise<any>;
+    getDailyStats: (days: number, branchId?: number) => Promise<any[]>;
+    getWorkerContribution: (branchId?: number, startDate?: string, endDate?: string) => Promise<any[]>;
+    exportPDF: (htmlContent: string, filename: string) => Promise<string>;
+    sendEmail: (to: string, subject: string, body: string) => Promise<boolean>;
   };
 
   backup: {
@@ -115,6 +120,18 @@ export interface ElectronAPI {
     markAllAsRead: (userId: number, role: string) => Promise<void>;
     softDelete: (notificationId: number) => Promise<void>;
     generateOverdue: () => Promise<number>;
+  };
+
+  activation: {
+    check: () => Promise<{ activated: boolean; expired: boolean; daysLeft: number }>;
+    activate: (code: string) => Promise<boolean>;
+  };
+
+  expenses: {
+    create: (data: any) => Promise<number>;
+    getAll: (filters?: { startDate?: string; endDate?: string; category?: string; branchId?: number }) => Promise<any[]>;
+    delete: (id: number) => Promise<void>;
+    getProfitReport: (startDate: string, endDate: string, branchId?: number) => Promise<any>;
   };
 }
 
@@ -216,6 +233,11 @@ const api: ElectronAPI = {
     getPaymentSplit: (branchId?: number, period?: string) => ipcRenderer.invoke('reports:getPaymentSplit', branchId, period),
     getMonthlyRevenue: (months?: number, branchId?: number) => ipcRenderer.invoke('reports:getMonthlyRevenue', months, branchId),
     getRecentOrders: (limit?: number, branchId?: number, period?: string) => ipcRenderer.invoke('reports:getRecentOrders', limit, branchId, period),
+    getAdvanced: (filter: any) => ipcRenderer.invoke('reports:getAdvanced', filter),
+    getDailyStats: (days: number, branchId?: number) => ipcRenderer.invoke('reports:getDailyStats', days, branchId),
+    getWorkerContribution: (branchId?: number, startDate?: string, endDate?: string) => ipcRenderer.invoke('reports:getWorkerContribution', branchId, startDate, endDate),
+    exportPDF: (htmlContent: string, filename: string) => ipcRenderer.invoke('reports:exportPDF', htmlContent, filename),
+    sendEmail: (to: string, subject: string, body: string) => ipcRenderer.invoke('reports:sendEmail', to, subject, body),
   },
 
   backup: {
@@ -233,6 +255,18 @@ const api: ElectronAPI = {
     markAllAsRead: (userId, role) => ipcRenderer.invoke('notifications:markAllAsRead', userId, role),
     softDelete: (notificationId) => ipcRenderer.invoke('notifications:softDelete', notificationId),
     generateOverdue: () => ipcRenderer.invoke('notifications:generateOverdue'),
+  },
+
+  activation: {
+    check: () => ipcRenderer.invoke('activation:check'),
+    activate: (code: string) => ipcRenderer.invoke('activation:activate', code),
+  },
+
+  expenses: {
+    create: (data) => ipcRenderer.invoke('expenses:create', data),
+    getAll: (filters?) => ipcRenderer.invoke('expenses:getAll', filters),
+    delete: (id) => ipcRenderer.invoke('expenses:delete', id),
+    getProfitReport: (startDate, endDate, branchId?) => ipcRenderer.invoke('expenses:getProfitReport', startDate, endDate, branchId),
   },
 };
 

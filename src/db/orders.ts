@@ -866,3 +866,160 @@ export function deleteOrderPayment(paymentId: number): void {
 
   txn();
 }
+
+// ── Advanced Reports ──────────────────────────────────────────────────
+
+export interface AdvancedReportFilter {
+  branchId?: number;
+  startDate?: string;
+  endDate?: string;
+  workerId?: number;
+  status?: string;
+}
+
+export interface WorkerPerformance {
+  worker_id: number;
+  worker_name: string;
+  order_count: number;
+  percentage: number;
+  revenue: number;
+}
+
+export interface AdvancedReportData {
+  totalOrders: number;
+  totalRevenue: number;
+  pendingOrders: number;
+  completedOrders: number;
+  workerPerformance: WorkerPerformance[];
+  orders: any[];
+}
+
+export function getAdvancedReport(filter: AdvancedReportFilter): AdvancedReportData {
+  let where = 'WHERE 1=1';
+  const params: any[] = [];
+
+  if (filter.branchId) {
+    where += ' AND o.branch_id = ?';
+    params.push(filter.branchId);
+  }
+  if (filter.startDate) {
+    where += ' AND date(o.created_at) >= ?';
+    params.push(filter.startDate);
+  }
+  if (filter.endDate) {
+    where += ' AND date(o.created_at) <= ?';
+    params.push(filter.endDate);
+  }
+  if (filter.status) {
+    where += ' AND o.status = ?';
+    params.push(filter.status);
+  }
+
+  const summary = db.prepare(`
+    SELECT
+      COUNT(*) as totalOrders,
+      COALESCE(SUM(o.price), 0) as totalRevenue,
+      COALESCE(SUM(CASE WHEN o.status NOT IN ('delivered') THEN 1 ELSE 0 END), 0) as pendingOrders,
+      COALESCE(SUM(CASE WHEN o.status = 'delivered' THEN 1 ELSE 0 END), 0) as completedOrders
+    FROM orders o
+    ${where}
+  `).get(...params) as any;
+
+  let workerWhere = '';
+  const workerParams: any[] = [];
+  if (filter.branchId) { workerWhere += ' AND o.branch_id = ?'; workerParams.push(filter.branchId); }
+  if (filter.startDate) { workerWhere += ' AND date(o.created_at) >= ?'; workerParams.push(filter.startDate); }
+  if (filter.endDate) { workerWhere += ' AND date(o.created_at) <= ?'; workerParams.push(filter.endDate); }
+  if (filter.workerId) { workerWhere += ' AND ot.assigned_to = ?'; workerParams.push(filter.workerId); }
+
+  const workers = db.prepare(`
+    SELECT
+      u.id as worker_id,
+      u.name as worker_name,
+      COUNT(DISTINCT o.id) as order_count,
+      COALESCE(SUM(o.price), 0) as revenue
+    FROM order_tasks ot
+    JOIN orders o ON ot.order_id = o.id
+    JOIN users u ON ot.assigned_to = u.id
+    WHERE 1=1 ${workerWhere}
+    GROUP BY u.id, u.name
+    ORDER BY order_count DESC
+  `).all(...workerParams) as { worker_id: number; worker_name: string; order_count: number; revenue: number }[];
+
+  const totalWorkerOrders = workers.reduce((s, w) => s + w.order_count, 0);
+  const workerPerformance: WorkerPerformance[] = workers.map(w => ({
+    ...w,
+    percentage: totalWorkerOrders > 0 ? Math.round((w.order_count / totalWorkerOrders) * 100) : 0,
+  }));
+
+  const orderFilter = filter.workerId
+    ? ` AND o.id IN (SELECT DISTINCT order_id FROM order_tasks WHERE assigned_to = ${filter.workerId})`
+    : '';
+  const orders = db.prepare(`
+    SELECT o.*, c.name as customer_name, c.phone as customer_phone
+    FROM orders o
+    LEFT JOIN customers c ON o.customer_id = c.id
+    ${where}${orderFilter}
+    ORDER BY o.created_at DESC
+  `).all(...params) as any[];
+
+  return {
+    totalOrders: summary.totalOrders || 0,
+    totalRevenue: summary.totalRevenue || 0,
+    pendingOrders: summary.pendingOrders || 0,
+    completedOrders: summary.completedOrders || 0,
+    workerPerformance,
+    orders,
+  };
+}
+
+export interface DailyStat {
+  date: string;
+  orders: number;
+  revenue: number;
+}
+
+export function getDailyStats(days: number, branchId?: number): DailyStat[] {
+  const branchFilter = branchId ? ' AND branch_id = ?' : '';
+  const params = branchId ? [branchId] : [];
+
+  const rows = db.prepare(`
+    SELECT
+      date(created_at) as date,
+      COUNT(*) as orders,
+      COALESCE(SUM(price), 0) as revenue
+    FROM orders
+    WHERE date(created_at) >= date('now', '-${days} days')${branchFilter}
+    GROUP BY date(created_at)
+    ORDER BY date ASC
+  `).all(...params) as { date: string; orders: number; revenue: number }[];
+
+  return rows;
+}
+
+export interface WorkerContribution {
+  worker_name: string;
+  task_count: number;
+  wage_total: number;
+}
+
+export function getWorkerContribution(branchId?: number, startDate?: string, endDate?: string): WorkerContribution[] {
+  let filter = '';
+  const params: any[] = [];
+  if (branchId) { filter += ' AND o.branch_id = ?'; params.push(branchId); }
+  if (startDate) { filter += ' AND date(o.created_at) >= ?'; params.push(startDate); }
+  if (endDate) { filter += ' AND date(o.created_at) <= ?'; params.push(endDate); }
+
+  return db.prepare(`
+    SELECT
+      u.name as worker_name,
+      COUNT(*) as task_count,
+      COALESCE(SUM(ot.wage_amount), 0) as wage_total
+    FROM order_tasks ot
+    JOIN orders o ON ot.order_id = o.id
+    JOIN users u ON ot.assigned_to = u.id
+    WHERE 1=1${filter}
+    GROUP BY u.id, u.name
+    ORDER BY task_count DESC
+  `).all(...params) as WorkerContribution[];
+}

@@ -8,6 +8,7 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const config: ForgeConfig = {
   packagerConfig: {
+    icon: 'icon',
     asar: {
       unpack: '**/node_modules/better-sqlite3/**/*',
     },

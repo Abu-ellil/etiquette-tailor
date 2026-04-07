@@ -40,6 +40,16 @@ export interface ElectronAPI {
     getActiveRate: (workerId: number, pieceType: string) => Promise<any>;
     getWorkerTasks: (userId: number) => Promise<any[]>;
     getMonthlyEarnings: (userId: number, month: string) => Promise<any>;
+    getWorkerOrderDetails: (userId: number, startDate: string, endDate: string) => Promise<any[]>;
+    getAccount: (userId: number) => Promise<any>;
+    addPayment: (userId: number, amount: number, note: string | null) => Promise<number>;
+    getPayments: (userId: number) => Promise<any[]>;
+    getWorkerEarnings: (userId: number, startDate: string, endDate: string) => Promise<any>;
+    batchPayments: (payments: Array<{userId: number; amount: number; note: string | null}>) => Promise<number>;
+    getProductivity: (branchId?: number, startDate?: string, endDate?: string) => Promise<any[]>;
+    getOverdueTasks: (branchId?: number) => Promise<any[]>;
+    getWorkloads: (branchId?: number) => Promise<any[]>;
+    getRecommended: (pieceType: string, taskType: string) => Promise<any[]>;
   };
 
   customers: {
@@ -74,6 +84,7 @@ export interface ElectronAPI {
     createItem: (data: any) => Promise<any>;
     updateItem: (id: number, data: any) => Promise<any>;
     deleteItem: (id: number) => Promise<void>;
+    recalculateTotal: (orderId: number) => Promise<void>;
   };
 
   window: {
@@ -85,6 +96,20 @@ export interface ElectronAPI {
 
   pieceTypes: {
     getAll: () => Promise<any[]>;
+    updateBasePrice: (name_en: string, base_price: number) => Promise<void>;
+    getBasePrice: (name_en: string) => Promise<number>;
+  };
+
+  reports: {
+    getStats: (branchId?: number, period?: string) => Promise<any>;
+    getPaymentSplit: (branchId?: number, period?: string) => Promise<any>;
+    getMonthlyRevenue: (months?: number, branchId?: number) => Promise<any[]>;
+    getRecentOrders: (limit?: number, branchId?: number, period?: string) => Promise<any[]>;
+    getAdvanced: (filter: any) => Promise<any>;
+    getDailyStats: (days: number, branchId?: number) => Promise<any[]>;
+    getWorkerContribution: (branchId?: number, startDate?: string, endDate?: string) => Promise<any[]>;
+    exportPDF: (htmlContent: string, filename: string) => Promise<string>;
+    sendEmail: (to: string, subject: string, body: string) => Promise<boolean>;
   };
 
   notifications: {
@@ -97,11 +122,23 @@ export interface ElectronAPI {
   };
 
   backup: {
-    create: () => Promise<{ success: boolean; error?: string }>;
+    create: () => Promise<{ success: boolean; path?: string; error?: string }>;
     restore: () => Promise<{ success: boolean; error?: string }>;
-    list: () => Promise<Array<{ name: string; date: string; size: string }>>;
+    list: () => Promise<any[]>;
     lastDate: () => Promise<string | null>;
     dbSize: () => Promise<{ usedBytes: number; label: string }>;
+  };
+
+  expenses: {
+    create: (data: any) => Promise<number>;
+    getAll: (filters?: any) => Promise<any[]>;
+    delete: (id: number) => Promise<void>;
+    getProfitReport: (startDate: string, endDate: string, branchId?: number) => Promise<any>;
+  };
+
+  activation: {
+    check: () => Promise<{ activated: boolean; expired: boolean; daysLeft: number }>;
+    activate: (code: string) => Promise<boolean>;
   };
 }
 

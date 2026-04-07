@@ -2,12 +2,9 @@ import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config
 export default defineConfig({
+  root: '.',
   build: {
-    rollupOptions: {
-      input: {
-        main: './src/renderer/main.tsx',
-      },
-    },
+    outDir: '.vite/renderer/main_window',
     sourcemap: false,
     minify: 'terser',
     terserOptions: {

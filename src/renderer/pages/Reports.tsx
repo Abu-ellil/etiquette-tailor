@@ -189,8 +189,16 @@ export default function ReportsPage() {
         </div>
 
         {/* Period Toggle */}
-        <div className="inline-flex bg-surface-container-low p-1.5 rounded-xl">
-          {(['daily', 'weekly', 'monthly'] as TimePeriod[]).map((p) => (
+        <div className="flex items-center gap-4">
+          <a
+            href="#/advanced-reports"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-lg font-headline font-bold text-sm hover:opacity-90 transition-opacity"
+          >
+            <span className="material-symbols-outlined text-base">analytics</span>
+            {t('Advanced Reports')}
+          </a>
+          <div className="inline-flex bg-surface-container-low p-1.5 rounded-xl">
+            {(['daily', 'weekly', 'monthly'] as TimePeriod[]).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
@@ -202,7 +210,8 @@ export default function ReportsPage() {
             >
               {t(`${p}`)}
             </button>
-          ))}
+            ))}
+          </div>
         </div>
       </header>
 

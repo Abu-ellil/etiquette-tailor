@@ -227,6 +227,22 @@ export function initializeSchema() {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(target_user_id, is_read, is_deleted, created_at DESC)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_role ON notifications(target_role, is_read, is_deleted, created_at DESC)`);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category TEXT NOT NULL CHECK(category IN ('rent','utilities','materials','fabric','supplies','salaries','other')),
+      description TEXT NOT NULL,
+      amount REAL NOT NULL,
+      expense_date DATE NOT NULL,
+      branch_id INTEGER REFERENCES branches(id),
+      created_by INTEGER REFERENCES users(id),
+      note TEXT,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date)`);
+
   const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get() as { count: number };
   if (branchCount.count === 0) {
     seedDatabase();
@@ -295,6 +311,25 @@ function migrateColumns() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+  } catch { /* table already exists */ }
+
+  // Ensure expenses table exists (migration for existing DBs)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL CHECK(category IN ('rent','utilities','materials','fabric','supplies','salaries','other')),
+        description TEXT NOT NULL,
+        amount REAL NOT NULL,
+        expense_date DATE NOT NULL,
+        branch_id INTEGER REFERENCES branches(id),
+        created_by INTEGER REFERENCES users(id),
+        note TEXT,
+        is_deleted INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date)`);
   } catch { /* table already exists */ }
 
   // Backfill: create a single order_payments row for existing orders where paid > 0 and no payment record exists

@@ -27,17 +27,14 @@ const SIDEBAR_ITEMS = [
   { path: '/measurements', labelKey: 'Measurements', icon: 'straighten', section: 'main' },
   // Workers
   { path: '/workers', labelKey: 'Workers', icon: 'badge', section: 'workers' },
-  { path: '/worker-rates', labelKey: 'Worker Rates', icon: 'payments', section: 'workers' },
   { path: '/my-tasks', labelKey: 'My Tasks', icon: 'task_alt', workerTypes: ['tailor'], section: 'workers' },
   { path: '/cutting-queue', labelKey: 'Cutting Queue', icon: 'content_cut', workerTypes: ['master_cutter'], section: 'workers' },
   // Tasks
   { path: '/task-board', labelKey: 'Task Board', icon: 'view_kanban', roles: ['admin', 'manager'], section: 'tasks' },
-  { path: '/task-management', labelKey: 'Task Management', icon: 'manage_accounts', roles: ['admin', 'manager'], section: 'tasks' },
   // Reports
-  { path: '/worker-wage-report', labelKey: 'Worker Wage Report', icon: 'receipt_long', roles: ['admin', 'manager'], section: 'reports' },
-  { path: '/salary-summary', labelKey: 'Salary Summary', icon: 'account_balance_wallet', roles: ['admin', 'manager'], section: 'reports' },
-  { path: '/worker-productivity', labelKey: 'Worker Productivity', icon: 'speed', roles: ['admin', 'manager'], section: 'reports' },
+  { path: '/profit', labelKey: 'Profit', icon: 'account_balance_wallet', roles: ['admin', 'manager'], section: 'reports' },
   { path: '/reports', labelKey: 'Reports', icon: 'assessment', section: 'reports' },
+  { path: '/advanced-reports', labelKey: 'Advanced Reports', icon: 'analytics', roles: ['admin', 'manager'], section: 'reports' },
   // System
   { path: '/backup', labelKey: 'Backup', icon: 'settings_backup_restore', section: 'system' },
   { path: '/settings', labelKey: 'Settings', icon: 'settings', roles: ['admin'], section: 'system' },
@@ -52,8 +49,8 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports'],
+  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/task-board', '/profit', '/reports', '/advanced-reports'],
   reception: ['/dashboard', '/customers', '/orders', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };

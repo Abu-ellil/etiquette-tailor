@@ -483,15 +483,6 @@ export default function NewOrderPage() {
               })}
             </div>
 
-            {/* Hint: Worker assignment happens after creation */}
-            <div className="bg-primary-container/10 border border-primary-container/20 rounded-xl p-4 flex items-start gap-3">
-              <span className="material-symbols-outlined text-primary text-xl mt-0.5">info</span>
-              <div>
-                <p className="text-sm font-semibold text-on-surface">{t('Worker Assignment After Creation')}</p>
-                <p className="text-xs text-secondary mt-1">{t('Workers will be assigned to each item after the order is created from the order detail page.')}</p>
-              </div>
-            </div>
-
             {/* Description */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold uppercase tracking-widest text-secondary ml-1">
@@ -586,7 +577,7 @@ export default function NewOrderPage() {
           <div className="bg-surface-container-low p-6 rounded-xl border-l-4 border-primary">
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Quick Note')}</p>
             <p className="font-bold text-on-surface">{t('Balance Auto-Calculated')}</p>
-            <p className="text-sm text-outline">{t('Workers assigned after order creation')}</p>
+            <p className="text-sm text-outline">{t('Price − Paid = Balance')}</p>
           </div>
           <div className="bg-surface-container-low p-6 rounded-xl border-l-4 border-secondary">
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Total Items')}</p>

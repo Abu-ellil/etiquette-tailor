@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTranslation } from './contexts/I18nContext';
 import LoginPage from './pages/Login';
+import ActivationPage from './pages/Activation';
 import DashboardPage from './pages/Dashboard';
 import CustomersPage from './pages/Customers';
 import OrdersPage from './pages/Orders';
@@ -10,15 +11,12 @@ import WorkflowWizard from './pages/WorkflowWizard';
 import OrderDetailPage from './pages/OrderDetail';
 import MeasurementsPage from './pages/Measurements';
 import WorkersPage from './pages/Workers';
-import WorkerPayRatesPage from './pages/WorkerPayRates';
 import MyTasksPage from './pages/MyTasks';
 import CuttingQueuePage from './pages/CuttingQueue';
 import TaskBoardPage from './pages/TaskBoard';
-import WorkerWageReportPage from './pages/WorkerWageReport';
-import SalarySummaryPage from './pages/SalarySummary';
-import WorkerProductivityPage from './pages/WorkerProductivity';
-import TaskManagementPage from './pages/TaskManagement';
+import ProfitPage from './pages/Profit';
 import ReportsPage from './pages/Reports';
+import AdvancedReportsPage from './pages/AdvancedReports';
 import InvoicePage from './pages/Invoice';
 import BackupPage from './pages/Backup';
 import SettingsPage from './pages/Settings';
@@ -34,8 +32,8 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/task-board', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/reports'],
+  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/task-board', '/profit', '/reports', '/advanced-reports'],
   reception: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };
@@ -68,17 +66,29 @@ export default function App() {
   const { t, isRTL } = useTranslation();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activationStatus, setActivationStatus] = useState<{ activated: boolean; expired: boolean } | null>(null);
 
   useEffect(() => {
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
   }, [isRTL]);
 
   useEffect(() => {
-    window.electronAPI
-      .auth.getSession()
-      .then((s: Session | null) => setSession(s))
-      .catch(() => setSession(null))
-      .finally(() => setLoading(false));
+    async function init() {
+      try {
+        const act = await window.electronAPI.activation.check();
+        setActivationStatus(act);
+        if (act.activated || !act.expired) {
+          const s = await window.electronAPI.auth.getSession();
+          setSession(s as Session | null);
+        }
+      } catch {
+        const s = await window.electronAPI.auth.getSession();
+        setSession(s as Session | null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    init();
   }, []);
 
   if (loading) {
@@ -86,6 +96,18 @@ export default function App() {
       <div className="flex items-center justify-center h-screen bg-surface">
         <div className="text-on-surface-variant text-lg">{t('Loading...')}</div>
       </div>
+    );
+  }
+
+  // Trial expired → show activation screen
+  if (activationStatus && !activationStatus.activated && activationStatus.expired) {
+    return (
+      <ActivationPage
+        onActivated={() => {
+          setActivationStatus({ activated: true, expired: false });
+          window.electronAPI.auth.getSession().then((s: Session | null) => setSession(s));
+        }}
+      />
     );
   }
 
@@ -178,14 +200,6 @@ export default function App() {
             }
           />
           <Route
-            path="worker-rates"
-            element={
-              <ProtectedRoute path="/worker-rates" session={session}>
-                <WorkerPayRatesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="my-tasks"
             element={
               <ProtectedRoute path="/my-tasks" session={session}>
@@ -210,34 +224,10 @@ export default function App() {
             }
           />
           <Route
-            path="task-management"
+            path="profit"
             element={
-              <ProtectedRoute path="/task-management" session={session}>
-                <TaskManagementPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="worker-wage-report"
-            element={
-              <ProtectedRoute path="/worker-wage-report" session={session}>
-                <WorkerWageReportPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="salary-summary"
-            element={
-              <ProtectedRoute path="/salary-summary" session={session}>
-                <SalarySummaryPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="worker-productivity"
-            element={
-              <ProtectedRoute path="/worker-productivity" session={session}>
-                <WorkerProductivityPage />
+              <ProtectedRoute path="/profit" session={session}>
+                <ProfitPage />
               </ProtectedRoute>
             }
           />
@@ -246,6 +236,14 @@ export default function App() {
             element={
               <ProtectedRoute path="/reports" session={session}>
                 <ReportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="advanced-reports"
+            element={
+              <ProtectedRoute path="/advanced-reports" session={session}>
+                <AdvancedReportsPage />
               </ProtectedRoute>
             }
           />

@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { format, parseISO, isPast } from 'date-fns';
 import { useTranslation } from '../contexts/I18nContext';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from 'recharts';
 
 interface OrderStats {
   total: number;
@@ -111,6 +115,8 @@ export default function DashboardPage() {
   const [workerTasks, setWorkerTasks] = useState<any[]>([]);
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [orderItemsMap, setOrderItemsMap] = useState<Record<number, any[]>>({});
+  const [dailyChartData, setDailyChartData] = useState<any[]>([]);
+  const [workerContributionData, setWorkerContributionData] = useState<any[]>([]);
 
   const session = React.useMemo(() => {
     try {
@@ -163,6 +169,15 @@ export default function DashboardPage() {
 
           const tasks = await window.electronAPI.orders.getAllTasks(isManager ? { branchId: session.branch_id } : {});
           setAllTasks(tasks || []);
+
+          try {
+            const [dailyData, contributionData] = await Promise.all([
+              window.electronAPI.reports.getDailyStats(14, branchFilter),
+              window.electronAPI.reports.getWorkerContribution(branchFilter),
+            ]);
+            setDailyChartData(dailyData || []);
+            setWorkerContributionData(contributionData || []);
+          } catch { /* non-critical */ }
         }
       } catch (err: unknown) {
         console.error('Failed to load dashboard data:', err);
@@ -394,6 +409,54 @@ export default function DashboardPage() {
               <p className="text-xs text-on-tertiary-fixed-variant mt-1 uppercase font-bold tracking-wider">{t('Done')}</p>
             </div>
           </div>
+        </section>
+      )}
+
+      {/* Dashboard Charts */}
+      {!isManager && (dailyChartData.length > 0 || workerContributionData.length > 0) && (
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {dailyChartData.length > 0 && (
+            <div className={workerContributionData.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'}>
+              <div className="bg-surface-container-lowest rounded-xl p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-headline font-bold text-on-surface">{t('Orders Over Time')}</h3>
+                  <span className="text-xs font-bold text-tertiary bg-tertiary-fixed px-3 py-1 rounded-full uppercase">{t('Last 14 Days')}</span>
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={dailyChartData}>
+                    <defs>
+                      <linearGradient id="dashOrdersGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#763952" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#763952" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e7e8e9" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#807381" tickFormatter={(v: string) => v.slice(5)} />
+                    <YAxis tick={{ fontSize: 10 }} stroke="#807381" />
+                    <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                    <Area type="monotone" dataKey="orders" stroke="#763952" fill="url(#dashOrdersGrad)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+          {workerContributionData.length > 0 && (
+            <div className={dailyChartData.length > 0 ? 'lg:col-span-4' : 'lg:col-span-12'}>
+              <div className="bg-surface-container-lowest rounded-xl p-6">
+                <h3 className="text-xl font-headline font-bold text-on-surface mb-6">{t('Worker Contribution')}</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={workerContributionData} dataKey="task_count" nameKey="worker_name" cx="50%" cy="50%" outerRadius={80} innerRadius={40} paddingAngle={2}>
+                      {workerContributionData.map((_e: any, i: number) => (
+                        <Cell key={i} fill={['#763952', '#505f76', '#695f00', '#d0e1fb', '#f2e57b', '#ffd9e4'][i % 6]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
