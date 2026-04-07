@@ -157,7 +157,7 @@ export function getProfitReport(
   const incomeRow = db.prepare(`
     SELECT COALESCE(SUM(price), 0) as total
     FROM orders
-    WHERE is_deleted = 0 AND created_at >= ? AND created_at <= ?
+    WHERE created_at >= ? AND created_at <= ?
     ${branchFilter}
   `).get(...incomeParams) as { total: number };
   const income = incomeRow.total;
