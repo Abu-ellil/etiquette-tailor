@@ -719,6 +719,191 @@ export default function SettingsPage() {
                 placeholder={t('Text shown at the bottom of printed invoices')}
               />
             </div>
+
+            <div className="h-px bg-outline-variant/20" />
+
+            <div className="flex items-center gap-3 mb-2">
+              <span className="material-symbols-outlined text-primary text-xl">mail</span>
+              <h3 className="font-headline font-bold text-lg text-on-surface">{t('Email Settings')}</h3>
+            </div>
+            <p className="text-xs text-secondary mb-4">{t('Enter your email, then generate an app password from your provider.')}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                  {t('Your Email')}
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-4 text-outline">mail</span>
+                  <input
+                    name="smtp_user"
+                    type="email"
+                    className="input-field pl-12"
+                    defaultValue={settings.smtp_user || ''}
+                    placeholder={t('your-email@gmail.com')}
+                    onChange={(e) => {
+                      const val = e.target.value.toLowerCase();
+                      const fromEl = document.querySelector('[name="smtp_from"]') as HTMLInputElement;
+                      const hostEl = document.querySelector('[name="smtp_host"]') as HTMLInputElement;
+                      const portEl = document.querySelector('[name="smtp_port"]') as HTMLInputElement;
+                      const secEl = document.querySelector('[name="smtp_secure"]') as HTMLSelectElement;
+                      if (fromEl) fromEl.value = val;
+
+                      const presets: Record<string, { host: string; port: string; secure: string }> = {
+                        'gmail.com': { host: 'smtp.gmail.com', port: '587', secure: 'tls' },
+                        'googlemail.com': { host: 'smtp.gmail.com', port: '587', secure: 'tls' },
+                        'outlook.com': { host: 'smtp.office365.com', port: '587', secure: 'tls' },
+                        'hotmail.com': { host: 'smtp.office365.com', port: '587', secure: 'tls' },
+                        'live.com': { host: 'smtp.office365.com', port: '587', secure: 'tls' },
+                        'yahoo.com': { host: 'smtp.mail.yahoo.com', port: '465', secure: 'ssl' },
+                        'icloud.com': { host: 'smtp.mail.me.com', port: '587', secure: 'tls' },
+                        'me.com': { host: 'smtp.mail.me.com', port: '587', secure: 'tls' },
+                        'zoho.com': { host: 'smtp.zoho.com', port: '465', secure: 'ssl' },
+                      };
+                      const domain = val.split('@')[1];
+                      const p = domain ? presets[domain] : undefined;
+                      if (p) {
+                        if (hostEl) hostEl.value = p.host;
+                        if (portEl) portEl.value = p.port;
+                        if (secEl) secEl.value = p.secure;
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                  {t('App Password')}
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-4 text-outline">key</span>
+                  <input
+                    name="smtp_pass"
+                    type="password"
+                    className="input-field pl-12 pr-36"
+                    defaultValue={settings.smtp_pass || ''}
+                    placeholder={t('Paste your app password here')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const email = (document.querySelector('[name="smtp_user"]') as HTMLInputElement)?.value || '';
+                      const domain = email.split('@')[1]?.toLowerCase();
+                      const urls: Record<string, string> = {
+                        'gmail.com': 'https://myaccount.google.com/apppasswords',
+                        'googlemail.com': 'https://myaccount.google.com/apppasswords',
+                        'outlook.com': 'https://account.live.com/proofs/AppPassword',
+                        'hotmail.com': 'https://account.live.com/proofs/AppPassword',
+                        'live.com': 'https://account.live.com/proofs/AppPassword',
+                        'yahoo.com': 'https://login.yahoo.com/account/security/app-passwords',
+                        'icloud.com': 'https://appleid.apple.com/account/manage',
+                        'me.com': 'https://appleid.apple.com/account/manage',
+                        'zoho.com': 'https://accounts.zoho.com/apppassword',
+                      };
+                      const url = urls[domain || ''] || 'https://myaccount.google.com/apppasswords';
+                      window.electronAPI.shell.openExternal(url);
+                    }}
+                    className="absolute right-2 flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-md text-[11px] font-bold hover:bg-primary/20 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">open_in_new</span>
+                    {t('Get Password')}
+                  </button>
+                </div>
+                <p className="text-[11px] text-secondary mt-1.5 px-1">
+                  {t('Click "Get Password" to open your email provider\'s app password page in the browser.')}
+                </p>
+              </div>
+
+              <details className="group">
+                <summary className="flex items-center gap-2 text-xs font-bold text-secondary cursor-pointer hover:text-on-surface transition-colors py-2">
+                  <span className="material-symbols-outlined text-sm group-open:rotate-180 transition-transform">expand_more</span>
+                  {t('Advanced SMTP Settings')}
+                </summary>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                      {t('Sender Name')}
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="material-symbols-outlined absolute left-4 text-outline">badge</span>
+                      <input
+                        name="smtp_from_name"
+                        type="text"
+                        className="input-field pl-12"
+                        defaultValue={settings.smtp_from_name || ''}
+                        placeholder={t('My Shop')}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                      {t('Sender Email')}
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="material-symbols-outlined absolute left-4 text-outline">alternate_email</span>
+                      <input
+                        name="smtp_from"
+                        type="email"
+                        className="input-field pl-12"
+                        defaultValue={settings.smtp_from || ''}
+                        placeholder={t('sender@example.com')}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                      {t('SMTP Host')}
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="material-symbols-outlined absolute left-4 text-outline">dns</span>
+                      <input
+                        name="smtp_host"
+                        type="text"
+                        className="input-field pl-12"
+                        defaultValue={settings.smtp_host || ''}
+                        placeholder="smtp.gmail.com"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                      {t('SMTP Port')}
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="material-symbols-outlined absolute left-4 text-outline">settings_ethernet</span>
+                      <input
+                        name="smtp_port"
+                        type="number"
+                        className="input-field pl-12"
+                        defaultValue={settings.smtp_port || '587'}
+                        placeholder="587"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                      {t('Encryption')}
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="material-symbols-outlined absolute left-4 text-outline">lock</span>
+                      <select
+                        name="smtp_secure"
+                        className="input-field pl-12 appearance-none"
+                        defaultValue={settings.smtp_secure || 'tls'}
+                      >
+                        <option value="tls">{t('TLS (port 587)')}</option>
+                        <option value="ssl">{t('SSL (port 465)')}</option>
+                        <option value="none">{t('None')}</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-4 text-outline pointer-events-none text-lg">
+                        expand_more
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
           </div>
 
           <div className="flex justify-end">

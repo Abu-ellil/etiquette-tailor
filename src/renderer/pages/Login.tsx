@@ -19,6 +19,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
   const { theme, setTheme } = useTheme();
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const {
     register,
     handleSubmit,
@@ -31,6 +32,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
       const session = await window.electronAPI.auth.login({
         username: data.username,
         password: data.password,
+        remember: rememberMe,
       });
       if (session) {
         onLogin(session);
@@ -151,6 +153,29 @@ export default function LoginPage({ onLogin }: LoginProps) {
                   </span>
                 </button>
               </div>
+            </div>
+
+            {/* Remember Me */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={rememberMe}
+                onClick={() => setRememberMe((v) => !v)}
+                className={`h-5 w-5 rounded flex items-center justify-center border-2 transition-colors ${
+                  rememberMe
+                    ? 'bg-primary border-primary text-on-primary'
+                    : 'bg-surface border-outline text-transparent hover:border-primary'
+                }`}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>check</span>
+              </button>
+              <label
+                className="text-sm text-on-surface cursor-pointer select-none"
+                onClick={() => setRememberMe((v) => !v)}
+              >
+                {t('Remember me')}
+              </label>
             </div>
 
             {/* Login Button */}

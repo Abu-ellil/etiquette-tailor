@@ -15,7 +15,6 @@ import MyTasksPage from './pages/MyTasks';
 import CuttingQueuePage from './pages/CuttingQueue';
 import TaskBoardPage from './pages/TaskBoard';
 import ProfitPage from './pages/Profit';
-import ReportsPage from './pages/Reports';
 import AdvancedReportsPage from './pages/AdvancedReports';
 import InvoicePage from './pages/Invoice';
 import BackupPage from './pages/Backup';
@@ -231,14 +230,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="reports"
-            element={
-              <ProtectedRoute path="/reports" session={session}>
-                <ReportsPage />
-              </ProtectedRoute>
-            }
-          />
+          
           <Route
             path="advanced-reports"
             element={

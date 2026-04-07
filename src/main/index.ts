@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import started from 'electron-squirrel-startup';
+import nodemailer from 'nodemailer';
 import { initializeSchema } from '../db/schema';
 import {
   authenticateUser,
@@ -71,6 +72,9 @@ import {
   getAdvancedReport,
   getDailyStats,
   getWorkerContribution,
+  saveReportEmail,
+  getReportEmails,
+  deleteReportEmail,
 } from '../db';
 import {
   createExpense,
@@ -90,6 +94,19 @@ import {
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 import { checkActivation, verifyAndActivate } from './activation';
 import db from '../db/schema';
+
+function saveSession(session: any) {
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('saved_session', ?)").run(JSON.stringify(session));
+}
+
+function loadSession(): any | null {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'saved_session'").get() as { value: string } | undefined;
+  return row ? JSON.parse(row.value) : null;
+}
+
+function clearSession() {
+  db.prepare("DELETE FROM settings WHERE key = 'saved_session'").run();
+}
 
 let currentSession: {
   userId: number;
@@ -131,20 +148,39 @@ const createWindow = () => {
 };
 
 function registerIpcHandlers() {
-  ipcMain.handle('auth:login', async (_event, username: string, password: string) => {
+  ipcMain.handle('auth:login', async (_event, username: string, password: string, remember?: boolean) => {
     const session = authenticateUser(username, password);
     if (session) {
       currentSession = session;
+      if (remember) {
+        saveSession(session);
+      } else {
+        clearSession();
+      }
     }
     return session;
   });
 
   ipcMain.handle('auth:getSession', async () => {
-    return currentSession;
+    if (currentSession) return currentSession;
+    // Restore from DB
+    const saved = loadSession();
+    if (saved) {
+      // Verify user still exists and is active
+      const user = db.prepare('SELECT id, active FROM users WHERE id = ?').get(saved.userId) as any;
+      if (user && user.active) {
+        currentSession = saved;
+        return saved;
+      }
+      // User deactivated or deleted — clear stored session
+      clearSession();
+    }
+    return null;
   });
 
   ipcMain.handle('auth:logout', async () => {
     currentSession = null;
+    clearSession();
   });
 
   ipcMain.handle('branches:getAll', async () => {
@@ -388,17 +424,111 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('reports:exportPDF', async (_event, htmlContent: string, filename: string) => {
-    const filePath = path.join(os.tmpdir(), filename);
-    fs.writeFileSync(filePath, htmlContent, 'utf-8');
+    const pdfFilename = filename.replace(/\.html$/i, '.pdf');
+    const filePath = path.join(os.tmpdir(), pdfFilename);
+    const htmlPath = path.join(os.tmpdir(), filename.replace(/\.html$/i, '-temp.html'));
+    fs.writeFileSync(htmlPath, htmlContent, 'utf-8');
+
+    const pdfWin = new BrowserWindow({
+      width: 800,
+      height: 1100,
+      show: false,
+      webPreferences: { offscreen: true as any },
+    });
+
+    await pdfWin.loadFile(htmlPath);
+    const pdfData = await pdfWin.webContents.printToPDF({
+      pageSize: 'A4',
+      printBackground: true,
+    });
+    pdfWin.close();
+
+    fs.writeFileSync(filePath, pdfData);
+    try { fs.unlinkSync(htmlPath); } catch { /* ignore */ }
     await shell.openPath(filePath);
     return filePath;
   });
 
-  ipcMain.handle('reports:sendEmail', async (_event, to: string, subject: string, body: string) => {
+  ipcMain.handle('reports:sendEmail', async (_event, to: string, subject: string, body: string, htmlContent?: string, filename?: string) => {
+    const settings = getAllSettings();
+
+    if (settings.smtp_host && settings.smtp_user && settings.smtp_pass) {
+      let pdfBuffer: Buffer | null = null;
+
+      if (htmlContent) {
+        const pdfFilename = (filename || 'report.pdf').replace(/\.html$/i, '.pdf');
+        const htmlPath = path.join(os.tmpdir(), pdfFilename.replace('.pdf', '-email-temp.html'));
+        fs.writeFileSync(htmlPath, htmlContent, 'utf-8');
+
+        const pdfWin = new BrowserWindow({
+          width: 800,
+          height: 1100,
+          show: false,
+          webPreferences: { offscreen: true as any },
+        });
+
+        await pdfWin.loadFile(htmlPath);
+        const pdfData = await pdfWin.webContents.printToPDF({
+          pageSize: 'A4',
+          printBackground: true,
+        });
+        pdfWin.close();
+        try { fs.unlinkSync(htmlPath); } catch { /* ignore */ }
+
+        pdfBuffer = Buffer.from(pdfData);
+      }
+
+      const port = parseInt(settings.smtp_port || '587');
+      const secure = settings.smtp_secure === 'ssl' ? true : port === 465;
+
+      const transporter = nodemailer.createTransport({
+        host: settings.smtp_host,
+        port,
+        secure,
+        auth: {
+          user: settings.smtp_user,
+          pass: settings.smtp_pass,
+        },
+      });
+
+      const mailOptions: nodemailer.SendMailOptions = {
+        from: settings.smtp_from_name
+          ? `"${settings.smtp_from_name}" <${settings.smtp_from || settings.smtp_user}>`
+          : settings.smtp_from || settings.smtp_user,
+        to,
+        subject,
+        text: body,
+      };
+
+      if (pdfBuffer) {
+        const attachmentName = (filename || 'report.pdf').replace(/\.html$/i, '.pdf');
+        mailOptions.attachments = [{
+          filename: attachmentName,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        }];
+      }
+
+      await transporter.sendMail(mailOptions);
+      return { sent: true, method: 'smtp' };
+    }
+
     const encodedSubject = encodeURIComponent(subject);
     const encodedBody = encodeURIComponent(body);
     await shell.openExternal(`mailto:${to}?subject=${encodedSubject}&body=${encodedBody}`);
-    return true;
+    return { sent: true, method: 'mailto' };
+  });
+
+  ipcMain.handle('reports:saveEmail', async (_event, email: string, label?: string) => {
+    return saveReportEmail(email, label);
+  });
+
+  ipcMain.handle('reports:getEmails', async () => {
+    return getReportEmails();
+  });
+
+  ipcMain.handle('reports:deleteEmail', async (_event, id: number) => {
+    return deleteReportEmail(id);
   });
 
   ipcMain.handle('orders:getAllTasks', async (_event, filters?: { branchId?: number; workerId?: number; taskType?: string }) => {
@@ -564,6 +694,9 @@ function registerIpcHandlers() {
   });
   ipcMain.handle('window:close', () => mainWindow?.close());
   ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
+  ipcMain.handle('shell:openExternal', async (_event, url: string) => {
+    await shell.openExternal(url);
+  });
 }
 
 app.on('ready', () => {

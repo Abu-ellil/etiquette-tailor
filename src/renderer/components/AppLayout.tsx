@@ -33,8 +33,8 @@ const SIDEBAR_ITEMS = [
   { path: '/task-board', labelKey: 'Task Board', icon: 'view_kanban', roles: ['admin', 'manager'], section: 'tasks' },
   // Reports
   { path: '/profit', labelKey: 'Profit', icon: 'account_balance_wallet', roles: ['admin', 'manager'], section: 'reports' },
-  { path: '/reports', labelKey: 'Reports', icon: 'assessment', section: 'reports' },
-  { path: '/advanced-reports', labelKey: 'Advanced Reports', icon: 'analytics', roles: ['admin', 'manager'], section: 'reports' },
+  { path: '/advanced-reports', labelKey: 'Reports', icon: 'analytics', roles: ['admin', 'manager'], section: 'reports' },
+  
   // System
   { path: '/backup', labelKey: 'Backup', icon: 'settings_backup_restore', section: 'system' },
   { path: '/settings', labelKey: 'Settings', icon: 'settings', roles: ['admin'], section: 'system' },
@@ -84,6 +84,9 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
   };
 
   const handleNav = (path: string) => {
+    navigate(path);
+    setSidebarOpen(false);
+  };
 
   const sidebarHiddenClass = isRTL ? 'translate-x-full' : '-translate-x-full';
   const sidebarShowClass = 'translate-x-0';

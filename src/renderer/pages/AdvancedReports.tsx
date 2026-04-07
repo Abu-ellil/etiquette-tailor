@@ -82,6 +82,8 @@ export default function AdvancedReportsPage() {
   const [emailTo, setEmailTo] = useState('');
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [savedEmails, setSavedEmails] = useState<{ id: number; email: string; label: string | null }[]>([]);
 
   useEffect(() => {
     async function loadWorkers() {
@@ -92,6 +94,16 @@ export default function AdvancedReportsPage() {
     }
     loadWorkers();
   }, []);
+
+  useEffect(() => {
+    async function loadSavedEmails() {
+      try {
+        const data = await window.electronAPI.reports.getEmails();
+        setSavedEmails(data || []);
+      } catch { /* ignore */ }
+    }
+    loadSavedEmails();
+  }, [showEmailModal]);
 
   const loadReport = useCallback(async () => {
     setLoading(true);
@@ -188,12 +200,16 @@ export default function AdvancedReportsPage() {
 
   async function handleExportPDF() {
     const html = buildPDFHtml();
-    const filename = `report-${startDate}-${endDate}.html`;
+    const filename = `report-${startDate}-${endDate}.pdf`;
     await window.electronAPI.reports.exportPDF(html, filename);
   }
 
   async function handleSendEmail() {
-    if (!reportData) return;
+    if (!reportData || !emailTo) return;
+    setEmailError('');
+    try {
+      await window.electronAPI.reports.saveEmail(emailTo);
+    } catch { /* ignore */ }
     const subject = `${t('Report')} ${startDate} - ${endDate}`;
     const body = [
       `${t('Total Orders')}: ${reportData.totalOrders}`,
@@ -206,9 +222,18 @@ export default function AdvancedReportsPage() {
         `  ${w.worker_name}: ${w.order_count} ${t('orders')} (${w.percentage}%)`
       ),
     ].join('\n');
-    await window.electronAPI.reports.sendEmail(emailTo, subject, body);
-    setEmailSent(true);
-    setTimeout(() => { setEmailSent(false); setShowEmailModal(false); }, 2000);
+    const html = buildPDFHtml();
+    const filename = `report-${startDate}-${endDate}.pdf`;
+    try {
+      const result = await window.electronAPI.reports.sendEmail(emailTo, subject, body, html, filename);
+      if (result.method === 'mailto') {
+        setEmailError('smtp');
+      }
+      setEmailSent(true);
+      setTimeout(() => { setEmailSent(false); setEmailError(''); setShowEmailModal(false); }, 2000);
+    } catch (err: any) {
+      setEmailError(err?.message || 'Failed to send email');
+    }
   }
 
   if (loading && !reportData) {
@@ -341,41 +366,8 @@ export default function AdvancedReportsPage() {
         </div>
       </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {METRICS.map((m) =>
-          m.highlight ? (
-            <div key={m.label} className="bg-primary text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <span className="material-symbols-outlined text-[6rem]">trending_up</span>
-              </div>
-              <div className="flex justify-between items-start mb-4 z-10 relative">
-                <div className={`w-10 h-10 flex items-center justify-center rounded-full ${m.bg} ${m.iconColor}`}>
-                  <span className="material-symbols-outlined text-sm">{m.icon}</span>
-                </div>
-              </div>
-              <div className="z-10 relative">
-                <p className="text-primary-fixed text-xs uppercase tracking-widest mb-1">{m.label}</p>
-                <p className="text-2xl font-headline font-bold whitespace-nowrap">{m.value}</p>
-              </div>
-            </div>
-          ) : (
-            <div key={m.label} className="bg-surface-container-lowest p-6 rounded-xl group hover:translate-y-[-2px] transition-all duration-300">
-              <div className="flex justify-between items-start mb-4">
-                <div className={`w-10 h-10 flex items-center justify-center rounded-full ${m.bg} ${m.iconColor}`}>
-                  <span className="material-symbols-outlined text-sm">{m.icon}</span>
-                </div>
-              </div>
-              <p className="text-secondary text-xs uppercase tracking-widest mb-1">{m.label}</p>
-              <p className="text-2xl font-headline font-bold text-on-surface whitespace-nowrap">{m.value}</p>
-            </div>
-          )
-        )}
-      </div>
-
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-        {/* Orders Over Time */}
         <div className="lg:col-span-2 bg-surface-container-lowest p-6 rounded-2xl">
           <h3 className="font-headline font-bold text-lg mb-6">{t('Orders Over Time')}</h3>
           {dailyStats.length === 0 ? (
@@ -405,7 +397,6 @@ export default function AdvancedReportsPage() {
           )}
         </div>
 
-        {/* Worker Contribution Pie */}
         <div className="bg-surface-container-lowest p-6 rounded-2xl">
           <h3 className="font-headline font-bold text-lg mb-6">{t('Worker Contribution')}</h3>
           {workerContribution.length === 0 ? (
@@ -459,6 +450,38 @@ export default function AdvancedReportsPage() {
               <Bar dataKey="revenue" fill="#763952" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        {METRICS.map((m) =>
+          m.highlight ? (
+            <div key={m.label} className="bg-primary text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <span className="material-symbols-outlined text-[6rem]">trending_up</span>
+              </div>
+              <div className="flex justify-between items-start mb-4 z-10 relative">
+                <div className={`w-10 h-10 flex items-center justify-center rounded-full ${m.bg} ${m.iconColor}`}>
+                  <span className="material-symbols-outlined text-sm">{m.icon}</span>
+                </div>
+              </div>
+              <div className="z-10 relative">
+                <p className="text-primary-fixed text-xs uppercase tracking-widest mb-1">{m.label}</p>
+                <p className="text-2xl font-headline font-bold whitespace-nowrap">{m.value}</p>
+              </div>
+            </div>
+          ) : (
+            <div key={m.label} className="bg-surface-container-lowest p-6 rounded-xl group hover:translate-y-[-2px] transition-all duration-300">
+              <div className="flex justify-between items-start mb-4">
+                <div className={`w-10 h-10 flex items-center justify-center rounded-full ${m.bg} ${m.iconColor}`}>
+                  <span className="material-symbols-outlined text-sm">{m.icon}</span>
+                </div>
+              </div>
+              <p className="text-secondary text-xs uppercase tracking-widest mb-1">{m.label}</p>
+              <p className="text-2xl font-headline font-bold text-on-surface whitespace-nowrap">{m.value}</p>
+            </div>
+          )
         )}
       </div>
 
@@ -557,7 +580,40 @@ export default function AdvancedReportsPage() {
                 className="w-full bg-surface-container-low border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:outline-none"
               />
             </div>
-            <p className="text-xs text-secondary mb-6">{t('This will open your email client with the report data.')}</p>
+            {savedEmails.length > 0 && (
+              <div className="mb-4">
+                <label className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5">{t('Saved Emails')}</label>
+                <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto">
+                  {savedEmails.map((se) => (
+                    <div key={se.id} className="flex items-center justify-between bg-surface-container-low rounded-lg px-3 py-1.5">
+                      <button
+                        onClick={() => setEmailTo(se.email)}
+                        className="text-sm text-on-surface hover:text-primary transition-colors text-left flex-1 truncate"
+                      >
+                        {se.email}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try { await window.electronAPI.reports.deleteEmail(se.id); } catch { /* ignore */ }
+                          const data = await window.electronAPI.reports.getEmails();
+                          setSavedEmails(data || []);
+                        }}
+                        className="ml-2 text-error hover:text-error/80 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {emailError === 'smtp' && (
+              <p className="text-xs text-tertiary-fixed mb-2">{t('SMTP not configured. Opened email client instead.')}</p>
+            )}
+            {emailError && emailError !== 'smtp' && (
+              <p className="text-xs text-error mb-2">{emailError}</p>
+            )}
+            <p className="text-xs text-secondary mb-6">{t('The report PDF will be generated and attached to the email.')}</p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowEmailModal(false)}

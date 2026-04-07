@@ -263,7 +263,7 @@ export default function DashboardPage() {
       {/* New Order Button */}
       <div className="flex justify-end">
         <button
-          onClick={() => navigate('/workflow')}
+          onClick={() => navigate('/orders/new')}
           className="btn-primary px-6 py-3 text-sm tracking-wide flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-sm">add_circle</span>

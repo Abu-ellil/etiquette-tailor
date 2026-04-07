@@ -1023,3 +1023,18 @@ export function getWorkerContribution(branchId?: number, startDate?: string, end
     ORDER BY task_count DESC
   `).all(...params) as WorkerContribution[];
 }
+
+export function saveReportEmail(email: string, label?: string): number {
+  const existing = db.prepare('SELECT id FROM report_emails WHERE email = ?').get(email) as { id: number } | undefined;
+  if (existing) return existing.id;
+  const result = db.prepare('INSERT INTO report_emails (email, label) VALUES (?, ?)').run(email, label || null);
+  return Number(result.lastInsertRowid);
+}
+
+export function getReportEmails(): { id: number; email: string; label: string | null; created_at: string }[] {
+  return db.prepare('SELECT id, email, label, created_at FROM report_emails ORDER BY created_at DESC').all() as { id: number; email: string; label: string | null; created_at: string }[];
+}
+
+export function deleteReportEmail(id: number): void {
+  db.prepare('DELETE FROM report_emails WHERE id = ?').run(id);
+}

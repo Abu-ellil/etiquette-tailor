@@ -9,7 +9,7 @@ export interface Session {
 
 export interface ElectronAPI {
   auth: {
-    login: (credentials: { username: string; password: string }) => Promise<Session | null>;
+    login: (credentials: { username: string; password: string; remember?: boolean }) => Promise<Session | null>;
     getSession: () => Promise<Session | null>;
     logout: () => Promise<void>;
   };
@@ -94,6 +94,10 @@ export interface ElectronAPI {
     isMaximized: () => Promise<boolean>;
   };
 
+  shell: {
+    openExternal: (url: string) => Promise<void>;
+  };
+
   pieceTypes: {
     getAll: () => Promise<any[]>;
     updateBasePrice: (name_en: string, base_price: number) => Promise<void>;
@@ -109,7 +113,10 @@ export interface ElectronAPI {
     getDailyStats: (days: number, branchId?: number) => Promise<any[]>;
     getWorkerContribution: (branchId?: number, startDate?: string, endDate?: string) => Promise<any[]>;
     exportPDF: (htmlContent: string, filename: string) => Promise<string>;
-    sendEmail: (to: string, subject: string, body: string) => Promise<boolean>;
+    sendEmail: (to: string, subject: string, body: string, htmlContent?: string, filename?: string) => Promise<{ sent: boolean; method: string }>;
+    saveEmail: (email: string, label?: string) => Promise<number>;
+    getEmails: () => Promise<any[]>;
+    deleteEmail: (id: number) => Promise<void>;
   };
 
   notifications: {

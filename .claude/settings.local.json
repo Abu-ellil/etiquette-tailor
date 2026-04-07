@@ -39,7 +39,17 @@
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
       "Bash(xxd \"src/renderer/pages/WorkerPayRates.tsx\")",
       "Bash(python -c \":*)",
-      "Bash(npx electron-forge:*)"
+      "Bash(npx electron-forge:*)",
+      "Bash(identify icon.png)",
+      "Bash(xxd icon.png)",
+      "Bash(npx sharp-cli:*)",
+      "Bash(xxd icon-256.png)",
+      "Bash(git status:*)",
+      "Bash(npx asar:*)",
+      "Bash(cd:*)",
+      "Bash(tasklist)",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

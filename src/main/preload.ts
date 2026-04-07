@@ -87,6 +87,10 @@ export interface ElectronAPI {
     isMaximized: () => Promise<boolean>;
   };
 
+  shell: {
+    openExternal: (url: string) => Promise<void>;
+  };
+
   pieceTypes: {
     getAll: () => Promise<any[]>;
     updateBasePrice: (name_en: string, base_price: number) => Promise<void>;
@@ -102,7 +106,10 @@ export interface ElectronAPI {
     getDailyStats: (days: number, branchId?: number) => Promise<any[]>;
     getWorkerContribution: (branchId?: number, startDate?: string, endDate?: string) => Promise<any[]>;
     exportPDF: (htmlContent: string, filename: string) => Promise<string>;
-    sendEmail: (to: string, subject: string, body: string) => Promise<boolean>;
+    sendEmail: (to: string, subject: string, body: string, htmlContent?: string, filename?: string) => Promise<{ sent: boolean; method: string }>;
+    saveEmail: (email: string, label?: string) => Promise<number>;
+    getEmails: () => Promise<any[]>;
+    deleteEmail: (id: number) => Promise<void>;
   };
 
   backup: {
@@ -137,7 +144,7 @@ export interface ElectronAPI {
 
 const api: ElectronAPI = {
   auth: {
-    login: (credentials) => ipcRenderer.invoke('auth:login', credentials.username, credentials.password),
+    login: (credentials) => ipcRenderer.invoke('auth:login', credentials.username, credentials.password, credentials.remember),
     getSession: () => ipcRenderer.invoke('auth:getSession'),
     logout: () => ipcRenderer.invoke('auth:logout'),
   },
@@ -222,6 +229,10 @@ const api: ElectronAPI = {
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   },
 
+  shell: {
+    openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+  },
+
   pieceTypes: {
     getAll: () => ipcRenderer.invoke('pieceTypes:getAll'),
     updateBasePrice: (name_en: string, base_price: number) => ipcRenderer.invoke('pieceTypes:updateBasePrice', name_en, base_price),
@@ -237,7 +248,10 @@ const api: ElectronAPI = {
     getDailyStats: (days: number, branchId?: number) => ipcRenderer.invoke('reports:getDailyStats', days, branchId),
     getWorkerContribution: (branchId?: number, startDate?: string, endDate?: string) => ipcRenderer.invoke('reports:getWorkerContribution', branchId, startDate, endDate),
     exportPDF: (htmlContent: string, filename: string) => ipcRenderer.invoke('reports:exportPDF', htmlContent, filename),
-    sendEmail: (to: string, subject: string, body: string) => ipcRenderer.invoke('reports:sendEmail', to, subject, body),
+    sendEmail: (to, subject, body, htmlContent?, filename?) => ipcRenderer.invoke('reports:sendEmail', to, subject, body, htmlContent, filename),
+    saveEmail: (email: string, label?: string) => ipcRenderer.invoke('reports:saveEmail', email, label),
+    getEmails: () => ipcRenderer.invoke('reports:getEmails'),
+    deleteEmail: (id: number) => ipcRenderer.invoke('reports:deleteEmail', id),
   },
 
   backup: {
