@@ -84,11 +84,6 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
   };
 
   const handleNav = (path: string) => {
-    navigate(path);
-    setSidebarOpen(false);
-  };
-
-  const showNewOrder = !['tailor', 'master_cutter'].includes(session.worker_type || '') || session.role !== 'worker';
 
   const sidebarHiddenClass = isRTL ? 'translate-x-full' : '-translate-x-full';
   const sidebarShowClass = 'translate-x-0';
@@ -162,16 +157,6 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
           </nav>
 
           <div className="px-6 mt-4 space-y-3">
-            {showNewOrder && (
-              <button
-                onClick={() => handleNav('/workflow')}
-                title={t('New Order')}
-                className="btn-primary w-full py-3 lg:py-2 text-sm tracking-wide flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-sm shrink-0">add_circle</span>
-                <span className="whitespace-nowrap">{t('New Order')}</span>
-              </button>
-            )}
             <button
               onClick={handleLogout}
               title={t('Logout')}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format, parseISO, isPast } from 'date-fns';
 import { useTranslation } from '../contexts/I18nContext';
 import {
@@ -107,6 +108,7 @@ function buildItemsSummary(items: any[] | undefined, fallback: string): string {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { t, currency } = useTranslation();
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -258,6 +260,16 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-12 pb-20">
+      {/* New Order Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => navigate('/workflow')}
+          className="btn-primary px-6 py-3 text-sm tracking-wide flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined text-sm">add_circle</span>
+          <span className="whitespace-nowrap">{t('New Order')}</span>
+        </button>
+      </div>
       {/* Stats Grid */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* Total Orders */}
