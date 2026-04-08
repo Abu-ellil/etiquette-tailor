@@ -212,8 +212,8 @@ export default function OrdersPage() {
     setLoading(true);
     try {
       const [allOrders, orderStats] = await Promise.all([
-        window.electronAPI.orders.getAll(),
-        window.electronAPI.orders.getStats(),
+        window.electronAPI.orders.getAll(session.branch_id),
+        window.electronAPI.orders.getStats(session.branch_id),
       ]);
       setOrders(allOrders);
       setStats(orderStats);
@@ -236,7 +236,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session.branch_id]);
 
   useEffect(() => {
     fetchData();

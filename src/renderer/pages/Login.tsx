@@ -26,6 +26,11 @@ export default function LoginPage({ onLogin }: LoginProps) {
     formState: { isSubmitting },
   } = useForm<LoginFormValues>();
 
+  // Branch selection state
+  const [loggedInSession, setLoggedInSession] = useState<Session | null>(null);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setError('');
@@ -35,7 +40,14 @@ export default function LoginPage({ onLogin }: LoginProps) {
         remember: rememberMe,
       });
       if (session) {
-        onLogin(session);
+        const allBranches = await window.electronAPI.branches.getAll();
+        if (allBranches.length <= 1) {
+          onLogin(session);
+          return;
+        }
+        setBranches(allBranches);
+        setSelectedBranchId(allBranches[0]?.id || null);
+        setLoggedInSession(session);
       } else {
         setError(t('Invalid username or password'));
       }
@@ -43,6 +55,79 @@ export default function LoginPage({ onLogin }: LoginProps) {
       setError(t('Login failed. Please try again.'));
     }
   };
+
+  const handleBranchConfirm = () => {
+    if (loggedInSession && selectedBranchId) {
+      onLogin({ ...loggedInSession, branch_id: selectedBranchId });
+    }
+  };
+
+  // Branch selection screen
+  if (loggedInSession) {
+    return (
+      <div className="flex flex-col h-screen bg-surface">
+        <TitleBar />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <main className="w-full max-w-md">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-container-lowest shadow-[0px_20px_40px_rgba(25,28,29,0.06)] mb-6">
+                <span className="material-symbols-outlined text-primary" style={{ fontSize: '2.5rem' }}>
+                  store
+                </span>
+              </div>
+              <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface mb-2">
+                {t('Select Branch')}
+              </h1>
+              <p className="text-secondary text-sm tracking-wide">
+                {t('Choose the branch you are working at today')}
+              </p>
+            </div>
+
+            <div className="bg-surface-container-lowest rounded-xl p-10 shadow-[0px_20px_40px_rgba(25,28,29,0.06)] border border-outline-variant/10">
+              <div className="space-y-3">
+                {branches.map((branch: any) => (
+                  <button
+                    key={branch.id}
+                    onClick={() => setSelectedBranchId(branch.id)}
+                    className={`w-full p-5 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${
+                      selectedBranchId === branch.id
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-outline-variant/30 bg-surface hover:border-primary/50'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl font-bold ${
+                      selectedBranchId === branch.id
+                        ? 'bg-primary text-white'
+                        : 'bg-surface-container-high text-on-surface-variant'
+                    }`}>
+                      {branch.prefix}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-on-surface">{branch.name_en}</p>
+                      {branch.name_ar && (
+                        <p className="text-sm text-secondary mt-0.5" dir="rtl">{branch.name_ar}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-6">
+                <button
+                  onClick={handleBranchConfirm}
+                  disabled={!selectedBranchId}
+                  className="btn-primary w-full h-14 rounded-lg font-headline font-bold text-lg flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  {t('Continue')}
+                  <span className="material-symbols-outlined">arrow_forward</span>
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-surface">

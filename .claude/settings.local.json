@@ -49,7 +49,9 @@
       "Bash(cd:*)",
       "Bash(tasklist)",
       "Bash(cmd.exe:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(taskkill //F //IM \"etiquette-tailor.exe\")",
+      "Bash(taskkill //F //IM \"electron.exe\")"
     ]
   }
 }

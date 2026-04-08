@@ -44,7 +44,12 @@ export default function NewOrderPage() {
 
   /* Form state */
   const [submitting, setSubmitting] = useState(false);
-  const [branchId, setBranchId] = useState(1);
+  const [branchId, setBranchId] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('session') || '{}');
+      return s.branch_id || 1;
+    } catch { return 1; }
+  });
   const [formData, setFormData] = useState({
     customerFullName: '',
     customerFirstName: '',

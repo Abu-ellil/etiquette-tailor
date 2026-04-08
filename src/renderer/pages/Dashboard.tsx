@@ -131,7 +131,7 @@ export default function DashboardPage() {
   const isWorker = session.role === 'worker';
   const isTailor = isWorker && session.worker_type === 'tailor';
   const isCutter = isWorker && session.worker_type === 'master_cutter';
-  const isManager = session.role === 'manager';
+  const isManager = session.role === 'manager' || session.role === 'admin';
 
   useEffect(() => {
     async function fetchData() {

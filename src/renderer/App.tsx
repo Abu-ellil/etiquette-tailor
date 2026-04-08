@@ -71,6 +71,15 @@ export default function App() {
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
   }, [isRTL]);
 
+  // Keep localStorage in sync so pages can read session
+  useEffect(() => {
+    if (session) {
+      localStorage.setItem('session', JSON.stringify(session));
+    } else {
+      localStorage.removeItem('session');
+    }
+  }, [session]);
+
   useEffect(() => {
     async function init() {
       try {

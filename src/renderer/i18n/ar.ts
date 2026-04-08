@@ -22,6 +22,11 @@ export default {
   'New Order': 'طلب جديد',
   'Logout': 'تسجيل الخروج',
 
+  // Branch Selection
+  'Select Branch': 'اختر الفرع',
+  'Choose the branch you are working at today': 'اختر الفرع الذي تعمل فيه اليوم',
+  'Continue': 'متابعة',
+
   // Layout
   'Bespoke Studio': 'استوديو التفصيل',
   'Switch to light mode': 'التبديل إلى الوضع الفاتح',
