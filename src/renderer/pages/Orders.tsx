@@ -208,6 +208,87 @@ export default function OrdersPage() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [orderItemsMap, setOrderItemsMap] = React.useState<Record<number, any[]>>({});
 
+  /* Edit modal state */
+  const [editingOrder, setEditingOrder] = React.useState<any>(null);
+  const [editForm, setEditForm] = React.useState<any>(null);
+  const [editOriginalPrice, setEditOriginalPrice] = React.useState(0);
+  const [editSaving, setEditSaving] = React.useState(false);
+
+  const openEditModal = async (orderId: number) => {
+    try {
+      const orderData = await window.electronAPI.orders.get(orderId);
+      setEditingOrder(orderData);
+      setEditForm({
+        customer_name: orderData.customer_name || '',
+        customer_phone: orderData.customer_phone || '',
+        piece_type: orderData.piece_type,
+        status: orderData.status,
+        price: orderData.price,
+        paid: orderData.paid,
+        payment_method: orderData.payment_method,
+        delivery_date: orderData.delivery_date || '',
+        receive_date: orderData.receive_date || '',
+        details: orderData.details || '',
+        branch_id: orderData.branch_id,
+      });
+      setEditOriginalPrice(Number(orderData.price));
+    } catch (err) {
+      console.error('Failed to load order for edit:', err);
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editingOrder || !editForm) return;
+    setEditSaving(true);
+    try {
+      // Update customer info if changed
+      if (editForm.customer_name !== editingOrder.customer_name || editForm.customer_phone !== editingOrder.customer_phone) {
+        await window.electronAPI.customers.update(editingOrder.customer_id, {
+          name: editForm.customer_name,
+          phone: editForm.customer_phone,
+        });
+      }
+      await window.electronAPI.orders.update(editingOrder.id, {
+        customer_id: editingOrder.customer_id,
+        piece_type: editForm.piece_type,
+        details: editForm.details,
+        price: Number(editForm.price),
+        payment_method: editForm.payment_method,
+        status: editForm.status,
+        delivery_date: editForm.delivery_date,
+      });
+      const newPrice = Number(editForm.price);
+      if (newPrice !== editOriginalPrice) {
+        const tasks = await window.electronAPI.orders.getTasks(editingOrder.id);
+        const nonDoneTasks = (tasks || []).filter((t: any) => t.status !== 'done');
+        if (nonDoneTasks.length > 0) {
+          const recalc = window.confirm(
+            t('Price changed from {oldPrice} QAR to {newPrice} QAR. This will recalculate wages for {count} task(s). Proceed?')
+              .replace('{oldPrice}', editOriginalPrice.toFixed(2))
+              .replace('{newPrice}', newPrice.toFixed(2))
+              .replace('{count}', String(nonDoneTasks.length))
+              .replaceAll('QAR', t(currency))
+          );
+          if (recalc) {
+            await window.electronAPI.orders.recalculateTaskWages(editingOrder.id, newPrice);
+          }
+        }
+      }
+      setEditingOrder(null);
+      setEditForm(null);
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to save order:', err);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const closeEditModal = () => {
+    setEditingOrder(null);
+    setEditForm(null);
+  };
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -393,121 +474,151 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      {/* ---- Table ---- */}
-      <div className="bg-surface-container-lowest rounded-2xl shadow-[0px_20px_40px_rgba(25,28,29,0.06)] overflow-x-auto">
-        {loading ? (
-          <div className="flex items-center justify-center py-20 text-secondary">
-            <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-            {t('Loading orders...')}
-          </div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-secondary">
-            <span className="material-symbols-outlined text-4xl mb-3 text-outline">shopping_bag</span>
-            <p className="font-semibold text-on-surface mb-1">{t('No orders found')}</p>
-            <p className="text-sm">{t('Try adjusting your filters or create a new order.')}</p>
-          </div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('Order ID')}</th>
-                <th>{t('Customer')}</th>
-                <th>{t('Item Type')}</th>
-                {!isWorker && <th className="text-right">{t('Price')}</th>}
-                {!isWorker && <th className="text-right">{t('Paid')}</th>}
-                {!isWorker && <th className="text-right">{t('Balance')}</th>}
-                <th>{t('Status')}</th>
-                <th>{t('Delivery')}</th>
-                <th className="text-center">{t('Actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map((order) => {
-                const dStatus = displayStatusKey(order);
-                const balance = order.price - order.paid;
+      {/* ---- Card Grid ---- */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-secondary">
+          <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
+          {t('Loading orders...')}
+        </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-secondary">
+          <span className="material-symbols-outlined text-4xl mb-3 text-outline">shopping_bag</span>
+          <p className="font-semibold text-on-surface mb-1">{t('No orders found')}</p>
+          <p className="text-sm">{t('Try adjusting your filters or create a new order.')}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredOrders.map((order) => {
+            const dStatus = displayStatusKey(order);
+            const balance = order.price - order.paid;
+            const itemsSummary = buildItemsSummary(orderItemsMap[order.id], order.piece_type);
 
-                return (
-                  <tr key={order.id} className="group">
-                    {/* Order ID */}
-                    <td>
-                      <button
-                        onClick={() => navigate(`/orders/${order.id}`)}
-                        className="font-bold text-primary hover:underline cursor-pointer"
-                      >
-                        {order.order_number}
-                      </button>
-                    </td>
+            return (
+              <div key={order.id} className="bg-surface-container-lowest rounded-2xl shadow-[0px_8px_24px_rgba(25,28,29,0.08)] overflow-hidden flex flex-col">
+                {/* Card header */}
+                <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-2">
+                  <button
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                    className="font-bold text-primary hover:underline cursor-pointer text-lg font-headline"
+                  >
+                    {order.order_number}
+                  </button>
+                  <StatusDropdown
+                    current={dStatus}
+                    orderId={order.id}
+                    orderBalance={balance}
+                    onUpdated={fetchData}
+                    t={t}
+                  />
+                </div>
 
-                    {/* Customer */}
-                    <td>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-bold flex items-center justify-center shrink-0">
-                          {getInitials(order.customer_name)}
-                        </div>
-                        <span className="font-medium truncate">{order.customer_name || t('Unknown')}</span>
-                      </div>
-                    </td>
+                {/* Piece type tag */}
+                <div className="px-4 pb-2">
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface font-semibold">
+                    {itemsSummary}
+                  </span>
+                </div>
 
-                    {/* Item Type */}
-                    <td className="text-secondary">
-                      {buildItemsSummary(orderItemsMap[order.id], order.piece_type)}
-                    </td>
+                {/* Customer */}
+                <div className="px-4 pb-2 flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-primary-fixed text-on-primary-fixed text-[10px] font-bold flex items-center justify-center shrink-0">
+                    {getInitials(order.customer_name)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-on-surface text-sm truncate">{order.customer_name || t('Unknown')}</p>
+                    {order.customer_phone && (
+                      <p className="text-xs text-secondary truncate">{order.customer_phone}</p>
+                    )}
+                  </div>
+                </div>
 
-                    {/* Price */}
-                    {!isWorker && <td className="text-right font-medium">{formatCurrency(order.price)}</td>}
+                {/* Price info */}
+                {!isWorker && (
+                  <div className="px-4 pb-2 flex items-baseline justify-between gap-1">
+                    <span className="text-lg font-extrabold text-on-surface">{formatCurrency(order.price)} <span className="text-xs font-semibold text-secondary">{t(currency)}</span></span>
+                    {balance > 0.01 ? (
+                      <span className="text-xs font-bold text-error bg-error/10 px-2 py-0.5 rounded-full whitespace-nowrap">
+                        {t('Pending')}: {formatCurrency(balance)}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-tertiary flex items-center gap-0.5 whitespace-nowrap">
+                        <span className="material-symbols-outlined text-xs">check_circle</span>
+                        {t('Paid')}
+                      </span>
+                    )}
+                  </div>
+                )}
 
-                    {/* Paid */}
-                    {!isWorker && <td className="text-right text-secondary">{formatCurrency(order.paid)}</td>}
+                {/* Delivery date */}
+                <div className="px-4 pb-3 flex items-center gap-1 text-xs text-secondary">
+                  <span className="material-symbols-outlined text-sm">event</span>
+                  {order.delivery_date
+                    ? format(parseISO(order.delivery_date), 'MMM dd, yyyy')
+                    : '--'}
+                </div>
 
-                    {/* Balance */}
-                    {!isWorker && <td className={`text-right font-bold ${balance > 0.01 ? 'text-error' : 'text-tertiary'}`}>
-                      {formatCurrency(balance)}
-                    </td>}
-
-                    {/* Status */}
-                    <td>
-                      <StatusDropdown
-                        current={dStatus}
-                        orderId={order.id}
-                        orderBalance={balance}
-                        onUpdated={fetchData}
-                        t={t}
-                      />
-                    </td>
-
-                    {/* Delivery */}
-                    <td className="text-secondary text-sm">
-                      {order.delivery_date
-                        ? format(parseISO(order.delivery_date), 'MMM dd, yyyy')
-                        : '--'}
-                    </td>
-
-                    {/* Actions */}
-                    <td>
-                      <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => navigate(`/orders/${order.id}`)}
-                          className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary"
-                          title={t('Edit')}
-                        >
-                          <span className="material-symbols-outlined text-lg">edit_square</span>
-                        </button>
-                        <button
-                          onClick={() => navigate(`/invoice/${order.id}`)}
-                          className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary"
-                          title={t('View Invoice')}
-                        >
-                          <span className="material-symbols-outlined text-lg">visibility</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+                {/* Bottom toolbar */}
+                <div className="border-t border-outline-variant/20 px-2 py-1.5 flex items-center">
+                  <button
+                    onClick={() => openEditModal(order.id)}
+                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
+                    title={t('Edit')}
+                  >
+                    <span className="material-symbols-outlined text-lg">edit_square</span>
+                  </button>
+                  <button
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
+                    title={t('View')}
+                  >
+                    <span className="material-symbols-outlined text-lg">visibility</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const detail = order.details || t('No details');
+                      alert(`${t('Order')} ${order.order_number}\n\n${detail}`);
+                    }}
+                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
+                    title={t('Notes')}
+                  >
+                    <span className="material-symbols-outlined text-lg">chat_bubble</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const detail = orderItemsMap[order.id]?.length > 0
+                        ? orderItemsMap[order.id].map((it: any) => `${it.piece_type} ×${it.quantity || 1}`).join('\n')
+                        : order.piece_type;
+                      alert(`${t('Items')}:\n${detail}`);
+                    }}
+                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
+                    title={t('Details')}
+                  >
+                    <span className="material-symbols-outlined text-lg">widgets</span>
+                  </button>
+                  <button
+                    onClick={() => navigate(`/invoice/${order.id}`)}
+                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
+                    title={t('Print Invoice')}
+                  >
+                    <span className="material-symbols-outlined text-lg">print</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(t('Delete order {number}? This cannot be undone.').replace('{number}', order.order_number))) {
+                        window.electronAPI.orders.update(order.id, { is_deleted: 1 }).then(fetchData);
+                      }
+                    }}
+                    className="p-2 hover:bg-error/10 rounded-lg text-secondary hover:text-error transition-colors"
+                    title={t('Delete')}
+                  >
+                    <span className="material-symbols-outlined text-lg">delete</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ---- Footer info ---- */}
       {!loading && filteredOrders.length > 0 && (
@@ -526,6 +637,98 @@ export default function OrdersPage() {
                 </span>
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ---- Edit Order Modal ---- */}
+      {editingOrder && editForm && (
+        <div className="modal-backdrop" onClick={closeEditModal}>
+          <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-6">
+                <div className="flex justify-between items-center mb-5">
+                  <div>
+                    <h2 className="text-xl font-headline font-bold">{t('Edit Order')}</h2>
+                    <p className="text-sm text-secondary mt-0.5">{editingOrder.order_number}</p>
+                  </div>
+                  <button onClick={closeEditModal} className="p-1.5 hover:bg-surface-container-high rounded-md text-secondary">
+                    <span className="material-symbols-outlined text-lg">close</span>
+                  </button>
+                </div>
+
+                {/* Customer info */}
+                <div className="mb-5 pb-4 border-b border-outline-variant/20">
+                  <h3 className="text-xs font-semibold uppercase tracking-widest text-secondary mb-3">{t('Customer')}</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Customer Name')}</label>
+                      <input value={editForm.customer_name} onChange={(e) => setEditForm({...editForm, customer_name: e.target.value})} className="input-field w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Phone')}</label>
+                      <input value={editForm.customer_phone} onChange={(e) => setEditForm({...editForm, customer_phone: e.target.value})} className="input-field w-full" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Piece Type')}</label>
+                    <input value={editForm.piece_type} onChange={(e) => setEditForm({...editForm, piece_type: e.target.value})} className="input-field w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Status')}</label>
+                    <select value={editForm.status} onChange={(e) => setEditForm({...editForm, status: e.target.value})} className="input-field w-full appearance-none">
+                      <option value="intake">{t('Intake')}</option>
+                      <option value="cutting">{t('Cutting')}</option>
+                      <option value="sewing">{t('Sewing')}</option>
+                      <option value="ready">{t('Ready')}</option>
+                      <option value="delivered">{t('Delivered')}</option>
+                    </select>
+                  </div>
+                  {!isWorker && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{`${t('Price')} (${t(currency)})`}</label>
+                        <input type="number" value={editForm.price} onChange={(e) => setEditForm({...editForm, price: e.target.value})} className="input-field w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Paid')}</label>
+                        <input type="number" value={editForm.paid} readOnly className="input-field w-full bg-surface-container-high text-secondary cursor-not-allowed" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Payment Method')}</label>
+                        <select value={editForm.payment_method} onChange={(e) => setEditForm({...editForm, payment_method: e.target.value})} className="input-field w-full appearance-none">
+                          <option value="cash">{t('Cash')}</option>
+                          <option value="card">{t('Card')}</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Receive Date')}</label>
+                    <input type="date" value={editForm.receive_date} onChange={(e) => setEditForm({...editForm, receive_date: e.target.value})} className="input-field w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Due Date')}</label>
+                    <input type="date" value={editForm.delivery_date} onChange={(e) => setEditForm({...editForm, delivery_date: e.target.value})} className="input-field w-full" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Details')}</label>
+                    <textarea value={editForm.details} onChange={(e) => setEditForm({...editForm, details: e.target.value})} className="input-field w-full min-h-[80px]" />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button onClick={closeEditModal} className="px-4 py-2 text-sm text-secondary hover:bg-surface-container-high rounded-lg">{t('Cancel')}</button>
+                  <button onClick={handleEditSave} disabled={editSaving} className="btn-primary px-6 py-2 text-sm disabled:opacity-50">
+                    {editSaving ? t('Saving...') : t('Save')}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
