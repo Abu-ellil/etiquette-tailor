@@ -87,6 +87,10 @@ export interface ElectronAPI {
     isMaximized: () => Promise<boolean>;
   };
 
+  print: {
+    receipt: () => Promise<void>;
+  };
+
   shell: {
     openExternal: (url: string) => Promise<void>;
   };
@@ -227,6 +231,10 @@ const api: ElectronAPI = {
     maximize: () => ipcRenderer.invoke('window:maximize'),
     close: () => ipcRenderer.invoke('window:close'),
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  },
+
+  print: {
+    receipt: () => ipcRenderer.invoke('print:receipt'),
   },
 
   shell: {

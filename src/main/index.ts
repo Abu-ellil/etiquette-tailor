@@ -694,6 +694,11 @@ function registerIpcHandlers() {
   });
   ipcMain.handle('window:close', () => mainWindow?.close());
   ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
+  ipcMain.handle('print:receipt', async () => {
+    if (mainWindow) {
+      await mainWindow.webContents.print({ silent: false, printBackground: true });
+    }
+  });
   ipcMain.handle('shell:openExternal', async (_event, url: string) => {
     await shell.openExternal(url);
   });

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useReactToPrint } from 'react-to-print';
 import { useTranslation } from '../contexts/I18nContext';
 
 interface OrderItem {
@@ -69,7 +68,6 @@ export default function InvoicePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, currency } = useTranslation();
-  const printRef = useRef<HTMLDivElement>(null);
   const [order, setOrder] = useState<OrderData | null>(null);
   const [settings, setSettings] = useState<ShopSettings>({});
   const [loading, setLoading] = useState(true);
@@ -156,7 +154,7 @@ export default function InvoicePage() {
     fetchData();
   }, [id]);
 
-  const handlePrint = useReactToPrint({ contentRef: printRef });
+  const handlePrint = () => window.electronAPI?.print?.receipt?.();
 
   if (loading) {
     return (
@@ -209,7 +207,6 @@ export default function InvoicePage() {
       {/* Thermal Receipt */}
       <div className="flex justify-center">
         <div
-          ref={printRef}
           className="thermal-receipt w-full max-w-[302px] bg-white text-black p-4 font-mono text-[12px] leading-relaxed"
           style={{ fontFamily: "'Courier New', 'Lucida Console', monospace" }}
         >
