@@ -11,6 +11,11 @@ import WorkflowWizard from './pages/WorkflowWizard';
 import OrderDetailPage from './pages/OrderDetail';
 import MeasurementsPage from './pages/Measurements';
 import WorkersPage from './pages/Workers';
+import WorkerPayRatesPage from './pages/WorkerPayRates';
+import WorkerWageReportPage from './pages/WorkerWageReport';
+import SalarySummaryPage from './pages/SalarySummary';
+import WorkerProductivityPage from './pages/WorkerProductivity';
+import TaskManagementPage from './pages/TaskManagement';
 import MyTasksPage from './pages/MyTasks';
 import CuttingQueuePage from './pages/CuttingQueue';
 import TaskBoardPage from './pages/TaskBoard';
@@ -31,8 +36,8 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/task-board', '/profit', '/reports', '/advanced-reports'],
+  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports'],
   reception: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };
@@ -204,6 +209,46 @@ export default function App() {
             element={
               <ProtectedRoute path="/workers" session={session}>
                 <WorkersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="worker-rates"
+            element={
+              <ProtectedRoute path="/worker-rates" session={session}>
+                <WorkerPayRatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="task-management"
+            element={
+              <ProtectedRoute path="/task-management" session={session}>
+                <TaskManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="worker-wage-report"
+            element={
+              <ProtectedRoute path="/worker-wage-report" session={session}>
+                <WorkerWageReportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="salary-summary"
+            element={
+              <ProtectedRoute path="/salary-summary" session={session}>
+                <SalarySummaryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="worker-productivity"
+            element={
+              <ProtectedRoute path="/worker-productivity" session={session}>
+                <WorkerProductivityPage />
               </ProtectedRoute>
             }
           />
