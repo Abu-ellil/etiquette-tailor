@@ -398,6 +398,37 @@ export default function OrdersPage() {
     return v.toLocaleString('en-US', { minimumFractionDigits: 0 });
   }
 
+  function sendWhatsApp(order: Order) {
+    const phone = order.customer_phone?.replace(/[^0-9]/g, '') || '';
+    if (!phone) {
+      alert(t('No phone number for this customer.'));
+      return;
+    }
+    const balance = order.price - order.paid;
+    const statusLabel = t(STATUS_DISPLAY_LABELS[displayStatusKey(order)] || order.status);
+    const items = orderItemsMap[order.id]?.length > 0
+      ? orderItemsMap[order.id].map((it: any) => `• ${it.piece_type} ×${it.quantity || 1}`).join('\n')
+      : `• ${order.piece_type}`;
+    const msg = `🧵 *Etiquette Tailor - Order Update*
+
+📋 *Order:* ${order.order_number}
+👤 *Customer:* ${order.customer_name}
+📌 *Status:* ${statusLabel}
+
+*Items:*
+${items}
+
+💰 *Price:* ${formatCurrency(order.price)} ${t(currency)}
+💵 *Paid:* ${formatCurrency(order.paid)} ${t(currency)}
+${balance > 0.01 ? `🔴 *Balance Due:* ${formatCurrency(balance)} ${t(currency)}` : '✅ *Fully Paid*'}
+📅 *Delivery:* ${order.delivery_date ? format(parseISO(order.delivery_date), 'MMM dd, yyyy') : '--'}
+
+${order.details ? `📝 *Notes:* ${order.details}` : ''}`;
+
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    window.electronAPI.shell.openExternal(url);
+  }
+
   function getInitials(name?: string) {
     if (!name) return '?';
     return name
@@ -487,132 +518,113 @@ export default function OrdersPage() {
           <p className="text-sm">{t('Try adjusting your filters or create a new order.')}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="flex flex-col gap-4">
           {filteredOrders.map((order) => {
             const dStatus = displayStatusKey(order);
             const balance = order.price - order.paid;
             const itemsSummary = buildItemsSummary(orderItemsMap[order.id], order.piece_type);
 
             return (
-              <div key={order.id} className="bg-surface-container-lowest rounded-2xl shadow-[0px_8px_24px_rgba(25,28,29,0.08)] overflow-hidden flex flex-col">
-                {/* Card header */}
-                <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-2">
-                  <button
-                    onClick={() => navigate(`/orders/${order.id}`)}
-                    className="font-bold text-primary hover:underline cursor-pointer text-lg font-headline"
-                  >
-                    {order.order_number}
-                  </button>
-                  <StatusDropdown
-                    current={dStatus}
-                    orderId={order.id}
-                    orderBalance={balance}
-                    onUpdated={fetchData}
-                    t={t}
-                  />
-                </div>
-
-                {/* Piece type tag */}
-                <div className="px-4 pb-2">
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface font-semibold">
-                    {itemsSummary}
-                  </span>
-                </div>
-
-                {/* Customer */}
-                <div className="px-4 pb-2 flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-primary-fixed text-on-primary-fixed text-[10px] font-bold flex items-center justify-center shrink-0">
-                    {getInitials(order.customer_name)}
-                  </div>
+              <div key={order.id} className="bg-surface-container-lowest rounded-2xl shadow-[0px_8px_24px_rgba(25,28,29,0.08)] overflow-hidden">
+                {/* Top section: left info + right info */}
+                <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-4">
+                  {/* Left: order number, tags, customer */}
                   <div className="min-w-0">
-                    <p className="font-semibold text-on-surface text-sm truncate">{order.customer_name || t('Unknown')}</p>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <button
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                        className="font-bold text-on-surface hover:text-primary cursor-pointer text-base font-headline"
+                      >
+                        {order.order_number}
+                      </button>
+                      <StatusDropdown
+                        current={dStatus}
+                        orderId={order.id}
+                        orderBalance={balance}
+                        onUpdated={fetchData}
+                        t={t}
+                      />
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface font-semibold">
+                        {itemsSummary}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-on-surface">{order.customer_name || t('Unknown')}</p>
                     {order.customer_phone && (
-                      <p className="text-xs text-secondary truncate">{order.customer_phone}</p>
+                      <p className="text-xs text-secondary">{order.customer_phone}</p>
                     )}
                   </div>
-                </div>
 
-                {/* Price info */}
-                {!isWorker && (
-                  <div className="px-4 pb-2 flex items-baseline justify-between gap-1">
-                    <span className="text-lg font-extrabold text-on-surface">{formatCurrency(order.price)} <span className="text-xs font-semibold text-secondary">{t(currency)}</span></span>
-                    {balance > 0.01 ? (
-                      <span className="text-xs font-bold text-error bg-error/10 px-2 py-0.5 rounded-full whitespace-nowrap">
-                        {t('Pending')}: {formatCurrency(balance)}
-                      </span>
-                    ) : (
-                      <span className="text-xs font-bold text-tertiary flex items-center gap-0.5 whitespace-nowrap">
-                        <span className="material-symbols-outlined text-xs">check_circle</span>
-                        {t('Paid')}
-                      </span>
+                  {/* Right: piece type, price, pending */}
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold text-on-surface">{order.piece_type}</p>
+                    {!isWorker && (
+                      <>
+                        <p className="text-base font-extrabold text-on-surface">{formatCurrency(order.price)} <span className="text-xs font-semibold text-secondary">{t(currency)}</span></p>
+                        {balance > 0.01 ? (
+                          <p className="text-xs font-bold text-orange-500">{t('Pending')}: {formatCurrency(balance)} {t(currency)}</p>
+                        ) : (
+                          <p className="text-xs font-bold text-tertiary flex items-center justify-end gap-0.5">
+                            <span className="material-symbols-outlined text-xs">check_circle</span>
+                            {t('Paid')}
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
-                )}
-
-                {/* Delivery date */}
-                <div className="px-4 pb-3 flex items-center gap-1 text-xs text-secondary">
-                  <span className="material-symbols-outlined text-sm">event</span>
-                  {order.delivery_date
-                    ? format(parseISO(order.delivery_date), 'MMM dd, yyyy')
-                    : '--'}
                 </div>
 
                 {/* Bottom toolbar */}
-                <div className="border-t border-outline-variant/20 px-2 py-1.5 flex items-center">
-                  <button
-                    onClick={() => openEditModal(order.id)}
-                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
-                    title={t('Edit')}
-                  >
-                    <span className="material-symbols-outlined text-lg">edit_square</span>
-                  </button>
-                  <button
-                    onClick={() => navigate(`/orders/${order.id}`)}
-                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
-                    title={t('View')}
-                  >
-                    <span className="material-symbols-outlined text-lg">visibility</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      const detail = order.details || t('No details');
-                      alert(`${t('Order')} ${order.order_number}\n\n${detail}`);
-                    }}
-                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
-                    title={t('Notes')}
-                  >
-                    <span className="material-symbols-outlined text-lg">chat_bubble</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      const detail = orderItemsMap[order.id]?.length > 0
-                        ? orderItemsMap[order.id].map((it: any) => `${it.piece_type} ×${it.quantity || 1}`).join('\n')
-                        : order.piece_type;
-                      alert(`${t('Items')}:\n${detail}`);
-                    }}
-                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
-                    title={t('Details')}
-                  >
-                    <span className="material-symbols-outlined text-lg">widgets</span>
-                  </button>
-                  <button
-                    onClick={() => navigate(`/invoice/${order.id}`)}
-                    className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
-                    title={t('Print Invoice')}
-                  >
-                    <span className="material-symbols-outlined text-lg">print</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(t('Delete order {number}? This cannot be undone.').replace('{number}', order.order_number))) {
-                        window.electronAPI.orders.update(order.id, { is_deleted: 1 }).then(fetchData);
-                      }
-                    }}
-                    className="p-2 hover:bg-error/10 rounded-lg text-secondary hover:text-error transition-colors"
-                    title={t('Delete')}
-                  >
-                    <span className="material-symbols-outlined text-lg">delete</span>
-                  </button>
+                <div className="border-t border-outline-variant/20 px-3 py-2 flex items-center justify-between">
+                  {/* Status dropdown area (left) */}
+                  <div className="flex items-center gap-1 text-xs text-secondary">
+                    <span className="material-symbols-outlined text-sm">event</span>
+                    {order.delivery_date
+                      ? format(parseISO(order.delivery_date), 'MMM dd, yyyy')
+                      : '--'}
+                  </div>
+
+                  {/* Action icons (right) */}
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      onClick={() => openEditModal(order.id)}
+                      className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
+                      title={t('Edit')}
+                    >
+                      <span className="material-symbols-outlined text-lg">edit_square</span>
+                    </button>
+                    <button
+                      onClick={() => navigate(`/orders/${order.id}`)}
+                      className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
+                      title={t('View')}
+                    >
+                      <span className="material-symbols-outlined text-lg">visibility</span>
+                    </button>
+                    <button
+                      onClick={() => navigate(`/invoice/${order.id}`)}
+                      className="p-2 hover:bg-surface-container-high rounded-lg text-secondary hover:text-primary transition-colors"
+                      title={t('Print Invoice')}
+                    >
+                      <span className="material-symbols-outlined text-lg">print</span>
+                    </button>
+                    <button
+                      onClick={() => sendWhatsApp(order)}
+                      className="p-2 hover:bg-green-500/10 rounded-lg text-green-600 hover:text-green-700 transition-colors"
+                      title={t('WhatsApp')}
+                    >
+                      <span className="material-symbols-outlined text-lg">chat</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(t('Delete order {number}? This cannot be undone.').replace('{number}', order.order_number))) {
+                          window.electronAPI.orders.update(order.id, { is_deleted: 1 }).then(fetchData);
+                        }
+                      }}
+                      className="p-2 hover:bg-error/10 rounded-lg text-secondary hover:text-error transition-colors"
+                      title={t('Delete')}
+                    >
+                      <span className="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );

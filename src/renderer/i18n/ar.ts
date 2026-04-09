@@ -472,6 +472,24 @@ export default {
   'Thank You for your trust!': 'شكراً لثقتكم بنا!',
   'شكراً لثقتكم بنا': 'شكراً لثقتكم بنا',
   'Tailoring Service': 'خدمة التفصيل',
+  'This is a receipt confirming your order': 'هذا إيصال يُثبت طلبك',
+  'Hello': 'مرحبًا',
+  'This is your order invoice from Etiquette Tailor': 'هذه فاتورة طلبك من مشغل إتيكيت',
+  'Invoice Number / رقم الفاتورة': 'رقم الفاتورة',
+  'Customer / العميل': 'العميل',
+  'Phone / الهاتف': 'الهاتف',
+  'Service / الخدمة': 'الخدمة',
+  'Service': 'الخدمة',
+  'Price / السعر': 'السعر',
+  'Total / الإجمالي': 'الإجمالي',
+  'Paid / المدفوع': 'المدفوع',
+  'Balance Due / الرصيد': 'الرصيد المستحق',
+  'Payment / الدفع': 'طريقة الدفع',
+  'Receipt Date / تاريخ': 'التاريخ',
+  'Delivery Date / التسليم': 'التسليم',
+  'Worker / العامل': 'العامل',
+  'Paid in Full / تم الدفع': 'تم الدفع بالكامل',
+  'For inquiries': 'للاستفسار',
 
   // Settings
   'Manage your shop info, user accounts, branches, and system preferences.': 'إدارة معلومات المتجر وحسابات المستخدمين والفروع وتفضيلات النظام.',
@@ -584,6 +602,7 @@ export default {
 
   // Invoice extras
   'Balance Due / الرصيد المتبقي': 'الرصيد المستحق / الرصيد المتبقي',
+  'Balance Due / الرصيد': 'الرصيد المستحق / الرصيد',
   'Thank you for your trust!': 'شكراً لثقتكم بنا!',
   'cash': 'نقدي',
   'card': 'بطاقة',

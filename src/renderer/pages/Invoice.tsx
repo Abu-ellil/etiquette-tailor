@@ -8,6 +8,7 @@ interface OrderItem {
   piece_type_ar?: string;
   details?: string;
   price: number;
+  quantity?: number;
 }
 
 interface OrderData {
@@ -15,20 +16,33 @@ interface OrderData {
   order_number: string;
   customer_name: string;
   customer_name_ar?: string;
+  customer_phone?: string;
   created_at: string;
   due_date: string;
+  receive_date?: string;
+  delivery_date?: string;
+  piece_type: string;
+  details?: string;
   items: OrderItem[];
   subtotal: number;
   discount: number;
   total: number;
   paid: number;
   balance: number;
-  payment_type: string;
+  payment_method: string;
+  status: string;
+  worker_name?: string;
 }
 
-// Fallback mock data removed — real data from DB only
+interface ShopSettings {
+  shop_name_ar?: string;
+  shop_name_en?: string;
+  shop_phone?: string;
+  receipt_footer?: string;
+}
 
 function formatDate(dateStr: string): string {
+  if (!dateStr) return '-';
   try {
     const d = new Date(dateStr);
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -37,8 +51,18 @@ function formatDate(dateStr: string): string {
   }
 }
 
+function formatShortDate(dateStr: string): string {
+  if (!dateStr) return '-';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
 function formatCurrency(amount: number): string {
-  return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 export default function InvoicePage() {
@@ -47,44 +71,89 @@ export default function InvoicePage() {
   const { t, currency } = useTranslation();
   const printRef = useRef<HTMLDivElement>(null);
   const [order, setOrder] = useState<OrderData | null>(null);
+  const [settings, setSettings] = useState<ShopSettings>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchOrder() {
+    async function fetchData() {
       try {
-        if (id && window.electronAPI?.orders?.get) {
-          const data = await window.electronAPI.orders.get(Number(id));
-          if (data) {
-            // Map DB fields to our local shape
-            const balance = (data.price ?? data.total ?? 0) - (data.paid ?? 0);
-            setOrder({
-              id: data.id,
-              order_number: data.order_number ?? `A-${String(data.id).padStart(4, '0')}`,
-              customer_name: data.customer_name ?? data.customerName ?? '',
-              customer_name_ar: data.customer_name_ar ?? '',
-              created_at: data.created_at ?? data.createdAt ?? '',
-              due_date: data.due_date ?? data.dueDate ?? '',
-              items: data.items ?? [
-                { piece_type: data.piece_type ?? data.pieceType ?? 'Tailoring Service', price: data.price ?? 0 },
-              ],
-              subtotal: data.subtotal ?? data.price ?? 0,
-              discount: data.discount ?? 0,
-              total: data.total ?? data.price ?? 0,
-              paid: data.paid ?? 0,
-              balance,
-              payment_type: data.payment_type ?? data.paymentType ?? 'Cash',
-            });
-            setLoading(false);
-            return;
+        // Fetch settings and order in parallel
+        const [settingsData, orderData] = await Promise.all([
+          window.electronAPI?.settings?.getAll?.() || {},
+          id ? window.electronAPI?.orders?.get?.(Number(id)) : null,
+        ]);
+
+        setSettings(settingsData || {});
+
+        if (orderData) {
+          const total = orderData.price ?? orderData.total ?? 0;
+          const paid = orderData.paid ?? 0;
+          const balance = total - paid;
+
+          // Fetch order items
+          let items: OrderItem[] = [];
+          try {
+            const orderItems = await window.electronAPI?.orders?.getItems?.(orderData.id);
+            if (orderItems && orderItems.length > 0) {
+              items = orderItems.map((it: any) => ({
+                piece_type: it.piece_type || '',
+                price: it.total_price || it.unit_price || 0,
+                quantity: it.quantity || 1,
+              }));
+            }
+          } catch { /* items fetch failed, use fallback */ }
+
+          if (items.length === 0) {
+            items = [{
+              piece_type: orderData.piece_type || orderData.pieceType || 'Tailoring Service',
+              price: total,
+            }];
           }
+
+          // Try to get worker name from tasks
+          let workerName: string | undefined;
+          try {
+            const tasks = await window.electronAPI?.orders?.getTasks?.(orderData.id);
+            if (tasks && tasks.length > 0) {
+              const workerNames = tasks
+                .filter((task: any) => task.assigned_to_name || task.worker_name)
+                .map((task: any) => task.assigned_to_name || task.worker_name);
+              if (workerNames.length > 0) {
+                workerName = [...new Set(workerNames)].join(' - ');
+              }
+            }
+          } catch { /* tasks fetch failed */ }
+
+          setOrder({
+            id: orderData.id,
+            order_number: orderData.order_number || `${String(orderData.id).padStart(4, '0')}`,
+            customer_name: orderData.customer_name || orderData.customerName || '',
+            customer_name_ar: orderData.customer_name_ar || '',
+            customer_phone: orderData.customer_phone || orderData.customerPhone || orderData.phone || '',
+            created_at: orderData.created_at || orderData.createdAt || '',
+            due_date: orderData.due_date || orderData.dueDate || orderData.delivery_date || '',
+            receive_date: orderData.receive_date || '',
+            delivery_date: orderData.delivery_date || orderData.due_date || orderData.dueDate || '',
+            piece_type: orderData.piece_type || orderData.pieceType || '',
+            details: orderData.details || '',
+            items,
+            subtotal: total,
+            discount: orderData.discount ?? 0,
+            total,
+            paid,
+            balance,
+            payment_method: orderData.payment_method || orderData.paymentMethod || 'cash',
+            status: orderData.status || 'intake',
+            worker_name: workerName,
+          });
         }
       } catch {
         // Order not found or error loading
       }
-      setOrder(null);
+      setOrder(prev => prev);
       setLoading(false);
     }
-    fetchOrder();
+    fetchData();
   }, [id]);
 
   const handlePrint = useReactToPrint({ contentRef: printRef });
@@ -109,10 +178,16 @@ export default function InvoicePage() {
     );
   }
 
+  const shopNameAr = settings.shop_name_ar || 'إتيكيت تيلور';
+  const shopNameEn = settings.shop_name_en || 'Etiquette Tailor';
+  const shopPhone = settings.shop_phone || '';
+  const receiptFooter = settings.receipt_footer || '';
+  const isPaid = order.balance <= 0;
+
   return (
     <div className="pb-12">
       {/* Action Toolbar (hidden when printing) */}
-      <div className="no-print w-full max-w-[400px] mx-auto mb-8 flex justify-between items-center">
+      <div className="no-print w-full max-w-[400px] mx-auto mb-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <button
             className="p-2 hover:bg-surface-container rounded-full transition-colors"
@@ -131,166 +206,147 @@ export default function InvoicePage() {
         </button>
       </div>
 
-      {/* Thermal Receipt Container */}
+      {/* Thermal Receipt */}
       <div className="flex justify-center">
         <div
           ref={printRef}
-          className="w-full max-w-[380px] bg-surface-container-lowest p-8 shadow-2xl relative border-t-8 border-primary overflow-hidden"
+          className="thermal-receipt w-full max-w-[302px] bg-white text-black p-4 font-mono text-[12px] leading-relaxed"
+          style={{ fontFamily: "'Courier New', 'Lucida Console', monospace" }}
         >
-          {/* Logo Section */}
-          <div className="flex flex-col items-center mb-6">
-            <div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mb-3">
-              <span
-                className="material-symbols-outlined text-3xl text-primary"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                straighten
-              </span>
+          {/* Header */}
+          <div className="text-center mb-3">
+            <div className="text-xl font-bold mb-0.5">{shopNameAr}</div>
+            <div className="text-[10px] text-gray-600">{shopNameEn}</div>
+            <div className="text-[11px] mt-2">
+              {t('Hello')} {order.customer_name}
             </div>
-            <h1 className="font-headline text-2xl font-extrabold tracking-tighter uppercase">
-              {t('Etiquette Tailor')}
-            </h1>
-            <p className="text-[10px] tracking-[0.2em] text-secondary font-semibold uppercase">
-              {t('Premium Bespoke Atelier')}
-            </p>
-          </div>
-
-          {/* Order Identifier */}
-          <div className="border-y border-dashed border-outline-variant py-4 mb-6 flex flex-col items-center gap-1">
-            <div className="text-[10px] text-secondary font-bold uppercase tracking-widest">
-              {t('Order Identifier')}
-            </div>
-            <div className="text-3xl font-headline font-black text-primary tracking-tighter">
-              #{order.order_number}
+            <div className="text-[10px] text-gray-500 mt-0.5">
+              {t('This is your order invoice from Etiquette Tailor')}
             </div>
           </div>
 
-          {/* Dates and Customer */}
-          <div className="space-y-4 mb-8">
-            <div className="flex justify-between items-start border-b border-surface-container pb-2">
-              <div className="text-xs">
-                <p className="text-secondary font-bold uppercase text-[9px]">{t('Receipt Date')}</p>
-                <p className="font-semibold">{formatDate(order.created_at)}</p>
+          {/* Divider */}
+          <div className="border-t border-dashed border-gray-400 my-2" />
+
+          {/* Order Details - Two column: value | label */}
+          <div className="space-y-1">
+            <ReceiptRow value={order.order_number} label={t('Invoice Number / رقم الفاتورة')} />
+            <ReceiptRow value={order.customer_name} label={t('Customer / العميل')} />
+            {order.customer_phone && (
+              <ReceiptRow value={order.customer_phone} label={t('Phone / الهاتف')} />
+            )}
+
+            {/* Divider */}
+            <div className="border-t border-dotted border-gray-300 my-1" />
+
+            {/* Items */}
+            {order.items.map((item, idx) => (
+              <div key={idx}>
+                <ReceiptRow
+                  value={item.piece_type}
+                  label={item.quantity && item.quantity > 1
+                    ? `${t('Service')} (${item.quantity}x)`
+                    : t('Service / الخدمة')}
+                />
+                <ReceiptRow
+                  value={`${formatCurrency(item.price)} ${t(currency)}`}
+                  label={t('Price / السعر')}
+                />
               </div>
-              <div className="text-xs text-right">
-                <p className="text-secondary font-bold uppercase text-[9px]">{t('Delivery Date')}</p>
-                <p className="font-semibold text-primary">{formatDate(order.due_date)}</p>
-              </div>
-            </div>
-            <div className="pt-2">
-              <p className="text-secondary font-bold uppercase text-[9px] mb-1">{t('Customer Details')}</p>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-sm">{order.customer_name}</span>
-                {order.customer_name_ar && (
-                  <span
-                    className="font-bold text-base leading-none"
-                    style={{ fontFamily: "'Noto Sans Arabic', sans-serif", direction: 'rtl' }}
-                  >
-                    {order.customer_name_ar}
-                  </span>
-                )}
-              </div>
-            </div>
+            ))}
+
+            {/* Divider */}
+            <div className="border-t border-dotted border-gray-300 my-1" />
+
+            <ReceiptRow
+              value={`${formatCurrency(order.total)} ${t(currency)}`}
+              label={t('Total / الإجمالي')}
+              bold
+            />
+            <ReceiptRow
+              value={`${formatCurrency(order.paid)} ${t(currency)}`}
+              label={t('Paid / المدفوع')}
+            />
+            {order.balance > 0 && (
+              <ReceiptRow
+                value={`${formatCurrency(order.balance)} ${t(currency)}`}
+                label={t('Balance Due / الرصيد')}
+                bold
+              />
+            )}
+
+            {/* Divider */}
+            <div className="border-t border-dotted border-gray-300 my-1" />
+
+            <ReceiptRow
+              value={order.payment_method === 'card' ? t('Card') : t('Cash')}
+              label={t('Payment / الدفع')}
+            />
+            <ReceiptRow
+              value={formatShortDate(order.created_at)}
+              label={t('Receipt Date / تاريخ')}
+            />
+            {order.delivery_date && (
+              <ReceiptRow
+                value={formatShortDate(order.delivery_date)}
+                label={t('Delivery Date / التسليم')}
+              />
+            )}
+            {order.worker_name && (
+              <ReceiptRow
+                value={order.worker_name}
+                label={t('Worker / العامل')}
+              />
+            )}
           </div>
 
-          {/* Items Table */}
-          <div className="mb-8">
-            <div className="flex justify-between text-[10px] font-black uppercase text-secondary mb-2 border-b-2 border-on-surface pb-1">
-              <span>{t('Description / الوصف')}</span>
-              <span>{t('Amount')}</span>
-            </div>
-            <div className="space-y-3">
-              {order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-start text-sm">
-                  <div className="flex flex-col">
-                    <span className="font-bold">{item.piece_type}</span>
-                    {item.piece_type_ar && (
-                      <span
-                        className="text-xs text-secondary"
-                        style={{ fontFamily: "'Noto Sans Arabic', sans-serif", direction: 'rtl' }}
-                      >
-                        {item.piece_type_ar}
-                      </span>
-                    )}
-                    {item.details && (
-                      <span className="text-[10px] text-secondary mt-1">{item.details}</span>
-                    )}
-                  </div>
-                  <span className="font-headline font-bold">{formatCurrency(item.price)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Divider */}
+          <div className="border-t border-dashed border-gray-400 my-2" />
 
-          {/* Financials */}
-          <div className="bg-surface-container-low p-4 space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-secondary font-medium">{t('Subtotal / المجموع')}</span>
-              <span className="font-semibold">{formatCurrency(order.subtotal)}</span>
-            </div>
-            {order.discount > 0 && (
-              <div className="flex justify-between text-xs">
-                <span className="text-secondary font-medium">{t('Discount / خصم')}</span>
-                <span className="font-semibold text-error">-{formatCurrency(order.discount)}</span>
+          {/* Payment Status */}
+          <div className="text-center mb-2">
+            {isPaid ? (
+              <div className="font-bold">
+                {t('Paid in Full / تم الدفع')}
+              </div>
+            ) : (
+              <div className="font-bold">
+                {t('Balance Due / الرصيد المتبقي')}: {formatCurrency(order.balance)} {t(currency)}
               </div>
             )}
-            <div className="flex justify-between text-xs text-primary">
-              <span className="font-bold uppercase tracking-tighter">{t('Amount Paid / المدفوع')}</span>
-              <span className="font-black">{formatCurrency(order.paid)}</span>
-            </div>
-            <div className="pt-3 mt-2 border-t-2 border-on-surface flex justify-between items-center">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-secondary">
-                  {t('Balance Due')}
-                </p>
-                <p
-                  className="text-[10px] font-bold"
-                  style={{ fontFamily: "'Noto Sans Arabic', sans-serif", direction: 'rtl' }}
-                >
-                  {t('Balance Due')}
-                </p>
-              </div>
-              <div className="text-2xl font-headline font-black tracking-tight text-on-surface">
-                {formatCurrency(order.balance)}{' '}
-                <span className="text-xs font-medium ml-1">{t(currency)}</span>
-              </div>
-            </div>
           </div>
 
-          {/* QR Code Placeholder */}
-          <div className="flex flex-col items-center my-8">
-            <div className="w-24 h-24 border border-outline-variant p-1 bg-surface-container-lowest flex items-center justify-center">
-              <span className="material-symbols-outlined text-4xl text-secondary">qr_code_2</span>
-            </div>
-            <p className="text-[8px] mt-2 text-secondary uppercase font-bold tracking-widest">
-              {t('Scan to track your order')}
-            </p>
-          </div>
+          {/* Divider */}
+          <div className="border-t border-dashed border-gray-400 my-2" />
 
           {/* Footer */}
-          <footer className="text-center pt-6 border-t border-dashed border-outline-variant">
-            <p className="font-headline font-bold text-sm mb-1 italic">{t('Thank You for your trust!')}</p>
-            <p
-              className="font-bold text-sm mb-4"
-              style={{ fontFamily: "'Noto Sans Arabic', sans-serif", direction: 'rtl' }}
-            >
-              {t('Thank You for your trust!')}
-            </p>
-            <div className="space-y-1 text-[9px] text-secondary font-medium uppercase tracking-tighter">
-              <p>Building 4, Design District, Dubai, UAE</p>
-              <p>Tel: +971 4 555 1234 &bull; WhatsApp: +971 50 123 4567</p>
-              <p>www.etiquettetailor.ae</p>
+          <div className="text-center text-[10px] text-gray-600 space-y-1">
+            <div className="font-bold text-[11px]">
+              {t('Thank you for your trust!')}
             </div>
-          </footer>
-
-          {/* Cut Line Graphic (screen only) */}
-          <div className="no-print absolute bottom-0 left-0 w-full flex justify-around opacity-20 pointer-events-none">
-            <span className="material-symbols-outlined text-4xl">content_cut</span>
-            <span className="material-symbols-outlined text-4xl">content_cut</span>
-            <span className="material-symbols-outlined text-4xl">content_cut</span>
+            <div className="font-bold text-[11px]">
+              {t('Thank You for your trust!')}
+            </div>
+            {shopPhone && (
+              <div>
+                {t('For inquiries')} : {shopPhone}
+              </div>
+            )}
+            {receiptFooter && (
+              <div className="mt-1">{receiptFooter}</div>
+            )}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ReceiptRow({ value, label, bold }: { value: string; label: string; bold?: boolean }) {
+  return (
+    <div className="flex justify-between items-start gap-2">
+      <span className={`${bold ? 'font-bold' : ''} text-left`}>{value}</span>
+      <span className={`${bold ? 'font-bold' : ''} text-right text-gray-700 whitespace-nowrap`}>{label}</span>
     </div>
   );
 }
