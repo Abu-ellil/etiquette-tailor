@@ -645,7 +645,7 @@ export default function OrdersPage() {
       {editingOrder && editForm && (
         <div className="modal-backdrop" onClick={closeEditModal}>
           <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-6">
                 <div className="flex justify-between items-center mb-5">
                   <div>
