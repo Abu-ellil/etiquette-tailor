@@ -347,21 +347,21 @@ export default function OrderDetailPage() {
                     const items = orderItems.length > 0
                       ? orderItems.map((it: any) => `• ${it.piece_type} ×${it.quantity || 1}`).join('\n')
                       : `• ${order.piece_type}`;
-                    const msg = `🧵 *Etiquette Tailor - Order Update*
+                    const msg = `*Etiquette Tailor - Order Update*
 
-📋 *Order:* ${order.order_number}
-👤 *Customer:* ${order.customer_name}
-📌 *Status:* ${order.status}
+*Order:* ${order.order_number}
+*Customer:* ${order.customer_name}
+*Status:* ${order.status}
 
 *Items:*
 ${items}
 
-💰 *Price:* ${Number(order.price).toFixed(0)} ${t(currency)}
-💵 *Paid:* ${Number(order.paid).toFixed(0)} ${t(currency)}
-${bal > 0.01 ? `🔴 *Balance Due:* ${bal.toFixed(0)} ${t(currency)}` : '✅ *Fully Paid*'}
-📅 *Delivery:* ${order.delivery_date || '--'}
+*Price:* ${Number(order.price).toFixed(0)} ${t(currency)}
+*Paid:* ${Number(order.paid).toFixed(0)} ${t(currency)}
+${bal > 0.01 ? `*Balance Due:* ${bal.toFixed(0)} ${t(currency)}` : '*Fully Paid*'}
+*Delivery:* ${order.delivery_date || '--'}
 
-${order.details ? `📝 *Notes:* ${order.details}` : ''}`;
+${order.details ? `*Notes:* ${order.details}` : ''}`;
                     window.electronAPI.shell.openExternal(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`);
                   }}
                   className="px-6 py-3 text-sm font-semibold bg-green-50 hover:bg-green-100 text-green-700 rounded-lg flex items-center gap-2 transition-colors"

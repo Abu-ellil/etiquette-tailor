@@ -409,21 +409,21 @@ export default function OrdersPage() {
     const items = orderItemsMap[order.id]?.length > 0
       ? orderItemsMap[order.id].map((it: any) => `• ${it.piece_type} ×${it.quantity || 1}`).join('\n')
       : `• ${order.piece_type}`;
-    const msg = `🧵 *Etiquette Tailor - Order Update*
+    const msg = `*Etiquette Tailor - Order Update*
 
-📋 *Order:* ${order.order_number}
-👤 *Customer:* ${order.customer_name}
-📌 *Status:* ${statusLabel}
+*Order:* ${order.order_number}
+*Customer:* ${order.customer_name}
+*Status:* ${statusLabel}
 
 *Items:*
 ${items}
 
-💰 *Price:* ${formatCurrency(order.price)} ${t(currency)}
-💵 *Paid:* ${formatCurrency(order.paid)} ${t(currency)}
-${balance > 0.01 ? `🔴 *Balance Due:* ${formatCurrency(balance)} ${t(currency)}` : '✅ *Fully Paid*'}
-📅 *Delivery:* ${order.delivery_date ? format(parseISO(order.delivery_date), 'MMM dd, yyyy') : '--'}
+*Price:* ${formatCurrency(order.price)} ${t(currency)}
+*Paid:* ${formatCurrency(order.paid)} ${t(currency)}
+${balance > 0.01 ? `*Balance Due:* ${formatCurrency(balance)} ${t(currency)}` : '*Fully Paid*'}
+*Delivery:* ${order.delivery_date ? format(parseISO(order.delivery_date), 'MMM dd, yyyy') : '--'}
 
-${order.details ? `📝 *Notes:* ${order.details}` : ''}`;
+${order.details ? `*Notes:* ${order.details}` : ''}`;
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     window.electronAPI.shell.openExternal(url);
