@@ -10,6 +10,7 @@ export interface User {
   worker_type?: 'tailor' | 'master_cutter' | null;
   branch_id: number;
   base_salary: number;
+  default_rate: number;
   active: number;
   created_at?: string;
 }
@@ -63,10 +64,10 @@ export function getUserByUsername(username: string): User | undefined {
   return stmt.get(username) as User | undefined;
 }
 
-export function createUser(user: { name: string; username: string; password: string; role: string; worker_type?: string; branch_id: number; base_salary?: number }): number {
+export function createUser(user: { name: string; username: string; password: string; role: string; worker_type?: string; branch_id: number; base_salary?: number; default_rate?: number }): number {
   const stmt = db.prepare(`
-    INSERT INTO users (name, username, password_hash, role, worker_type, branch_id, base_salary)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO users (name, username, password_hash, role, worker_type, branch_id, base_salary, default_rate)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
     user.name,
@@ -75,7 +76,8 @@ export function createUser(user: { name: string; username: string; password: str
     user.role,
     user.worker_type || null,
     user.branch_id,
-    user.base_salary || 0
+    user.base_salary || 0,
+    user.default_rate || 0
   );
   return result.lastInsertRowid as number;
 }
@@ -83,16 +85,16 @@ export function createUser(user: { name: string; username: string; password: str
 export function updateUser(id: number, user: Partial<User> & { password?: string }): void {
   if (user.password) {
     const stmt = db.prepare(`
-      UPDATE users SET name = ?, username = ?, password_hash = ?, role = ?, worker_type = ?, branch_id = ?, base_salary = ?
+      UPDATE users SET name = ?, username = ?, password_hash = ?, role = ?, worker_type = ?, branch_id = ?, base_salary = ?, default_rate = ?
       WHERE id = ?
     `);
-    stmt.run(user.name, user.username, hashPassword(user.password), user.role, user.worker_type || null, user.branch_id, user.base_salary || 0, id);
+    stmt.run(user.name, user.username, hashPassword(user.password), user.role, user.worker_type || null, user.branch_id, user.base_salary || 0, user.default_rate || 0, id);
   } else {
     const stmt = db.prepare(`
-      UPDATE users SET name = ?, username = ?, role = ?, worker_type = ?, branch_id = ?, base_salary = ?
+      UPDATE users SET name = ?, username = ?, role = ?, worker_type = ?, branch_id = ?, base_salary = ?, default_rate = ?
       WHERE id = ?
     `);
-    stmt.run(user.name, user.username, user.role, user.worker_type || null, user.branch_id, user.base_salary || 0, id);
+    stmt.run(user.name, user.username, user.role, user.worker_type || null, user.branch_id, user.base_salary || 0, user.default_rate || 0, id);
   }
 }
 

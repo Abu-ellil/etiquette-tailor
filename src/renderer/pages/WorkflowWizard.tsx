@@ -103,6 +103,10 @@ export default function WorkflowWizard() {
 
   const [initialPayment, setInitialPayment] = useState(0);
 
+  /* Overdue warning state */
+  const [showOverdueModal, setShowOverdueModal] = useState(false);
+  const [overdueOrders, setOverdueOrders] = useState<any[]>([]);
+
   const { register, handleSubmit: handleCreateCustomerSubmit, reset: resetCreateForm } = useForm({ mode: 'onSubmit' as const, defaultValues: { name: '', phone: '', notes: '' } });
 
   useEffect(() => {
@@ -153,12 +157,38 @@ export default function WorkflowWizard() {
     const error = validateStep(currentStep);
     if (error) { setValidationError(error); return; }
     setValidationError(null);
+
+    // Overdue check after customer selection (step 0)
+    if (currentStep === 0 && selectedCustomer) {
+      window.electronAPI.customers.getOutstandingOrders(selectedCustomer.id).then((outstanding) => {
+        if (outstanding.length > 0) {
+          setOverdueOrders(outstanding);
+          setShowOverdueModal(true);
+        } else {
+          advanceStep();
+        }
+      }).catch(() => {
+        // Don't block order creation if the check fails
+        advanceStep();
+      });
+      return;
+    }
+
+    advanceStep();
+  }
+
+  function advanceStep() {
     if (currentStep < WIZARD_STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
       handleSubmit();
     }
   }
+
+  const dismissOverdueWarning = () => {
+    setShowOverdueModal(false);
+    setCurrentStep(1);
+  };
 
   function goBack() {
     setValidationError(null);
@@ -532,6 +562,77 @@ export default function WorkflowWizard() {
             </div>
           </div>
         </StepCard>
+      )}
+
+      {/* ── Overdue Balance Warning Modal ── */}
+      {showOverdueModal && (
+        <div className="modal-backdrop" onClick={() => setShowOverdueModal(false)}>
+          <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content w-full max-w-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-6 md:px-8 md:py-8">
+                {/* Header */}
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-full bg-error-container flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-error">warning</span>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-headline font-extrabold text-on-surface">
+                      {t('Outstanding Balance')}
+                    </h2>
+                    <p className="text-sm text-secondary mt-1">
+                      {t('This customer has unpaid orders. Total outstanding: {total} QAR')
+                        .replace('{total}', overdueOrders.reduce((s: number, o: any) => s + (o.balance || 0), 0).toFixed(2))}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Outstanding orders table */}
+                <div className="bg-surface-container-low rounded-xl overflow-hidden mb-6 max-h-60 overflow-y-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-surface-container-high">
+                      <tr>
+                        <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Order')}</th>
+                        <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Item')}</th>
+                        <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Status')}</th>
+                        <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary text-right">{t('Balance')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overdueOrders.map((order: any) => (
+                        <tr key={order.id} className="border-t border-outline-variant/20">
+                          <td className="px-4 py-2 text-sm font-mono font-bold text-primary">{order.order_number}</td>
+                          <td className="px-4 py-2 text-sm text-secondary">{order.piece_type}</td>
+                          <td className="px-4 py-2"><span className="chip chip-progress">{order.status}</span></td>
+                          <td className="px-4 py-2 text-right text-sm font-bold text-error">
+                            {Number(order.balance).toFixed(2)} QAR
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowOverdueModal(false)}
+                    className="flex-1 py-3 bg-surface-container-high text-secondary rounded-xl font-bold hover:bg-surface-container-highest transition-all"
+                  >
+                    {t('Go Back')}
+                  </button>
+                  <button
+                    onClick={dismissOverdueWarning}
+                    className="flex-1 py-3 text-white rounded-xl font-bold text-sm shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #763952 0%, #92506a 100%)' }}
+                  >
+                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                    {t('Proceed Anyway')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -73,14 +73,17 @@ export default function TaskBoardPage() {
     const pieceType = task.item_piece_type || task.piece_type;
     try {
       const rate = await window.electronAPI.workers.getActiveRate(workerId, pieceType);
-      if (!rate) {
+      const worker = workers.find((w: any) => w.id === workerId);
+      if (!rate && !worker?.default_rate) {
         alert(t('No rate configured for this worker and piece type. Please set the rate in Worker Rates first.'));
         return;
       }
+      const wageType = rate?.wage_type || 'percentage';
+      const wageRate = rate?.rate || worker?.default_rate || 0;
       const bp = getBasePrice(pieceType);
       const qty = task.task_quantity || 1;
-      const wageAmount = calcWage(bp, rate.wage_type, rate.rate, qty);
-      await window.electronAPI.orders.reassignTask(taskId, workerId, rate.wage_type, rate.rate, wageAmount);
+      const wageAmount = calcWage(bp, wageType, wageRate, qty);
+      await window.electronAPI.orders.reassignTask(taskId, workerId, wageType, wageRate, wageAmount);
       setAssigningTaskId(null);
       await loadData();
     } catch (err) {

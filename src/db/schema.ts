@@ -47,6 +47,7 @@ export function initializeSchema() {
       worker_type TEXT CHECK(worker_type IN ('tailor','master_cutter',NULL)),
       branch_id INTEGER REFERENCES branches(id),
       base_salary REAL DEFAULT 0,
+      default_rate REAL DEFAULT 0,
       active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -388,6 +389,12 @@ function migrateColumns() {
     `);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)`);
   } catch { /* table already exists */ }
+
+  // Add default_rate to users
+  if (!tables.users?.includes('default_rate')) {
+    console.log('Migrating: adding default_rate to users');
+    db.exec('ALTER TABLE users ADD COLUMN default_rate REAL DEFAULT 0');
+  }
 
   // Add base_price to piece_types
   if (!tables.piece_types?.includes('base_price')) {

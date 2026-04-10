@@ -93,11 +93,6 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
     setSidebarOpen(false);
   };
 
-  const sidebarHiddenClass = isRTL ? 'translate-x-full' : '-translate-x-full';
-  const sidebarShowClass = 'translate-x-0';
-  const sidebarPositionClass = isRTL ? 'end-0' : 'start-0';
-  const lgSidebarClass = isRTL ? 'lg:end-0' : 'lg:start-0';
-
   return (
     <div className="flex flex-col h-screen bg-surface">
       <TitleBar />
@@ -105,12 +100,12 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
         {/* Overlay backdrop for small screens */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/30 z-40 xl:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        <aside className={`fixed inset-y-0 ${sidebarPositionClass} z-50 flex flex-col py-6 space-y-2 bg-surface-container-low transition-transform duration-300 w-72 h-screen pt-[calc(var(--titlebar-h,32px)+20px)] lg:static lg:z-auto lg:translate-x-0 lg:h-full lg:shrink-0 lg:overflow-y-auto lg:w-62 ${sidebarOpen ? sidebarShowClass : sidebarHiddenClass} ${lgSidebarClass}`}>
+        <aside className={`fixed inset-y-0 ${isRTL ? 'right-0' : 'left-0'} z-50 flex flex-col py-6 space-y-2 bg-surface-container-low transition-transform duration-300 w-72 h-screen pt-[calc(var(--titlebar-h,32px)+20px)] xl:static xl:z-auto xl:h-full xl:shrink-0 xl:overflow-y-auto xl:w-62 ${sidebarOpen ? 'sidebar-visible' : (isRTL ? 'sidebar-hidden-rtl' : 'sidebar-hidden-ltr')}`}>
           <div className="px-8 mb-8 flex justify-start">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-white shrink-0">
@@ -183,7 +178,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
             <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 -ms-2 rounded-lg hover:bg-surface-container transition-colors"
+                className="xl:hidden p-2 -ms-2 rounded-lg hover:bg-surface-container transition-colors"
                 title={t('Toggle menu')}
               >
                 <span className="material-symbols-outlined text-on-surface-variant">menu</span>

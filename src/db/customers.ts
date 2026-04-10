@@ -67,3 +67,13 @@ export function getCustomerOrders(customerId: number): any[] {
   `);
   return stmt.all(customerId);
 }
+
+export function getCustomerOutstandingOrders(customerId: number): any[] {
+  const stmt = db.prepare(`
+    SELECT id, order_number, piece_type, price, paid, balance, status, delivery_date, created_at
+    FROM orders
+    WHERE customer_id = ? AND status != 'delivered' AND balance > 0
+    ORDER BY created_at DESC
+  `);
+  return stmt.all(customerId);
+}

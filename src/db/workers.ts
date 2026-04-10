@@ -9,6 +9,7 @@ export interface Worker {
   worker_type?: 'tailor' | 'master_cutter' | null;
   branch_id: number;
   base_salary: number;
+  default_rate: number;
   active: number;
   created_at?: string;
 }
@@ -112,7 +113,15 @@ export function getActiveRate(userId: number, pieceType: string): WorkerRate | u
     ORDER BY created_at DESC LIMIT 1
   `).get(userId, pieceType) as WorkerRate | undefined;
 
-  return standard;
+  if (standard) return standard;
+
+  // Fallback to worker's default_rate
+  const worker = db.prepare('SELECT default_rate FROM users WHERE id = ?').get(userId) as { default_rate: number } | undefined;
+  if (worker && worker.default_rate > 0) {
+    return { user_id: userId, piece_type: pieceType, wage_type: 'percentage', rate: worker.default_rate };
+  }
+
+  return undefined;
 }
 
 export function calculateWage(basePrice: number, wageType: string, rate: number, quantity: number = 1): number {

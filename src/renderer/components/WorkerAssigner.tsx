@@ -4,6 +4,7 @@ interface Worker {
   id: number;
   name: string;
   worker_type: string | null;
+  default_rate: number;
   active: number;
 }
 
@@ -60,19 +61,25 @@ export default function WorkerAssigner({ items, t, onConfirm, onBack }: WorkerAs
 
   const handleAssignCutter = async (itemIdx: number, cutterId: number) => {
     const rate = await getRate(cutterId, items[itemIdx].piece_type);
+    const worker = workers.find(w => w.id === cutterId);
+    const fallbackType = (rate?.wage_type || (worker?.default_rate ? 'percentage' : 'fixed')) as 'percentage' | 'fixed';
+    const fallbackRate = rate?.rate || worker?.default_rate || 0;
     setAssignments(prev => prev.map((a, i) => i === itemIdx ? {
-      ...a, cutter_id: cutterId, cutter_wage_type: rate?.wage_type || 'fixed', cutter_wage_rate: rate?.rate || 0,
+      ...a, cutter_id: cutterId, cutter_wage_type: fallbackType, cutter_wage_rate: fallbackRate,
     } : a));
   };
 
   const handleAddTailor = async (itemIdx: number, tailorId: number) => {
     const item = items[itemIdx];
     const rate = await getRate(tailorId, item.piece_type);
+    const worker = workers.find(w => w.id === tailorId);
+    const fallbackType = (rate?.wage_type || (worker?.default_rate ? 'percentage' : 'fixed')) as 'percentage' | 'fixed';
+    const fallbackRate = rate?.rate || worker?.default_rate || 0;
     const currentAssignedQty = assignments[itemIdx].tailors.reduce((s, t) => s + t.quantity, 0);
     const remainingQty = item.quantity - currentAssignedQty;
     if (remainingQty <= 0) return;
     setAssignments(prev => prev.map((a, i) => i === itemIdx ? {
-      ...a, tailors: [...a.tailors, { worker_id: tailorId, quantity: Math.min(remainingQty, 1), wage_type: rate?.wage_type || 'fixed', wage_rate: rate?.rate || 0 }],
+      ...a, tailors: [...a.tailors, { worker_id: tailorId, quantity: Math.min(remainingQty, 1), wage_type: fallbackType, wage_rate: fallbackRate }],
     } : a));
   };
 

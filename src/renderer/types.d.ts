@@ -58,6 +58,8 @@ export interface ElectronAPI {
     create: (data: any) => Promise<any>;
     update: (id: number, data: any) => Promise<any>;
     delete: (id: number) => Promise<void>;
+    getOutstandingOrders: (customerId: number) => Promise<any[]>;
+    getOrders: (customerId: number) => Promise<any[]>;
   };
 
   orders: {

@@ -15,6 +15,7 @@ interface Worker {
   worker_type?: 'tailor' | 'master_cutter' | null;
   branch_id: number;
   base_salary: number;
+  default_rate: number;
   active: number;
   created_at?: string;
 }
@@ -26,6 +27,7 @@ interface WorkerFormValues {
   worker_type: string;
   branch_id: number;
   base_salary: number;
+  default_rate: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -210,6 +212,7 @@ export default function WorkersPage() {
       worker_type: 'tailor',
       branch_id: branches.length > 0 ? branches[0].id : 1,
       base_salary: 0,
+      default_rate: 0,
     });
     setModalOpen(true);
   };
@@ -223,6 +226,7 @@ export default function WorkersPage() {
       worker_type: worker.worker_type || 'tailor',
       branch_id: worker.branch_id,
       base_salary: worker.base_salary || 0,
+      default_rate: worker.default_rate || 0,
     });
     setModalOpen(true);
     setActionMenuId(null);
@@ -239,6 +243,7 @@ export default function WorkersPage() {
       worker_type: 'tailor',
       branch_id: 1,
       base_salary: 0,
+      default_rate: 0,
     });
   };
 
@@ -252,6 +257,7 @@ export default function WorkersPage() {
           worker_type: data.worker_type || null,
           branch_id: data.branch_id,
           base_salary: Number(data.base_salary) || 0,
+          default_rate: Number(data.default_rate) || 0,
         };
         if (data.password) {
           updateData.password = data.password;
@@ -266,6 +272,7 @@ export default function WorkersPage() {
           worker_type: data.worker_type || null,
           branch_id: data.branch_id,
           base_salary: Number(data.base_salary) || 0,
+          default_rate: Number(data.default_rate) || 0,
         });
       }
       closeModal();
@@ -483,11 +490,18 @@ export default function WorkersPage() {
 
                     {/* Payment Structure */}
                     <td>
-                      <div className="flex items-center gap-2 text-on-surface-variant font-medium">
-                        <span className="material-symbols-outlined text-lg opacity-40">
-                          {worker.base_salary > 0 ? 'account_balance_wallet' : 'percent'}
-                        </span>
-                        {worker.base_salary > 0 ? t('Fixed Salary') : t('Piece-rate')}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-on-surface-variant font-medium">
+                          <span className="material-symbols-outlined text-lg opacity-40">
+                            {worker.base_salary > 0 ? 'account_balance_wallet' : 'percent'}
+                          </span>
+                          {worker.base_salary > 0 ? t('Fixed Salary') : t('Piece-rate')}
+                        </div>
+                        {worker.default_rate > 0 && (
+                          <span className="text-[11px] text-primary font-semibold">
+                            {worker.default_rate}% {t('rate')}
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -890,32 +904,58 @@ export default function WorkersPage() {
                       </div>
                     </div>
 
-                    {/* Base Salary */}
-                    <div>
-                      <label
-                        className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
-                        htmlFor="worker-salary"
-                      >
-                        {t('Base Salary')}
-                      </label>
-                      <div className="relative flex items-center">
-                        <span className="material-symbols-outlined absolute left-4 text-outline">
-                          payments
-                        </span>
-                        <input
-                          {...register('base_salary', { valueAsNumber: true })}
-                          id="worker-salary"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          className="input-field pl-12"
-                          placeholder="0.00"
-                        />
+                    {/* Base Salary + Default Rate */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
+                          htmlFor="worker-salary"
+                        >
+                          {t('Base Salary')}
+                        </label>
+                        <div className="relative flex items-center">
+                          <span className="material-symbols-outlined absolute left-4 text-outline">
+                            payments
+                          </span>
+                          <input
+                            {...register('base_salary', { valueAsNumber: true })}
+                            id="worker-salary"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="input-field pl-12"
+                            placeholder="0.00"
+                          />
+                        </div>
                       </div>
-                      <p className="text-on-surface-variant text-[11px] mt-1.5 ml-1">
-                        {t('Set to 0 for piece-rate workers')}
-                      </p>
+
+                      <div>
+                        <label
+                          className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1"
+                          htmlFor="worker-rate"
+                        >
+                          {t('Default Rate %')}
+                        </label>
+                        <div className="relative flex items-center">
+                          <span className="material-symbols-outlined absolute left-4 text-outline">
+                            percent
+                          </span>
+                          <input
+                            {...register('default_rate', { valueAsNumber: true })}
+                            id="worker-rate"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            className="input-field pl-12"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
                     </div>
+                    <p className="text-on-surface-variant text-[11px] -mt-2 ml-1">
+                      {t('Set salary to 0 for piece-rate workers. Default rate % is used when no specific rate is set.')}
+                    </p>
                   </div>
 
                   {/* Actions */}

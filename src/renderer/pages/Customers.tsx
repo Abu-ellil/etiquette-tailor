@@ -53,12 +53,17 @@ function getInitials(name: string): string {
 /* ── Component ─────────────────────────────────────────── */
 
 export default function CustomersPage() {
-  const { t } = useTranslation();
+  const { t, currency } = useTranslation();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
+
+  /* Order history state */
+  const [orderHistoryCustomer, setOrderHistoryCustomer] = useState<Customer | null>(null);
+  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   const {
     register,
@@ -158,6 +163,27 @@ export default function CustomersPage() {
     } catch (err) {
       console.error('Failed to delete customer:', err);
     }
+  };
+
+  /* ── Order history ── */
+
+  const viewOrderHistory = async (customer: Customer) => {
+    setOrderHistoryCustomer(customer);
+    setLoadingOrders(true);
+    try {
+      const orders = await window.electronAPI.customers.getOrders(customer.id);
+      setCustomerOrders(orders || []);
+    } catch (err) {
+      console.error('Failed to load customer orders:', err);
+      setCustomerOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const closeOrderHistory = () => {
+    setOrderHistoryCustomer(null);
+    setCustomerOrders([]);
   };
 
   /* ── Render ── */
@@ -273,6 +299,13 @@ export default function CustomersPage() {
                   {/* Actions */}
                   <td className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => viewOrderHistory(customer)}
+                        className="p-2 text-outline hover:text-primary transition-colors"
+                        title={t('Order History')}
+                      >
+                        <span className="material-symbols-outlined">receipt_long</span>
+                      </button>
                       <button
                         onClick={() => openEditModal(customer)}
                         className="p-2 text-outline hover:text-primary transition-colors"
@@ -398,6 +431,103 @@ export default function CustomersPage() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Order History Modal ── */}
+      {orderHistoryCustomer && (
+        <div className="modal-backdrop" onClick={closeOrderHistory}>
+          <div className="flex min-h-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+              <div className="px-4 py-6 md:px-8 md:py-10">
+                {/* Header */}
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-2xl font-headline font-extrabold text-on-surface tracking-tight">
+                      {t('Order History')}
+                    </h2>
+                    <p className="text-secondary text-sm mt-1">
+                      {orderHistoryCustomer.name} {orderHistoryCustomer.phone ? `• ${orderHistoryCustomer.phone}` : ''}
+                    </p>
+                  </div>
+                  <button onClick={closeOrderHistory} className="p-2 text-outline hover:text-on-surface transition-colors">
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+
+                {/* Summary */}
+                {!loadingOrders && customerOrders.length > 0 && (
+                  <div className="flex gap-4 mb-6">
+                    <div className="flex-1 bg-surface-container-low rounded-xl p-4 text-center">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-secondary">{t('Total Orders')}</p>
+                      <p className="text-2xl font-headline font-extrabold text-on-surface mt-1">{customerOrders.length}</p>
+                    </div>
+                    <div className="flex-1 bg-error-container/30 rounded-xl p-4 text-center">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-secondary">{t('Total Outstanding')}</p>
+                      <p className="text-2xl font-headline font-extrabold text-error mt-1">
+                        {customerOrders.reduce((s: number, o: any) => s + (o.balance || 0), 0).toFixed(2)} {t(currency)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Orders table */}
+                {loadingOrders ? (
+                  <div className="flex items-center justify-center py-12 text-secondary">
+                    <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
+                    {t('Loading...')}
+                  </div>
+                ) : customerOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-secondary">
+                    <span className="material-symbols-outlined text-4xl mb-2 text-outline">receipt_long</span>
+                    <p className="font-headline font-bold text-on-surface">{t('No orders found')}</p>
+                  </div>
+                ) : (
+                  <div className="bg-surface-container-low rounded-xl overflow-hidden max-h-80 overflow-y-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-surface-container-high sticky top-0">
+                        <tr>
+                          <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Order')}</th>
+                          <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Item')}</th>
+                          <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary">{t('Status')}</th>
+                          <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary text-right">{t('Price')}</th>
+                          <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary text-right">{t('Paid')}</th>
+                          <th className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary text-right">{t('Balance')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customerOrders.map((order: any) => (
+                          <tr
+                            key={order.id}
+                            className={`border-t border-outline-variant/20 ${order.balance > 0 ? 'bg-error-container/10' : ''}`}
+                          >
+                            <td className="px-4 py-2 text-sm font-mono font-bold text-primary">{order.order_number}</td>
+                            <td className="px-4 py-2 text-sm text-secondary">{order.piece_type}</td>
+                            <td className="px-4 py-2"><span className="chip chip-progress">{order.status}</span></td>
+                            <td className="px-4 py-2 text-right text-sm">{Number(order.price).toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right text-sm">{Number(order.paid).toFixed(2)}</td>
+                            <td className={`px-4 py-2 text-right text-sm font-bold ${order.balance > 0 ? 'text-error' : 'text-tertiary'}`}>
+                              {Number(order.balance).toFixed(2)} {t(currency)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Close button */}
+                <div className="flex justify-end pt-6">
+                  <button
+                    onClick={closeOrderHistory}
+                    className="px-8 py-3 text-sm font-semibold text-secondary hover:text-on-surface transition-colors"
+                  >
+                    {t('Close')}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
