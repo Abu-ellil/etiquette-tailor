@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from '../contexts/I18nContext';
 
 interface Session {
@@ -100,6 +100,15 @@ export default function NotificationBell({ session }: { session: Session }) {
     }
   };
 
+  const handleClearRead = async () => {
+    try {
+      await window.electronAPI.notifications.clearRead(session.userId, session.role);
+      setNotifications(prev => prev.filter(n => !n.is_read));
+    } catch (e) {
+      console.error('Failed to clear read notifications:', e);
+    }
+  };
+
   const handleNotificationClick = async (notif: NotificationItem) => {
     try {
       if (!notif.is_read) {
@@ -140,14 +149,24 @@ export default function NotificationBell({ session }: { session: Session }) {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
             <h3 className="text-sm font-bold text-on-surface">{t('Notifications')}</h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={handleMarkAllRead}
-                className="text-xs text-primary font-semibold hover:underline"
-              >
-                {t('Mark all as read')}
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {notifications.some(n => n.is_read) && (
+                <button
+                  onClick={handleClearRead}
+                  className="text-xs text-error font-semibold hover:underline"
+                >
+                  {t('Clear read')}
+                </button>
+              )}
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="text-xs text-primary font-semibold hover:underline"
+                >
+                  {t('Mark all as read')}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Notification List */}
@@ -187,6 +206,16 @@ export default function NotificationBell({ session }: { session: Session }) {
               ))
             )}
           </div>
+
+          {/* Footer */}
+          <Link
+            to="/notifications"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center justify-center gap-1 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-surface-container-high transition-colors border-t border-outline-variant/20"
+          >
+            <span className="material-symbols-outlined text-sm">history</span>
+            {t('View all notifications')}
+          </Link>
         </div>
       )}
     </div>

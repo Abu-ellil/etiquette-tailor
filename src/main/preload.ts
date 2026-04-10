@@ -51,6 +51,8 @@ export interface ElectronAPI {
     create: (data: any) => Promise<any>;
     update: (id: number, data: any) => Promise<any>;
     delete: (id: number) => Promise<void>;
+    getOutstandingOrders: (customerId: number) => Promise<any[]>;
+    getOrders: (customerId: number) => Promise<any[]>;
   };
 
   orders: {
@@ -197,6 +199,8 @@ const api: ElectronAPI = {
     create: (data) => ipcRenderer.invoke('customers:create', data),
     update: (id, data) => ipcRenderer.invoke('customers:update', id, data),
     delete: (id) => ipcRenderer.invoke('customers:delete', id),
+    getOutstandingOrders: (customerId) => ipcRenderer.invoke('customers:getOutstandingOrders', customerId),
+    getOrders: (customerId) => ipcRenderer.invoke('customers:getOrders', customerId),
   },
 
   orders: {
@@ -276,6 +280,7 @@ const api: ElectronAPI = {
     markAsRead: (notificationId) => ipcRenderer.invoke('notifications:markAsRead', notificationId),
     markAllAsRead: (userId, role) => ipcRenderer.invoke('notifications:markAllAsRead', userId, role),
     softDelete: (notificationId) => ipcRenderer.invoke('notifications:softDelete', notificationId),
+    clearRead: (userId, role) => ipcRenderer.invoke('notifications:clearRead', userId, role),
     generateOverdue: () => ipcRenderer.invoke('notifications:generateOverdue'),
   },
 

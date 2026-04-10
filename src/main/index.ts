@@ -22,6 +22,8 @@ import {
   createCustomer,
   updateCustomer,
   deleteCustomer,
+  getCustomerOrders,
+  getCustomerOutstandingOrders,
   getAllOrders,
   getOrder,
   searchOrders,
@@ -89,6 +91,7 @@ import {
   markAsRead,
   markAllAsRead,
   softDeleteNotification,
+  clearReadNotifications,
   generateOverdueNotifications,
 } from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
@@ -289,6 +292,14 @@ function registerIpcHandlers() {
 
   ipcMain.handle('customers:delete', async (_event, id: number) => {
     return deleteCustomer(id);
+  });
+
+  ipcMain.handle('customers:getOutstandingOrders', async (_event, customerId: number) => {
+    return getCustomerOutstandingOrders(customerId);
+  });
+
+  ipcMain.handle('customers:getOrders', async (_event, customerId: number) => {
+    return getCustomerOrders(customerId);
   });
 
   ipcMain.handle('orders:getAll', async (_event, branchId?: number, status?: string) => {
@@ -671,6 +682,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle('notifications:softDelete', async (_event, notificationId: number) => {
     return softDeleteNotification(notificationId);
+  });
+
+  ipcMain.handle('notifications:clearRead', async (_event, userId: number, role: string) => {
+    return clearReadNotifications(userId, role);
   });
 
   ipcMain.handle('notifications:generateOverdue', async () => {

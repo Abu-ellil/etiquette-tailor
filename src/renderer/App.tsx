@@ -24,6 +24,7 @@ import AdvancedReportsPage from './pages/AdvancedReports';
 import InvoicePage from './pages/Invoice';
 import BackupPage from './pages/Backup';
 import SettingsPage from './pages/Settings';
+import NotificationsPage from './pages/Notifications';
 import AppLayout from './components/AppLayout';
 
 export interface Session {
@@ -36,10 +37,10 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports'],
-  reception: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements'],
-  worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
+  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/settings', '/notifications'],
+  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/notifications'],
+  reception: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/notifications'],
+  worker: ['/dashboard', '/my-tasks', '/cutting-queue', '/notifications'],
 };
 
 function ProtectedRoute({
@@ -314,6 +315,14 @@ export default function App() {
             element={
               <ProtectedRoute path="/settings" session={session}>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="notifications"
+            element={
+              <ProtectedRoute path="/notifications" session={session}>
+                <NotificationsPage />
               </ProtectedRoute>
             }
           />

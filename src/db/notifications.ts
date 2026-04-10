@@ -118,6 +118,22 @@ export function softDeleteNotification(notificationId: number): void {
   db.prepare('UPDATE notifications SET is_deleted = 1 WHERE id = ?').run(notificationId);
 }
 
+export function clearReadNotifications(userId: number, role: string): number {
+  let query: string;
+  let params: any[];
+
+  if (role === 'worker') {
+    query = `UPDATE notifications SET is_deleted = 1 WHERE is_read = 1 AND is_deleted = 0 AND target_user_id = ?`;
+    params = [userId];
+  } else {
+    query = `UPDATE notifications SET is_deleted = 1 WHERE is_read = 1 AND is_deleted = 0 AND ((target_role IN ('admin', 'manager')) OR target_user_id = ?)`;
+    params = [userId];
+  }
+
+  const result = db.prepare(query).run(...params);
+  return result.changes;
+}
+
 export function generateOverdueNotifications(): number {
   const overdueOrders = db.prepare(`
     SELECT o.id, o.order_number, c.name as customer_name, o.delivery_date
