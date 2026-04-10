@@ -40,6 +40,13 @@ interface ShopSettings {
   receipt_footer?: string;
 }
 
+interface BranchInfo {
+  name_ar: string;
+  name_en: string;
+  prefix: string;
+  address?: string;
+}
+
 function formatDate(dateStr: string): string {
   if (!dateStr) return '-';
   try {
@@ -70,6 +77,7 @@ export default function InvoicePage() {
   const { t, currency } = useTranslation();
   const [order, setOrder] = useState<OrderData | null>(null);
   const [settings, setSettings] = useState<ShopSettings>({});
+  const [branch, setBranch] = useState<BranchInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -144,6 +152,21 @@ export default function InvoicePage() {
             status: orderData.status || 'intake',
             worker_name: workerName,
           });
+
+          // Fetch branch info
+          if (orderData.branch_id) {
+            try {
+              const branchData = await window.electronAPI?.branches?.getById?.(orderData.branch_id);
+              if (branchData) {
+                setBranch({
+                  name_ar: branchData.name_ar || '',
+                  name_en: branchData.name_en || '',
+                  prefix: branchData.prefix || '',
+                  address: branchData.address || '',
+                });
+              }
+            } catch { /* branch fetch failed */ }
+          }
         }
       } catch {
         // Order not found or error loading
@@ -214,12 +237,16 @@ export default function InvoicePage() {
           <div className="text-center mb-3">
             <div className="text-xl font-bold mb-0.5">{shopNameAr}</div>
             <div className="text-[10px] text-gray-600">{shopNameEn}</div>
-            <div className="text-[11px] mt-2">
-              {t('Hello')} {order.customer_name}
-            </div>
-            <div className="text-[10px] text-gray-500 mt-0.5">
-              {t('This is your order invoice from Etiquette Tailor')}
-            </div>
+            {branch && (
+              <div className="text-[10px] text-gray-600 mt-0.5">
+                {t('Branch')} {branch.prefix} — {branch.name_ar} / {branch.name_en}
+              </div>
+            )}
+            {order.customer_phone && (
+              <div className="text-[11px] mt-2">
+                {order.customer_phone}
+              </div>
+            )}
           </div>
 
           {/* Divider */}
@@ -228,10 +255,7 @@ export default function InvoicePage() {
           {/* Order Details - Two column: value | label */}
           <div className="space-y-1">
             <ReceiptRow value={order.order_number} label={t('Invoice Number / رقم الفاتورة')} />
-            <ReceiptRow value={order.customer_name} label={t('Customer / العميل')} />
-            {order.customer_phone && (
-              <ReceiptRow value={order.customer_phone} label={t('Phone / الهاتف')} />
-            )}
+            <ReceiptRow value={order.customer_phone || order.customer_name} label={t('Phone / الهاتف')} />
 
             {/* Divider */}
             <div className="border-t border-dotted border-gray-300 my-1" />
@@ -289,12 +313,6 @@ export default function InvoicePage() {
                 label={t('Delivery Date / التسليم')}
               />
             )}
-            {order.worker_name && (
-              <ReceiptRow
-                value={order.worker_name}
-                label={t('Worker / العامل')}
-              />
-            )}
           </div>
 
           {/* Divider */}
@@ -311,6 +329,19 @@ export default function InvoicePage() {
                 {t('Balance Due / الرصيد المتبقي')}: {formatCurrency(order.balance)} {t(currency)}
               </div>
             )}
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-dashed border-gray-400 my-2" />
+
+          {/* Notice */}
+          <div className="text-[9px] text-gray-500 leading-tight my-2">
+            <div dir="rtl" className="text-right mb-1">
+              ملاحظة: المحل غير مسؤول عن تعديل طلبكم بعد استلامه بـ 7 أيام عمل وعن طلباتكم الغير المستلمة بعد 30 يوماً من تاريخ تسليم الطلب
+            </div>
+            <div dir="ltr" className="text-left">
+              Note: The shop is not responsible for any modifications to your order after 7 working days from the date of receipt, and is not responsible for uncollected orders after 30 days from the delivery date.
+            </div>
           </div>
 
           {/* Divider */}

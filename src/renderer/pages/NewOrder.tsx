@@ -55,6 +55,7 @@ export default function NewOrderPage() {
     customerFirstName: '',
     phoneNumber: '',
     itemType: '',
+    quantity: 1,
     measurements: '',
     fabricSource: 'customer' as 'customer' | 'shop',
     fabricDetails: '',
@@ -161,7 +162,7 @@ export default function NewOrderPage() {
       const orderItems = [{
         order_id: 0,
         piece_type: formData.itemType,
-        quantity: 1,
+        quantity: formData.quantity,
         unit_price: totalPrice,
         total_price: totalPrice,
         fabric_source: formData.fabricSource,
@@ -291,7 +292,7 @@ export default function NewOrderPage() {
             </div>
 
             {/* ── Item Details ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
                   {t('Garment Type')} *
@@ -316,6 +317,20 @@ export default function NewOrderPage() {
                   ))}
                 </select>
                 {errors.itemType && <p className="text-xs text-error">{errors.itemType}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
+                  {t('Quantity')}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  className="input-field"
+                  value={formData.quantity}
+                  onChange={e => updateField('quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                  disabled={submitting}
+                />
               </div>
 
               <div className="space-y-2">
