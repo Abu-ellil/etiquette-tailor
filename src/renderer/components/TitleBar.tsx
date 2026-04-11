@@ -30,7 +30,7 @@ export default function TitleBar() {
           straighten
         </span>
         <span className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-tight">
-          {t('V1.0.0')}
+          V{__APP_VERSION__}
         </span>
       </div>
 
