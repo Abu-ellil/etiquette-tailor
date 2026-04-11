@@ -173,6 +173,11 @@ export function getAllOrders(branchId?: number, status?: string): Order[] {
 }
 
 export function getOrder(id: number): Order | undefined {
+  // Sync paid from actual payment records before returning
+  db.prepare(`
+    UPDATE orders SET paid = COALESCE((SELECT SUM(amount) FROM order_payments WHERE order_id = ?), 0)
+    WHERE id = ?
+  `).run(id, id);
   const stmt = db.prepare(`
     SELECT o.*, c.name as customer_name, c.phone as customer_phone
     FROM orders o
@@ -865,6 +870,13 @@ export function deleteOrderPayment(paymentId: number): void {
   });
 
   txn();
+}
+
+// Sync all orders' paid column from actual payment records
+export function syncAllOrderPayments(): void {
+  db.prepare(`
+    UPDATE orders SET paid = COALESCE((SELECT SUM(op.amount) FROM order_payments op WHERE op.order_id = orders.id), 0)
+  `).run();
 }
 
 // ── Advanced Reports ──────────────────────────────────────────────────

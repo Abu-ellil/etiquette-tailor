@@ -258,7 +258,7 @@ export default function OrderDetailPage() {
       alert(t('Please enter a valid amount.'));
       return;
     }
-    const bal = Number(order.price) - Number(order.paid);
+    const bal = Number(order.price) - totalPaid;
     if (amount > bal + 0.01) {
       alert(t('Payment amount exceeds the balance due ({balance} QAR).').replace('{balance}', bal.toFixed(2)).replaceAll('QAR', t(currency)));
       return;
@@ -308,7 +308,9 @@ export default function OrderDetailPage() {
     );
   }
 
-  const balance = (Number(order.price) || 0) - (Number(order.paid) || 0);
+  // Calculate paid from actual payment records to stay in sync
+  const totalPaid = payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+  const balance = (Number(order.price) || 0) - totalPaid;
   const isWorker = session?.role === 'worker';
 
   // Calculate assigned quantities per item
@@ -343,7 +345,7 @@ export default function OrderDetailPage() {
                   onClick={() => {
                     const phone = order.customer_phone?.replace(/[^0-9]/g, '') || '';
                     if (!phone) { alert(t('No phone number for this customer.')); return; }
-                    const bal = (Number(order.price) || 0) - (Number(order.paid) || 0);
+                    const bal = (Number(order.price) || 0) - totalPaid;
                     const items = orderItems.length > 0
                       ? orderItems.map((it: any) => `• ${it.piece_type} ×${it.quantity || 1}`).join('\n')
                       : `• ${order.piece_type}`;
@@ -357,7 +359,7 @@ export default function OrderDetailPage() {
 ${items}
 
 *Price:* ${Number(order.price).toFixed(0)} ${t(currency)}
-*Paid:* ${Number(order.paid).toFixed(0)} ${t(currency)}
+*Paid:* ${totalPaid.toFixed(0)} ${t(currency)}
 ${bal > 0.01 ? `*Balance Due:* ${bal.toFixed(0)} ${t(currency)}` : '*Fully Paid*'}
 *Delivery:* ${order.delivery_date || '--'}
 
@@ -394,7 +396,7 @@ ${order.details ? `*Notes:* ${order.details}` : ''}`;
           </div>
           <div className="bg-surface-container-lowest rounded-xl p-5 text-center">
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Total Paid')}</p>
-            <p className="text-2xl font-extrabold text-tertiary">{Number(order.paid).toFixed(2)} <span className="text-sm font-semibold text-secondary">{t(currency)}</span></p>
+            <p className="text-2xl font-extrabold text-tertiary">{totalPaid.toFixed(2)} <span className="text-sm font-semibold text-secondary">{t(currency)}</span></p>
           </div>
           <div className={`rounded-xl p-5 text-center ${balance > 0.01 ? 'bg-error/10 border-2 border-error/20' : 'bg-tertiary-container/20 border-2 border-tertiary-container/30'}`}>
             <p className="text-xs uppercase tracking-widest text-secondary mb-1">{t('Balance Due')}</p>

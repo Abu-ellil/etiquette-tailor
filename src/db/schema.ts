@@ -293,7 +293,7 @@ export function initializeSchema() {
     ['invoice_header_text', ''],
     ['invoice_shop_name_ar', ''],
     ['invoice_shop_name_en', ''],
-    ['invoice_section_order', '["shop_logo","shop_name","branch_info","phone","invoice_details","worker_name","items","totals","payment_method","dates","payment_status","notes","footer"]'],
+    ['invoice_section_order', '["shop_logo","shop_name","branch_info","phone","invoice_details","worker_name","items","totals","previous_balance","payment_method","dates","payment_status","notes","footer"]'],
   ];
   for (const [key, value] of invoiceKeys) {
     insertIgnoreSetting.run(key, value);
@@ -744,7 +744,7 @@ function seedSettings() {
   insertSetting.run('invoice_header_text', '');
   insertSetting.run('invoice_shop_name_ar', '');
   insertSetting.run('invoice_shop_name_en', '');
-  insertSetting.run('invoice_section_order', '["shop_logo","shop_name","branch_info","phone","invoice_details","worker_name","items","totals","payment_method","dates","payment_status","notes","footer"]');
+  insertSetting.run('invoice_section_order', '["shop_logo","shop_name","branch_info","phone","invoice_details","worker_name","items","totals","previous_balance","payment_method","dates","payment_status","notes","footer"]');
 }
 
 function seedPieceTypes() {

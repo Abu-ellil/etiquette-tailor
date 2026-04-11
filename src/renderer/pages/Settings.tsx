@@ -51,6 +51,7 @@ const TABS = [
   { id: 'shop', label: 'Shop Info', icon: 'storefront' },
   { id: 'users', label: 'Users', icon: 'group' },
   { id: 'branches', label: 'Branches', icon: 'store' },
+  { id: 'invoice', label: 'Invoice', icon: 'receipt' },
   { id: 'preferences', label: 'Preferences', icon: 'tune' },
 ] as const;
 
@@ -88,6 +89,38 @@ export default function SettingsPage() {
   const [branchModalOpen, setBranchModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  const INVOICE_TOGGLES = [
+    { key: 'invoice_show_shop_name', label: 'Shop Name', desc: 'Shop name (Arabic & English)', icon: 'storefront' },
+    { key: 'invoice_show_branch_info', label: 'Branch Info', desc: 'Branch name and prefix', icon: 'store' },
+    { key: 'invoice_show_phone', label: 'Phone Number', desc: 'Phone number shown in header', icon: 'phone' },
+    { key: 'invoice_show_worker_name', label: 'Worker Name', desc: 'Name of the assigned worker', icon: 'person' },
+    { key: 'invoice_show_worker_phone', label: 'Worker Phone', desc: 'Phone number of the assigned worker', icon: 'phone' },
+    { key: 'invoice_show_delivery_date', label: 'Delivery Date', desc: 'Expected delivery/receipt date', icon: 'event' },
+    { key: 'invoice_show_payment_method', label: 'Payment Method', desc: 'Cash or Card payment method', icon: 'payments' },
+    { key: 'invoice_show_shop_logo', label: 'Shop Logo / Icon', desc: 'Shop logo or decorative icon', icon: 'styler' },
+    { key: 'invoice_show_notes', label: 'Notes & Disclaimer', desc: 'Shop responsibility disclaimer', icon: 'info' },
+  ] as const;
+
+  const INVOICE_SECTIONS = [
+    { key: 'shop_logo', label: 'Shop Logo / Icon', icon: 'styler' },
+    { key: 'shop_name', label: 'Shop Name', icon: 'storefront' },
+    { key: 'branch_info', label: 'Branch Info', icon: 'store' },
+    { key: 'phone', label: 'Phone', icon: 'phone' },
+    { key: 'invoice_details', label: 'Invoice & Customer Info', icon: 'receipt' },
+    { key: 'worker_name', label: 'Worker Name', icon: 'person' },
+    { key: 'items', label: 'Items & Services', icon: 'checklist' },
+    { key: 'totals', label: 'Totals (Total / Paid / Balance)', icon: 'calculate' },
+    { key: 'previous_balance', label: 'Previous Orders Balance', icon: 'account_balance_wallet' },
+    { key: 'payment_method', label: 'Payment Method', icon: 'payments' },
+    { key: 'dates', label: 'Dates', icon: 'event' },
+    { key: 'payment_status', label: 'Payment Status', icon: 'verified' },
+    { key: 'notes', label: 'Notes & Disclaimer', icon: 'info' },
+    { key: 'footer', label: 'Footer', icon: 'format_quote' },
+  ] as const;
+
+  const [invoiceToggles, setInvoiceToggles] = useState<Record<string, boolean>>({});
+  const [sectionOrder, setSectionOrder] = useState<string[]>([]);
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
   const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number; up: boolean } | null>(null);
 
@@ -118,6 +151,26 @@ export default function SettingsPage() {
       setSettingsState(settingsData || {});
       setUsers(usersData || []);
       setBranches(branchesData || []);
+
+      // Initialize invoice toggle state from settings
+      const toggleState: Record<string, boolean> = {};
+      for (const tg of INVOICE_TOGGLES) {
+        toggleState[tg.key] = (settingsData as Record<string, string>)?.[tg.key] !== '0';
+      }
+      setInvoiceToggles(toggleState);
+
+      // Initialize section order from settings
+      try {
+        const orderStr = (settingsData as Record<string, string>)?.invoice_section_order;
+        const parsed = orderStr ? JSON.parse(orderStr) : null;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSectionOrder(parsed);
+        } else {
+          setSectionOrder(INVOICE_SECTIONS.map(s => s.key));
+        }
+      } catch {
+        setSectionOrder(INVOICE_SECTIONS.map(s => s.key));
+      }
     } catch (err) {
       console.error('Failed to load settings:', err);
     } finally {
@@ -177,6 +230,37 @@ export default function SettingsPage() {
       if (updates.locale) setLocale(updates.locale as 'en' | 'ar');
     } catch (err) {
       console.error('Failed to save preferences:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ---- Invoice toggles save ---- */
+
+  const handleInvoiceSave = async () => {
+    try {
+      setSaving(true);
+      const updates: Record<string, string> = {};
+      // Toggle values
+      for (const tg of INVOICE_TOGGLES) {
+        updates[tg.key] = invoiceToggles[tg.key] ? '1' : '0';
+      }
+      // Text fields from DOM
+      const headerEl = document.querySelector('[name="invoice_header_text"]') as HTMLInputElement | null;
+      const footerEl = document.querySelector('[name="receipt_footer"]') as HTMLTextAreaElement | null;
+      const shopArEl = document.querySelector('[name="invoice_shop_name_ar"]') as HTMLInputElement | null;
+      const shopEnEl = document.querySelector('[name="invoice_shop_name_en"]') as HTMLInputElement | null;
+      if (headerEl) updates.invoice_header_text = headerEl.value;
+      if (footerEl) updates.receipt_footer = footerEl.value;
+      if (shopArEl) updates.invoice_shop_name_ar = shopArEl.value;
+      if (shopEnEl) updates.invoice_shop_name_en = shopEnEl.value;
+      // Section order
+      updates.invoice_section_order = JSON.stringify(sectionOrder);
+
+      await window.electronAPI.settings.set(updates);
+      setSettingsState((prev) => ({ ...prev, ...updates }));
+    } catch (err) {
+      console.error('Failed to save invoice settings:', err);
     } finally {
       setSaving(false);
     }
@@ -613,6 +697,214 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {activeTab === 'invoice' && (
+        <div className="max-w-2xl space-y-6">
+          <div className="bg-surface-container-lowest rounded-2xl p-8 space-y-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary text-xl">receipt</span>
+                <h3 className="font-headline font-bold text-lg text-on-surface">{t('Invoice Components')}</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allOn: Record<string, boolean> = {};
+                    for (const tg of INVOICE_TOGGLES) allOn[tg.key] = true;
+                    setInvoiceToggles(allOn);
+                  }}
+                  className="text-xs font-bold text-primary hover:underline"
+                >
+                  {t('Select All')}
+                </button>
+                <span className="text-outline-variant">|</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allOff: Record<string, boolean> = {};
+                    for (const tg of INVOICE_TOGGLES) allOff[tg.key] = false;
+                    setInvoiceToggles(allOff);
+                  }}
+                  className="text-xs font-bold text-secondary hover:text-on-surface hover:underline"
+                >
+                  {t('Deselect All')}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              {INVOICE_TOGGLES.map((tg) => (
+                <div
+                  key={tg.key}
+                  className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-surface-container transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-outline text-lg">{tg.icon}</span>
+                    <div>
+                      <div className="text-sm font-semibold text-on-surface">{t(tg.label)}</div>
+                      <div className="text-xs text-secondary">{t(tg.desc)}</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={invoiceToggles[tg.key] !== false}
+                    onClick={() => setInvoiceToggles((prev) => ({ ...prev, [tg.key]: prev[tg.key] === false }))}
+                    className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      invoiceToggles[tg.key] !== false ? 'bg-primary' : 'bg-surface-container-high'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        invoiceToggles[tg.key] !== false ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Invoice Text Fields */}
+          <div className="bg-surface-container-lowest rounded-2xl p-8 space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="material-symbols-outlined text-primary text-xl">edit_note</span>
+              <h3 className="font-headline font-bold text-lg text-on-surface">{t('Invoice Text')}</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                  {t('Invoice Shop Name (Arabic)')}
+                </label>
+                <input
+                  name="invoice_shop_name_ar"
+                  type="text"
+                  className="input-field"
+                  dir="rtl"
+                  defaultValue={settings.invoice_shop_name_ar || ''}
+                  placeholder={settings.shop_name_ar || t('Shop Name (Arabic)')}
+                />
+                <p className="text-[11px] text-secondary mt-1 px-1">{t('Leave empty to use default shop name')}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                  {t('Invoice Shop Name (English)')}
+                </label>
+                <input
+                  name="invoice_shop_name_en"
+                  type="text"
+                  className="input-field"
+                  defaultValue={settings.invoice_shop_name_en || ''}
+                  placeholder={settings.shop_name_en || t('Shop Name (English)')}
+                />
+                <p className="text-[11px] text-secondary mt-1 px-1">{t('Leave empty to use default shop name')}</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                {t('Header Text')}
+              </label>
+              <input
+                name="invoice_header_text"
+                type="text"
+                className="input-field"
+                defaultValue={settings.invoice_header_text || ''}
+                placeholder={t('Custom text shown below the shop name')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                {t('Footer Text')}
+              </label>
+              <textarea
+                name="receipt_footer"
+                rows={3}
+                className="input-field resize-none"
+                defaultValue={settings.receipt_footer || ''}
+                placeholder={t('Text shown at the bottom of printed invoices')}
+              />
+            </div>
+          </div>
+
+          {/* Section Order */}
+          <div className="bg-surface-container-lowest rounded-2xl p-8 space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="material-symbols-outlined text-primary text-xl">reorder</span>
+              <h3 className="font-headline font-bold text-lg text-on-surface">{t('Section Order')}</h3>
+            </div>
+            <p className="text-xs text-secondary -mt-3">{t('Drag or use arrows to reorder invoice sections')}</p>
+
+            <div className="space-y-1">
+              {sectionOrder.map((key, idx) => {
+                const section = INVOICE_SECTIONS.find(s => s.key === key);
+                if (!section) return null;
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center gap-3 py-2.5 px-4 rounded-xl bg-surface-container/50"
+                  >
+                    <span className="text-xs font-mono text-secondary w-5 text-center">{idx + 1}</span>
+                    <span className="material-symbols-outlined text-outline text-lg">{section.icon}</span>
+                    <span className="text-sm font-medium text-on-surface flex-1">{t(section.label)}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => {
+                          const newOrder = [...sectionOrder];
+                          [newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]];
+                          setSectionOrder(newOrder);
+                        }}
+                        className="p-1 rounded hover:bg-surface-container-high disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base">keyboard_arrow_up</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === sectionOrder.length - 1}
+                        onClick={() => {
+                          const newOrder = [...sectionOrder];
+                          [newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]];
+                          setSectionOrder(newOrder);
+                        }}
+                        className="p-1 rounded hover:bg-surface-container-high disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base">keyboard_arrow_down</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSectionOrder(INVOICE_SECTIONS.map(s => s.key))}
+              className="text-xs font-bold text-secondary hover:text-on-surface hover:underline"
+            >
+              {t('Reset to Default Order')}
+            </button>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleInvoiceSave}
+              className="btn-primary px-8 py-3 text-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              {saving && (
+                <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
+              )}
+              {saving ? t('Saving...') : t('Save Changes')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'preferences' && (
         <form onSubmit={handlePrefsSave} className="max-w-2xl space-y-6">
           <div className="bg-surface-container-lowest rounded-2xl p-8 space-y-6">
@@ -705,19 +997,6 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
-                {t('Receipt / Invoice Footer Text')}
-              </label>
-              <textarea
-                name="receipt_footer"
-                rows={3}
-                className="input-field resize-none"
-                defaultValue={settings.receipt_footer || ''}
-                placeholder={t('Text shown at the bottom of printed invoices')}
-              />
             </div>
 
             <div className="h-px bg-outline-variant/20" />
