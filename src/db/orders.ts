@@ -412,22 +412,27 @@ export function createOrderWithTasks(payload: WorkflowPayload): { orderId: numbe
 }
 
 export function updateOrder(id: number, order: Partial<Order>): void {
+  // Support partial updates — only set provided fields
+  const existing = db.prepare('SELECT * FROM orders WHERE id = ?').get(id) as Record<string, any> | undefined;
+  if (!existing) throw new Error('Order not found');
+
   const stmt = db.prepare(`
     UPDATE orders SET
       customer_id = ?, piece_type = ?, details = ?,
       price = ?, paid = ?, payment_method = ?,
-      status = ?, delivery_date = ?
+      status = ?, delivery_date = ?, is_deleted = ?
     WHERE id = ?
   `);
   stmt.run(
-    order.customer_id,
-    order.piece_type,
-    order.details || null,
-    order.price,
-    order.paid || 0,
-    order.payment_method,
-    order.status,
-    order.delivery_date || null,
+    order.customer_id ?? existing.customer_id,
+    order.piece_type ?? existing.piece_type,
+    order.details ?? existing.details ?? null,
+    order.price ?? existing.price,
+    order.paid ?? existing.paid ?? 0,
+    order.payment_method ?? existing.payment_method,
+    order.status ?? existing.status,
+    order.delivery_date ?? existing.delivery_date ?? null,
+    (order as any).is_deleted ?? existing.is_deleted ?? 0,
     id
   );
 }

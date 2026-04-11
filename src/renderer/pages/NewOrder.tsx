@@ -54,12 +54,6 @@ export default function NewOrderPage() {
     customerFullName: '',
     customerFirstName: '',
     phoneNumber: '',
-    itemType: '',
-    quantity: 1,
-    measurements: '',
-    fabricSource: 'customer' as 'customer' | 'shop',
-    fabricDetails: '',
-    tailoringPrice: '',
     paidAmount: '',
     paymentMethod: 'cash' as 'cash' | 'card',
     status: 'intake' as string,
@@ -68,6 +62,27 @@ export default function NewOrderPage() {
     isAlteration: false,
     alterationPrice: '',
   });
+
+  /* Garment items state */
+  interface GarmentItem {
+    id: string;
+    piece_type: string;
+    quantity: number;
+    unit_price: string;
+    fabric_source: 'customer' | 'shop';
+    fabric_details: string;
+    measurements: string;
+  }
+  const emptyItem = (): GarmentItem => ({
+    id: crypto.randomUUID(),
+    piece_type: '',
+    quantity: 1,
+    unit_price: '',
+    fabric_source: 'customer',
+    fabric_details: '',
+    measurements: '',
+  });
+  const [items, setItems] = useState<GarmentItem[]>([emptyItem()]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -83,9 +98,9 @@ export default function NewOrderPage() {
   const phoneSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Computed */
-  const tailoringPrice = parseFloat(formData.tailoringPrice) || 0;
   const alterationPrice = formData.isAlteration ? (parseFloat(formData.alterationPrice) || 0) : 0;
-  const totalPrice = tailoringPrice + alterationPrice;
+  const itemsTotal = items.reduce((sum, it) => sum + ((parseFloat(it.unit_price) || 0) * it.quantity), 0);
+  const totalPrice = itemsTotal + alterationPrice;
   const paid = parseFloat(formData.paidAmount) || 0;
   const balance = totalPrice - paid;
 
@@ -155,9 +170,21 @@ export default function NewOrderPage() {
     const newErrors: Record<string, string> = {};
 
     if (!formData.phoneNumber.trim()) newErrors.phoneNumber = t('Required');
-    if (!formData.itemType) newErrors.itemType = t('Required');
-    if (!formData.tailoringPrice || parseFloat(formData.tailoringPrice) <= 0) newErrors.tailoringPrice = t('Required');
     if (!formData.deliveryDate) newErrors.deliveryDate = t('Required');
+
+    const validItems = items.filter(it => it.piece_type && (parseFloat(it.unit_price) || 0) > 0);
+    if (validItems.length === 0) {
+      newErrors.items = t('Please add at least one garment with a price');
+    }
+    items.forEach((it, idx) => {
+      if (it.piece_type && (parseFloat(it.unit_price) || 0) <= 0) {
+        newErrors[`item_price_${idx}`] = t('Required');
+      }
+      if (!it.piece_type && (parseFloat(it.unit_price) || 0) > 0) {
+        newErrors[`item_type_${idx}`] = t('Required');
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -187,7 +214,7 @@ export default function NewOrderPage() {
         }
         if (!customerId) {
           customerId = await window.electronAPI.customers.create({
-            name: fullName || null,
+            name: fullName || formData.phoneNumber.trim(),
             phone: formData.phoneNumber.trim() || null,
             branch_id: branchId,
           });
@@ -217,37 +244,42 @@ export default function NewOrderPage() {
   const doCreateOrder = async (customerId: number) => {
     setSubmitting(true);
     try {
-      // Build details string
-      let details = '';
-      if (formData.measurements.trim()) details += formData.measurements.trim();
-      if (formData.fabricDetails.trim()) details += (details ? '\n' : '') + formData.fabricDetails.trim();
-      if (formData.isAlteration) details += (details ? '\n' : '') + `Alteration: ${formData.alterationPrice}`;
+      // Build alteration details
+      let alterDetails = '';
+      if (formData.isAlteration) alterDetails = `Alteration: ${formData.alterationPrice}`;
+
+      const validItems = items.filter(it => it.piece_type && (parseFloat(it.unit_price) || 0) > 0);
 
       const orderData = {
         branch_id: branchId,
         customer_id: customerId,
-        piece_type: formData.itemType,
-        details: details || undefined,
+        piece_type: validItems[0]?.piece_type || '',
+        details: alterDetails || undefined,
         price: totalPrice,
         paid: paid,
         payment_method: formData.paymentMethod,
         status: formData.status,
         receive_date: formData.orderDate || undefined,
         delivery_date: formData.deliveryDate,
-        fabric_source: formData.fabricSource,
+        fabric_source: validItems[0]?.fabric_source || 'customer',
       };
 
-      const orderItems = [{
-        order_id: 0,
-        piece_type: formData.itemType,
-        quantity: formData.quantity,
-        unit_price: totalPrice,
-        total_price: totalPrice,
-        fabric_source: formData.fabricSource,
-        fabric_price: 0,
-        details: details || undefined,
-        sort_order: 0,
-      }];
+      const orderItems = validItems.map((it, idx) => {
+        const price = parseFloat(it.unit_price) || 0;
+        let details = '';
+        if (it.measurements.trim()) details += it.measurements.trim();
+        if (it.fabric_details.trim()) details += (details ? '\n' : '') + it.fabric_details.trim();
+        return {
+          piece_type: it.piece_type,
+          quantity: it.quantity,
+          unit_price: price,
+          total_price: price * it.quantity,
+          fabric_source: it.fabric_source,
+          fabric_price: 0,
+          details: details || undefined,
+          sort_order: idx,
+        };
+      });
 
       await window.electronAPI.orders.create(orderData, undefined, orderItems);
       navigate('/orders');
@@ -406,47 +438,159 @@ export default function NewOrderPage() {
             </div>
 
             {/* ── Item Details ── */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('Garment Type')} *
+                  {t('Garments')} *
                 </label>
-                <select
-                  className={`input-field ${errors.itemType ? '!border-b-error' : ''}`}
-                  value={formData.itemType}
-                  onChange={e => {
-                    updateField('itemType', e.target.value);
-                    const bp = getBasePrice(e.target.value);
-                    if (bp > 0) updateField('tailoringPrice', bp.toString());
-                  }}
+                <button
+                  type="button"
+                  onClick={() => setItems(prev => [...prev, emptyItem()])}
+                  className="flex items-center gap-1 text-sm font-bold text-primary hover:underline disabled:opacity-50"
                   disabled={submitting}
                 >
-                  <option value="">{t('Select garment type...')}</option>
-                  {[...new Set(pieceTypes.map(pt => pt.category))].map(cat => (
-                    <optgroup key={cat} label={CATEGORY_LABELS[cat] || cat}>
-                      {pieceTypes.filter(pt => pt.category === cat).map(pt => (
-                        <option key={pt.id} value={pt.name_en}>{pt.name_en} — {pt.name_ar}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                {errors.itemType && <p className="text-xs text-error">{errors.itemType}</p>}
+                  <span className="material-symbols-outlined text-lg">add_circle</span>
+                  {t('Add Garment')}
+                </button>
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('Quantity')}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  className="input-field"
-                  value={formData.quantity}
-                  onChange={e => updateField('quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                  disabled={submitting}
-                />
-              </div>
+              {errors.items && <p className="text-xs text-error">{errors.items}</p>}
 
+              {items.map((item, idx) => (
+                <div key={item.id} className="p-4 bg-surface-container-low rounded-xl space-y-3 relative">
+                  {/* Remove button */}
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}
+                      className="absolute top-3 right-3 text-outline hover:text-error transition-colors"
+                      disabled={submitting}
+                    >
+                      <span className="material-symbols-outlined text-lg">close</span>
+                    </button>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    {/* Garment Type */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
+                        {t('Garment Type')} *
+                      </label>
+                      <select
+                        className={`input-field ${errors[`item_type_${idx}`] ? '!border-b-error' : ''}`}
+                        value={item.piece_type}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setItems(prev => prev.map((it, i) => {
+                            if (i !== idx) return it;
+                            const bp = getBasePrice(val);
+                            return { ...it, piece_type: val, unit_price: bp > 0 ? bp.toString() : it.unit_price };
+                          }));
+                          if (errors[`item_type_${idx}`]) setErrors(prev => { const n = { ...prev }; delete n[`item_type_${idx}`]; return n; });
+                        }}
+                        disabled={submitting}
+                      >
+                        <option value="">{t('Select garment type...')}</option>
+                        {[...new Set(pieceTypes.map(pt => pt.category))].map(cat => (
+                          <optgroup key={cat} label={CATEGORY_LABELS[cat] || cat}>
+                            {pieceTypes.filter(pt => pt.category === cat).map(pt => (
+                              <option key={pt.id} value={pt.name_en}>{pt.name_en} — {pt.name_ar}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {errors[`item_type_${idx}`] && <p className="text-xs text-error">{errors[`item_type_${idx}`]}</p>}
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
+                        {t('Quantity')}
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        className="input-field"
+                        value={item.quantity}
+                        onChange={e => setItems(prev => prev.map((it, i) => i !== idx ? it : { ...it, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        disabled={submitting}
+                      />
+                    </div>
+
+                    {/* Price */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
+                        {t('Price')} ({t(currency)}) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className={`input-field ${errors[`item_price_${idx}`] ? '!border-b-error' : ''}`}
+                        value={item.unit_price}
+                        onChange={e => {
+                          setItems(prev => prev.map((it, i) => i !== idx ? it : { ...it, unit_price: e.target.value }));
+                          if (errors[`item_price_${idx}`]) setErrors(prev => { const n = { ...prev }; delete n[`item_price_${idx}`]; return n; });
+                        }}
+                        placeholder="0.00"
+                        disabled={submitting}
+                      />
+                      {errors[`item_price_${idx}`] && <p className="text-xs text-error">{errors[`item_price_${idx}`]}</p>}
+                    </div>
+
+                    {/* Fabric Source */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
+                        {t('Fabric Source')}
+                      </label>
+                      <select
+                        className="input-field"
+                        value={item.fabric_source}
+                        onChange={e => setItems(prev => prev.map((it, i) => i !== idx ? it : { ...it, fabric_source: e.target.value as 'customer' | 'shop' }))}
+                        disabled={submitting}
+                      >
+                        <option value="customer">{t('Customer')}</option>
+                        <option value="shop">{t('Shop')}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Measurements */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
+                        {t('Measurements')}
+                      </label>
+                      <textarea
+                        className="input-field h-20 pt-3 text-sm"
+                        value={item.measurements}
+                        onChange={e => setItems(prev => prev.map((it, i) => i !== idx ? it : { ...it, measurements: e.target.value }))}
+                        placeholder={t('Enter measurements details...')}
+                        rows={2}
+                        disabled={submitting}
+                      />
+                    </div>
+
+                    {/* Fabric Details */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
+                        {t('Fabric Details')}
+                      </label>
+                      <input
+                        className="input-field"
+                        value={item.fabric_details}
+                        onChange={e => setItems(prev => prev.map((it, i) => i !== idx ? it : { ...it, fabric_details: e.target.value }))}
+                        placeholder={t('Enter fabric details...')}
+                        disabled={submitting}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Delivery Date ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
                   {t('Delivery Date')} *
@@ -461,52 +605,6 @@ export default function NewOrderPage() {
                 {errors.deliveryDate && (
                   <p className="text-xs text-error">{errors.deliveryDate}</p>
                 )}
-              </div>
-            </div>
-
-            {/* ── Measurements ── */}
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                {t('Measurements')}
-              </label>
-              <textarea
-                className="input-field h-28 pt-4"
-                value={formData.measurements}
-                onChange={e => updateField('measurements', e.target.value)}
-                placeholder={t('Enter measurements details...')}
-                rows={3}
-                disabled={submitting}
-              />
-            </div>
-
-            {/* ── Fabric ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('Fabric Source')}
-                </label>
-                <select
-                  className="input-field"
-                  value={formData.fabricSource}
-                  onChange={e => updateField('fabricSource', e.target.value)}
-                  disabled={submitting}
-                >
-                  <option value="customer">{t('Customer')}</option>
-                  <option value="shop">{t('Shop')}</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('Fabric Details')}
-                </label>
-                <input
-                  className="input-field"
-                  value={formData.fabricDetails}
-                  onChange={e => updateField('fabricDetails', e.target.value)}
-                  placeholder={t('Enter fabric details...')}
-                  disabled={submitting}
-                />
               </div>
             </div>
 
@@ -544,21 +642,11 @@ export default function NewOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('Tailoring Price')} ({t(currency)}) *
+                  {t('Total Price')} ({t(currency)})
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className={`input-field ${errors.tailoringPrice ? '!border-b-error' : ''}`}
-                  value={formData.tailoringPrice}
-                  onChange={e => updateField('tailoringPrice', e.target.value)}
-                  placeholder="0.00"
-                  disabled={submitting}
-                />
-                {errors.tailoringPrice && (
-                  <p className="text-xs text-error">{errors.tailoringPrice}</p>
-                )}
+                <div className="h-14 px-4 rounded-t-lg flex items-center font-semibold text-lg border-b-2 border-tertiary-fixed text-on-surface bg-surface-container-high">
+                  {totalPrice.toFixed(2)}
+                </div>
               </div>
 
               <div className="space-y-2">

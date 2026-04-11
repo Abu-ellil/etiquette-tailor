@@ -314,8 +314,8 @@ function registerIpcHandlers() {
     return searchOrders(query, branchId);
   });
 
-  ipcMain.handle('orders:create', async (_event, data: any, measurements?: any) => {
-    const result = createOrder(data, measurements);
+  ipcMain.handle('orders:create', async (_event, data: any, measurements?: any, items?: any) => {
+    const result = createOrder(data, measurements, items);
     try {
       const orderId = typeof result === 'object' ? result.id : result;
       const order = getOrder(orderId);

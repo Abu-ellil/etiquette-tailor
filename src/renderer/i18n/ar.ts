@@ -602,7 +602,6 @@ export default {
 
   // Invoice extras
   'Balance Due / الرصيد المتبقي': 'الرصيد المستحق / الرصيد المتبقي',
-  'Balance Due / الرصيد': 'الرصيد المستحق / الرصيد',
   'Thank you for your trust!': 'شكراً لثقتكم بنا!',
   'cash': 'نقدي',
   'card': 'بطاقة',
@@ -717,8 +716,11 @@ export default {
   'All Tasks Assigned': 'جميع المهام معينة',
 
   // Wizard
-  'Continue': 'متابعة',
   'Required': 'مطلوب',
+  'Garments': 'الملابس',
+  'Add Garment': 'إضافة قطعة',
+  'Please add at least one garment with a price': 'يرجى إضافة قطعة واحدة على الأقل مع السعر',
+  'Total Price': 'السعر الإجمالي',
   'Please enter at least one measurement.': 'يرجى إدخال قياس واحد على الأقل.',
   'Review & Submit': 'مراجعة وإرسال',
   'Click to assign workers from Task Board.': 'انقر لتعيين العمال من لوحة المهام.',
