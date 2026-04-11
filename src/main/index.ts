@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, autoUpdater } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -716,6 +716,20 @@ app.on('ready', () => {
   syncAllOrderPayments(); // ensure orders.paid matches actual payment records
   registerIpcHandlers();
   createWindow();
+
+  // Auto-updater (production only)
+  if (app.isPackaged) {
+    autoUpdater.setFeedURL({
+      url: 'https://github.com/Abu-ellil/etiquette-tailor/releases/latest/download/',
+    });
+    autoUpdater.checkForUpdates();
+    // Check every 30 minutes
+    setInterval(() => autoUpdater.checkForUpdates(), 30 * 60 * 1000);
+
+    autoUpdater.on('update-downloaded', () => {
+      autoUpdater.quitAndInstall();
+    });
+  }
 });
 
 app.on('window-all-closed', () => {
