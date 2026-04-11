@@ -96,7 +96,6 @@ import {
 } from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 import { syncAllOrderPayments } from '../db/orders';
-import { checkActivation, verifyAndActivate } from './activation';
 import db from '../db/schema';
 
 function saveSession(session: any) {
@@ -693,14 +692,6 @@ function registerIpcHandlers() {
     return generateOverdueNotifications();
   });
 
-  // Activation
-  ipcMain.handle('activation:check', async () => {
-    return checkActivation();
-  });
-
-  ipcMain.handle('activation:activate', async (_event, code: string) => {
-    return verifyAndActivate(code);
-  });
   ipcMain.handle('window:maximize', () => {
     if (mainWindow?.isMaximized()) {
       mainWindow.unmaximize();

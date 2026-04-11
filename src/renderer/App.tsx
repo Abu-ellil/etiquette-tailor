@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTranslation } from './contexts/I18nContext';
 import LoginPage from './pages/Login';
-import ActivationPage from './pages/Activation';
 import DashboardPage from './pages/Dashboard';
 import CustomersPage from './pages/Customers';
 import OrdersPage from './pages/Orders';
@@ -71,8 +70,6 @@ export default function App() {
   const { t, isRTL } = useTranslation();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activationStatus, setActivationStatus] = useState<{ activated: boolean; expired: boolean } | null>(null);
-
   useEffect(() => {
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
   }, [isRTL]);
@@ -89,13 +86,6 @@ export default function App() {
   useEffect(() => {
     async function init() {
       try {
-        const act = await window.electronAPI.activation.check();
-        setActivationStatus(act);
-        if (act.activated || !act.expired) {
-          const s = await window.electronAPI.auth.getSession();
-          setSession(s as Session | null);
-        }
-      } catch {
         const s = await window.electronAPI.auth.getSession();
         setSession(s as Session | null);
       } finally {
@@ -110,18 +100,6 @@ export default function App() {
       <div className="flex items-center justify-center h-screen bg-surface">
         <div className="text-on-surface-variant text-lg">{t('Loading...')}</div>
       </div>
-    );
-  }
-
-  // Trial expired → show activation screen
-  if (activationStatus && !activationStatus.activated && activationStatus.expired) {
-    return (
-      <ActivationPage
-        onActivated={() => {
-          setActivationStatus({ activated: true, expired: false });
-          window.electronAPI.auth.getSession().then((s: Session | null) => setSession(s));
-        }}
-      />
     );
   }
 

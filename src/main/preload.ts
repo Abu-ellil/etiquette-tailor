@@ -135,11 +135,6 @@ export interface ElectronAPI {
     generateOverdue: () => Promise<number>;
   };
 
-  activation: {
-    check: () => Promise<{ activated: boolean; expired: boolean; daysLeft: number }>;
-    activate: (code: string) => Promise<boolean>;
-  };
-
   expenses: {
     create: (data: any) => Promise<number>;
     getAll: (filters?: { startDate?: string; endDate?: string; category?: string; branchId?: number }) => Promise<any[]>;
@@ -282,11 +277,6 @@ const api: ElectronAPI = {
     softDelete: (notificationId) => ipcRenderer.invoke('notifications:softDelete', notificationId),
     clearRead: (userId, role) => ipcRenderer.invoke('notifications:clearRead', userId, role),
     generateOverdue: () => ipcRenderer.invoke('notifications:generateOverdue'),
-  },
-
-  activation: {
-    check: () => ipcRenderer.invoke('activation:check'),
-    activate: (code: string) => ipcRenderer.invoke('activation:activate', code),
   },
 
   expenses: {

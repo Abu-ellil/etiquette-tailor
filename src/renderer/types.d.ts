@@ -145,10 +145,6 @@ export interface ElectronAPI {
     getProfitReport: (startDate: string, endDate: string, branchId?: number) => Promise<any>;
   };
 
-  activation: {
-    check: () => Promise<{ activated: boolean; expired: boolean; daysLeft: number }>;
-    activate: (code: string) => Promise<boolean>;
-  };
 }
 
 declare global {
