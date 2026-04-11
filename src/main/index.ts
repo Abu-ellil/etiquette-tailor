@@ -95,6 +95,7 @@ import {
   generateOverdueNotifications,
 } from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
+import { syncAllOrderPayments } from '../db/orders';
 import { checkActivation, verifyAndActivate } from './activation';
 import db from '../db/schema';
 
@@ -721,6 +722,7 @@ function registerIpcHandlers() {
 
 app.on('ready', () => {
   initializeSchema();
+  syncAllOrderPayments(); // ensure orders.paid matches actual payment records
   registerIpcHandlers();
   createWindow();
 });
