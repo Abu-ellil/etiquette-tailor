@@ -56,7 +56,7 @@ export function initializeSchema() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
+      name TEXT,
       phone TEXT,
       notes TEXT,
       branch_id INTEGER REFERENCES branches(id),
@@ -277,6 +277,29 @@ export function initializeSchema() {
   if (!localeSetting) {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('locale', 'en');
   }
+
+  // Migration: Seed invoice toggle settings for existing databases
+  const insertIgnoreSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
+  const invoiceKeys: [string, string][] = [
+    ['invoice_show_shop_name', '1'],
+    ['invoice_show_branch_info', '1'],
+    ['invoice_show_phone', '1'],
+    ['invoice_show_worker_name', '1'],
+    ['invoice_show_worker_phone', '1'],
+    ['invoice_show_delivery_date', '1'],
+    ['invoice_show_payment_method', '1'],
+    ['invoice_show_shop_logo', '1'],
+    ['invoice_show_notes', '1'],
+    ['invoice_header_text', ''],
+    ['invoice_shop_name_ar', ''],
+    ['invoice_shop_name_en', ''],
+    ['invoice_section_order', '["shop_logo","shop_name","branch_info","phone","invoice_details","worker_name","items","totals","payment_method","dates","payment_status","notes","footer"]'],
+  ];
+  for (const [key, value] of invoiceKeys) {
+    insertIgnoreSetting.run(key, value);
+  }
+  // Clean up old key from previous version
+  db.prepare("DELETE FROM settings WHERE key = 'invoice_show_header'").run();
 
   // Migrations: add missing columns to existing tables
   migrateColumns();
@@ -564,6 +587,29 @@ function migrateColumns() {
   } catch (e) {
     console.log('users constraint migration skipped:', (e as Error).message);
   }
+
+  // Migrate customers.name to allow NULL (optional customer name)
+  try {
+    const customersDef = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='customers'").get() as { sql: string } | undefined;
+    if (customersDef?.sql?.includes("name TEXT NOT NULL")) {
+      console.log('Migrating: making customers.name nullable');
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS customers_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT,
+          phone TEXT,
+          notes TEXT,
+          branch_id INTEGER REFERENCES branches(id),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      db.exec(`INSERT INTO customers_new SELECT * FROM customers`);
+      db.exec(`DROP TABLE customers`);
+      db.exec(`ALTER TABLE customers_new RENAME TO customers`);
+    }
+  } catch (e) {
+    console.log('customers nullable name migration skipped:', (e as Error).message);
+  }
 }
 
 function migrateToMultiItem() {
@@ -678,12 +724,27 @@ function seedDatabase() {
 function seedSettings() {
   const insertSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)');
   insertSetting.run('locale', 'en');
-  insertSetting.run('shop_name_ar', 'إتيكيت خياط');
+  insertSetting.run('shop_name_ar', 'إتيكيت للخياطة النسائية');
   insertSetting.run('shop_name_en', 'Etiquette Tailor');
   insertSetting.run('shop_phone', '');
   insertSetting.run('currency', 'QAR');
   insertSetting.run('receipt_footer', 'Thank you for choosing Etiquette Tailor');
   insertSetting.run('tax_rate', '0');
+
+  // Invoice component toggles (all visible by default)
+  insertSetting.run('invoice_show_shop_name', '1');
+  insertSetting.run('invoice_show_branch_info', '1');
+  insertSetting.run('invoice_show_phone', '1');
+  insertSetting.run('invoice_show_worker_name', '1');
+  insertSetting.run('invoice_show_worker_phone', '1');
+  insertSetting.run('invoice_show_delivery_date', '1');
+  insertSetting.run('invoice_show_payment_method', '1');
+  insertSetting.run('invoice_show_shop_logo', '1');
+  insertSetting.run('invoice_show_notes', '1');
+  insertSetting.run('invoice_header_text', '');
+  insertSetting.run('invoice_shop_name_ar', '');
+  insertSetting.run('invoice_shop_name_en', '');
+  insertSetting.run('invoice_section_order', '["shop_logo","shop_name","branch_info","phone","invoice_details","worker_name","items","totals","payment_method","dates","payment_status","notes","footer"]');
 }
 
 function seedPieceTypes() {

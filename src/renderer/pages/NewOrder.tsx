@@ -153,7 +153,7 @@ export default function NewOrderPage() {
   /* Validation */
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.customerFullName.trim()) newErrors.customerFullName = t('Required');
+
     if (!formData.phoneNumber.trim()) newErrors.phoneNumber = t('Required');
     if (!formData.itemType) newErrors.itemType = t('Required');
     if (!formData.tailoringPrice || parseFloat(formData.tailoringPrice) <= 0) newErrors.tailoringPrice = t('Required');
@@ -175,15 +175,19 @@ export default function NewOrderPage() {
       // Use existing customer or find/create
       let customerId = selectedCustomerId;
       if (!customerId) {
-        const searchResults = await window.electronAPI.customers.search(formData.customerFullName.trim());
-        const existing = searchResults.find(
-          (c: any) => c.phone === formData.phoneNumber.trim()
-        );
-        if (existing) {
-          customerId = existing.id;
-        } else {
+        const fullName = formData.customerFullName.trim();
+        if (fullName) {
+          const searchResults = await window.electronAPI.customers.search(fullName);
+          const existing = searchResults.find(
+            (c: any) => c.phone === formData.phoneNumber.trim()
+          );
+          if (existing) {
+            customerId = existing.id;
+          }
+        }
+        if (!customerId) {
           customerId = await window.electronAPI.customers.create({
-            name: formData.customerFullName.trim(),
+            name: fullName || null,
             phone: formData.phoneNumber.trim() || null,
             branch_id: branchId,
           });
@@ -360,7 +364,7 @@ export default function NewOrderPage() {
 
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('Customer Full Name')} *
+                  {t('Customer Full Name')}
                 </label>
                 <input
                   className={`input-field ${errors.customerFullName ? '!border-b-error' : ''}`}

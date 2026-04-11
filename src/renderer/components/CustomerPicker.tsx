@@ -146,7 +146,7 @@ export default function CustomerPicker({ branchId, t, onSelect, selectedCustomer
           <h3 className="font-headline font-semibold text-on-surface">{t('New Customer')}</h3>
           <div>
             <label className="text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-1 block">{t('Name')}</label>
-            <input {...register('name', { required: true })} className="input-field" placeholder={t('Full name')} />
+            <input {...register('name')} className="input-field" placeholder={t('Full name')} />
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-1 block">{t('Phone')}</label>
