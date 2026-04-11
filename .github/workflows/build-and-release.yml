@@ -3,10 +3,7 @@ name: Build & Release
 on:
   push:
     branches: [master]
-    paths-ignore:
-      - '.github/**'
-      - '*.md'
-      - 'CLAUDE.md'
+  workflow_dispatch:
 
 permissions:
   contents: write
