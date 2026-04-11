@@ -4,7 +4,7 @@ import { MakerZIP } from '@electron-forge/maker-zip';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
-import { PublisherGitHub } from '@electron-forge/publisher-github';
+import { PublisherGithub } from '@electron-forge/publisher-github';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const config: ForgeConfig = {
@@ -62,7 +62,7 @@ const config: ForgeConfig = {
     new MakerZIP({}, ['darwin']),
   ],
   publishers: [
-    new PublisherGitHub({
+    new PublisherGithub({
       repository: {
         owner: 'Abu-ellil',
         name: 'etiquette-tailor',
