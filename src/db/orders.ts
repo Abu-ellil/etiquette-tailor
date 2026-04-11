@@ -114,6 +114,7 @@ export function createOrderItem(item: Omit<OrderItem, 'id'>): number {
     item.details || null,
     item.sort_order || 0
   );
+  recalculateOrderTotal(item.order_id);
   return result.lastInsertRowid as number;
 }
 
@@ -136,10 +137,15 @@ export function updateOrderItem(id: number, data: Partial<OrderItem>): void {
     data.details || null,
     id
   );
+  // Recalculate order total after item update
+  const row = db.prepare('SELECT order_id FROM order_items WHERE id = ?').get(id) as { order_id: number } | undefined;
+  if (row) recalculateOrderTotal(row.order_id);
 }
 
 export function deleteOrderItem(id: number): void {
+  const row = db.prepare('SELECT order_id FROM order_items WHERE id = ?').get(id) as { order_id: number } | undefined;
   db.prepare('DELETE FROM order_items WHERE id = ?').run(id);
+  if (row) recalculateOrderTotal(row.order_id);
 }
 
 export function recalculateOrderTotal(orderId: number): void {
@@ -151,9 +157,11 @@ export function recalculateOrderTotal(orderId: number): void {
 
 export function getAllOrders(branchId?: number, status?: string): Order[] {
   let query = `
-    SELECT o.*, c.name as customer_name, c.phone as customer_phone
+    SELECT o.*, c.name as customer_name, c.phone as customer_phone,
+      COALESCE(ps.paid_sum, 0) as paid
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
+    LEFT JOIN (SELECT order_id, SUM(amount) as paid_sum FROM order_payments GROUP BY order_id) ps ON ps.order_id = o.id
   WHERE 1=1
   `;
   const params: any[] = [];

@@ -59,9 +59,11 @@ export function deleteCustomer(id: number): void {
 
 export function getCustomerOrders(customerId: number): any[] {
   const stmt = db.prepare(`
-    SELECT o.*, c.name as customer_name, c.phone as customer_phone
+    SELECT o.*, c.name as customer_name, c.phone as customer_phone,
+      COALESCE(ps.paid_sum, 0) as paid
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
+    LEFT JOIN (SELECT order_id, SUM(amount) as paid_sum FROM order_payments GROUP BY order_id) ps ON ps.order_id = o.id
     WHERE o.customer_id = ?
     ORDER BY o.created_at DESC
   `);
@@ -70,10 +72,14 @@ export function getCustomerOrders(customerId: number): any[] {
 
 export function getCustomerOutstandingOrders(customerId: number): any[] {
   const stmt = db.prepare(`
-    SELECT id, order_number, piece_type, price, paid, balance, status, delivery_date, created_at
-    FROM orders
-    WHERE customer_id = ? AND status != 'delivered' AND balance > 0
-    ORDER BY created_at DESC
+    SELECT o.id, o.order_number, o.piece_type, o.price,
+      COALESCE(ps.paid_sum, 0) as paid,
+      o.price - COALESCE(ps.paid_sum, 0) as balance,
+      o.status, o.delivery_date, o.created_at
+    FROM orders o
+    LEFT JOIN (SELECT order_id, SUM(amount) as paid_sum FROM order_payments GROUP BY order_id) ps ON ps.order_id = o.id
+    WHERE o.customer_id = ? AND o.status != 'delivered' AND (o.price - COALESCE(ps.paid_sum, 0)) > 0
+    ORDER BY o.created_at DESC
   `);
   return stmt.all(customerId);
 }

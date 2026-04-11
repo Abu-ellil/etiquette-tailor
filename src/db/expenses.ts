@@ -149,16 +149,15 @@ export function getProfitReport(
   endDate: string,
   branchId?: number,
 ): ProfitReport {
-  const branchFilter = branchId ? ' AND branch_id = ?' : '';
-
-  // 1. Income: total order prices in period
+  // 1. Income: total payments received in period
   const incomeParams: any[] = [startDate, endDate + 'T23:59:59'];
   if (branchId) incomeParams.push(branchId);
   const incomeRow = db.prepare(`
-    SELECT COALESCE(SUM(price), 0) as total
-    FROM orders
-    WHERE created_at >= ? AND created_at <= ?
-    ${branchFilter}
+    SELECT COALESCE(SUM(op.amount), 0) as total
+    FROM order_payments op
+    JOIN orders o ON op.order_id = o.id
+    WHERE op.created_at >= ? AND op.created_at <= ?
+    ${branchId ? ' AND o.branch_id = ?' : ''}
   `).get(...incomeParams) as { total: number };
   const income = incomeRow.total;
 
