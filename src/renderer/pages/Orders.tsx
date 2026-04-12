@@ -26,6 +26,9 @@ interface Order {
   created_at?: string;
   customer_name?: string;
   customer_phone?: string;
+  branch_name?: string;
+  branch_name_ar?: string;
+  branch_prefix?: string;
 }
 
 interface OrderStats {
@@ -537,6 +540,11 @@ ${order.details ? `*Notes:* ${order.details}` : ''}`;
                       >
                         {order.order_number}
                       </button>
+                      {order.branch_name && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                          {order.branch_name}
+                        </span>
+                      )}
                       <StatusDropdown
                         current={dStatus}
                         orderId={order.id}

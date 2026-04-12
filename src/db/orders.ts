@@ -158,10 +158,12 @@ export function recalculateOrderTotal(orderId: number): void {
 export function getAllOrders(branchId?: number, status?: string): Order[] {
   let query = `
     SELECT o.*, c.name as customer_name, c.phone as customer_phone,
-      COALESCE(ps.paid_sum, 0) as paid
+      COALESCE(ps.paid_sum, 0) as paid,
+      b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN (SELECT order_id, SUM(amount) as paid_sum FROM order_payments GROUP BY order_id) ps ON ps.order_id = o.id
+    LEFT JOIN branches b ON o.branch_id = b.id
   WHERE 1=1
   `;
   const params: any[] = [];
@@ -538,9 +540,11 @@ export function reassignTask(taskId: number, newUserId: number, wageType: string
 export function searchOrders(query: string, branchId?: number): Order[] {
   const searchTerm = `%${query}%`;
   let sql = `
-    SELECT o.*, c.name as customer_name, c.phone as customer_phone
+    SELECT o.*, c.name as customer_name, c.phone as customer_phone,
+      b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
+    LEFT JOIN branches b ON o.branch_id = b.id
     WHERE (o.order_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)
   `;
   const params: any[] = [searchTerm, searchTerm, searchTerm];
