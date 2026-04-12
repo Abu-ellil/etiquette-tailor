@@ -22,6 +22,7 @@ import ProfitPage from './pages/Profit';
 import AdvancedReportsPage from './pages/AdvancedReports';
 import InvoicePage from './pages/Invoice';
 import BackupPage from './pages/Backup';
+import SyncPage from './pages/Sync';
 import SettingsPage from './pages/Settings';
 import NotificationsPage from './pages/Notifications';
 import AppLayout from './components/AppLayout';
@@ -36,8 +37,8 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/settings', '/notifications'],
-  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/notifications'],
+  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings', '/notifications'],
+  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/sync', '/notifications'],
   reception: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/notifications'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue', '/notifications'],
 };
@@ -285,6 +286,14 @@ export default function App() {
             element={
               <ProtectedRoute path="/backup" session={session}>
                 <BackupPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="sync"
+            element={
+              <ProtectedRoute path="/sync" session={session}>
+                <SyncPage />
               </ProtectedRoute>
             }
           />

@@ -96,6 +96,7 @@ import {
 } from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 import { syncAllOrderPayments } from '../db/orders';
+import { exportBranchData, importBranchData, getSyncStatus } from '../db/sync';
 import db from '../db/schema';
 
 function saveSession(session: any) {
@@ -646,6 +647,19 @@ function registerIpcHandlers() {
 
   ipcMain.handle('expenses:getProfitReport', async (_event, startDate: string, endDate: string, branchId?: number) => {
     return getProfitReport(startDate, endDate, branchId);
+  });
+
+  // Sync
+  ipcMain.handle('sync:export', async (_event, branchId: number, folderPath: string) => {
+    return exportBranchData(branchId, folderPath);
+  });
+
+  ipcMain.handle('sync:import', async (_event, branchId: number, folderPath: string) => {
+    return importBranchData(branchId, folderPath);
+  });
+
+  ipcMain.handle('sync:getStatus', async () => {
+    return getSyncStatus();
   });
 
   ipcMain.handle('window:minimize', () => mainWindow?.minimize());

@@ -42,6 +42,7 @@ const SIDEBAR_ITEMS = [
   
   // System
   { path: '/backup', labelKey: 'Backup', icon: 'settings_backup_restore', section: 'system' },
+  { path: '/sync', labelKey: 'Sync', icon: 'sync', roles: ['admin', 'manager'], section: 'system' },
   { path: '/settings', labelKey: 'Settings', icon: 'settings', roles: ['admin'], section: 'system' },
 ];
 

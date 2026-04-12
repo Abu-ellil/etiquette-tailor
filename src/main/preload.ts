@@ -141,6 +141,12 @@ export interface ElectronAPI {
     delete: (id: number) => Promise<void>;
     getProfitReport: (startDate: string, endDate: string, branchId?: number) => Promise<any>;
   };
+
+  sync: {
+    exportData: (branchId: number, folderPath: string) => Promise<any>;
+    importData: (branchId: number, folderPath: string) => Promise<any>;
+    getStatus: () => Promise<any>;
+  };
 }
 
 const api: ElectronAPI = {
@@ -284,6 +290,12 @@ const api: ElectronAPI = {
     getAll: (filters?) => ipcRenderer.invoke('expenses:getAll', filters),
     delete: (id) => ipcRenderer.invoke('expenses:delete', id),
     getProfitReport: (startDate, endDate, branchId?) => ipcRenderer.invoke('expenses:getProfitReport', startDate, endDate, branchId),
+  },
+
+  sync: {
+    exportData: (branchId, folderPath) => ipcRenderer.invoke('sync:export', branchId, folderPath),
+    importData: (branchId, folderPath) => ipcRenderer.invoke('sync:import', branchId, folderPath),
+    getStatus: () => ipcRenderer.invoke('sync:getStatus'),
   },
 };
 
