@@ -55,8 +55,8 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports'],
+  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/sync'],
   reception: ['/dashboard', '/customers', '/orders', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };
