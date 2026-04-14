@@ -18,6 +18,9 @@ export interface Order {
   created_at?: string;
   customer_name?: string;
   customer_phone?: string;
+  branch_name?: string;
+  branch_name_ar?: string;
+  branch_prefix?: string;
 }
 
 export interface OrderMeasurement {
@@ -189,9 +192,11 @@ export function getOrder(id: number): Order | undefined {
     WHERE id = ?
   `).run(id, id);
   const stmt = db.prepare(`
-    SELECT o.*, c.name as customer_name, c.phone as customer_phone
+    SELECT o.*, c.name as customer_name, c.phone as customer_phone,
+      b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
+    LEFT JOIN branches b ON o.branch_id = b.id
     WHERE o.id = ?
   `);
   return stmt.get(id) as Order | undefined;
@@ -422,7 +427,7 @@ export function updateOrder(id: number, order: Partial<Order>): void {
     UPDATE orders SET
       customer_id = ?, piece_type = ?, details = ?,
       price = ?, paid = ?, payment_method = ?,
-      status = ?, delivery_date = ?, is_deleted = ?
+      status = ?, delivery_date = ?
     WHERE id = ?
   `);
   stmt.run(
@@ -434,7 +439,6 @@ export function updateOrder(id: number, order: Partial<Order>): void {
     order.payment_method ?? existing.payment_method,
     order.status ?? existing.status,
     order.delivery_date ?? existing.delivery_date ?? null,
-    (order as any).is_deleted ?? existing.is_deleted ?? 0,
     id
   );
 }
