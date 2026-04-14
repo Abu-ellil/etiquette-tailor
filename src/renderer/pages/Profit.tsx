@@ -101,6 +101,10 @@ export default function ProfitPage() {
   const [branches, setBranches] = useState<any[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<number | undefined>(undefined);
 
+  // For comparison view: store reports for each branch
+  const [branchReports, setBranchReports] = useState<Map<number, ProfitData>>(new Map());
+  const [branchExpenses, setBranchExpenses] = useState<Map<number, ExpenseRow[]>>(new Map());
+
   // Expense modal
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expCategory, setExpCategory] = useState('rent');
@@ -119,6 +123,9 @@ export default function ProfitPage() {
   // Active section
   const [activeSection, setActiveSection] = useState<'summary' | 'workers' | 'expenses' | 'overdue'>('summary');
 
+  // View mode: combined (single view with filter) vs comparison (side-by-side branches)
+  const [viewMode, setViewMode] = useState<'combined' | 'comparison'>('combined');
+
   /* ---- Data loading ---- */
 
   const loadReport = useCallback(async () => {
@@ -132,12 +139,32 @@ export default function ProfitPage() {
       setReport(data as ProfitData);
       setExpenses((expData || []) as ExpenseRow[]);
       setBranches(branchData || []);
+
+      // In comparison mode, load data for each branch separately
+      if (viewMode === 'comparison' && branchData && branchData.length > 0) {
+        const reportsMap = new Map<number, ProfitData>();
+        const expensesMap = new Map<number, ExpenseRow[]>();
+
+        await Promise.all(
+          branchData.map(async (branch: any) => {
+            const [branchData, branchExp] = await Promise.all([
+              window.electronAPI.expenses.getProfitReport(startDate, endDate, branch.id),
+              window.electronAPI.expenses.getAll({ startDate, endDate, branchId: branch.id }),
+            ]);
+            reportsMap.set(branch.id, branchData as ProfitData);
+            expensesMap.set(branch.id, (branchExp || []) as ExpenseRow[]);
+          })
+        );
+
+        setBranchReports(reportsMap);
+        setBranchExpenses(expensesMap);
+      }
     } catch (err) {
       console.error('Failed to load profit report:', err);
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, selectedBranch]);
+  }, [startDate, endDate, selectedBranch, viewMode]);
 
   useEffect(() => { loadReport(); }, [loadReport]);
 
@@ -256,6 +283,31 @@ export default function ProfitPage() {
 
       {/* ---- Date Range + Branch Filter ---- */}
       <div className="flex flex-wrap items-end gap-4">
+        {/* View Mode Toggle */}
+        {branches.length > 1 && (
+          <div className="flex gap-1 bg-surface-container rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('combined')}
+              className={`px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-md transition-colors ${
+                viewMode === 'combined'
+                  ? 'bg-primary-container text-white shadow-sm'
+                  : 'text-on-surface-variant hover:bg-surface-container-high'
+              }`}
+            >
+              {t('Combined')}
+            </button>
+            <button
+              onClick={() => setViewMode('comparison')}
+              className={`px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-md transition-colors ${
+                viewMode === 'comparison'
+                  ? 'bg-primary-container text-white shadow-sm'
+                  : 'text-on-surface-variant hover:bg-surface-container-high'
+              }`}
+            >
+              {t('Compare Branches')}
+            </button>
+          </div>
+        )}
         <div className="flex gap-1 bg-surface-container rounded-lg p-1">
           <button onClick={setThisMonth} className="px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors">
             {t('This Month')}
@@ -272,7 +324,7 @@ export default function ProfitPage() {
           <span className="text-secondary">{t('to')}</span>
           <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input-field text-sm py-2" />
         </div>
-        {branches.length > 1 && (
+        {branches.length > 1 && viewMode === 'combined' && (
           <select
             value={selectedBranch || ''}
             onChange={(e) => setSelectedBranch(e.target.value ? Number(e.target.value) : undefined)}
@@ -286,7 +338,122 @@ export default function ProfitPage() {
         )}
       </div>
 
-      {/* ---- Summary Cards ---- */}
+      {/* ---- Comparison View: Branches Side by Side ---- */}
+      {viewMode === 'comparison' && branches.length > 1 && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {branches.map((branch: any) => {
+              const branchData = branchReports.get(branch.id);
+              const branchExp = branchExpenses.get(branch.id) || [];
+              if (!branchData) return null;
+
+              return (
+                <div key={branch.id} className="bg-surface-container-lowest rounded-2xl overflow-hidden">
+                  {/* Branch Header */}
+                  <div className="px-6 py-4 bg-primary-container text-white">
+                    <h3 className="text-lg font-headline font-bold">{branch.name_en}</h3>
+                    <p className="text-white/70 text-xs mt-0.5">{branch.name_ar}</p>
+                  </div>
+
+                  {/* Summary Cards for Branch */}
+                  <div className="p-4 space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-surface-container rounded-lg">
+                      <span className="text-secondary font-headline text-xs font-bold uppercase tracking-widest">{t('Income')}</span>
+                      <span className="text-xl font-bold text-primary">{branchData.income.toFixed(0)} {t(currency)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-surface-container rounded-lg">
+                      <span className="text-secondary font-headline text-xs font-bold uppercase tracking-widest">{t('Total Expenses')}</span>
+                      <span className="text-xl font-bold text-error">{branchData.totalExpenses.toFixed(0)} {t(currency)}</span>
+                    </div>
+                    <div className={`flex justify-between items-center p-3 rounded-lg ${branchData.netProfit >= 0 ? 'bg-primary-container text-white' : 'bg-error-container text-white'}`}>
+                      <span className={`font-headline text-xs font-bold uppercase tracking-widest ${branchData.netProfit >= 0 ? 'text-white/80' : 'text-white/80'}`}>{t('Net Profit')}</span>
+                      <span className="text-xl font-bold">{branchData.netProfit >= 0 ? '+' : ''}{branchData.netProfit.toFixed(0)} {t(currency)}</span>
+                    </div>
+                  </div>
+
+                  {/* Quick Stats */}
+                  <div className="px-4 pb-4 text-xs text-secondary">
+                    <div className="flex justify-between py-1 border-b border-outline-variant/10">
+                      <span>{t('Worker Wages')}</span>
+                      <span className="font-semibold text-on-surface">{branchData.wagesPaid.toFixed(0)} {t(currency)}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-outline-variant/10">
+                      <span>{t('Other Expenses')}</span>
+                      <span className="font-semibold text-on-surface">{branchData.otherExpenses.toFixed(0)} {t(currency)}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span>{t('Workers Active')}</span>
+                      <span className="font-semibold text-on-surface">{branchData.workerSummary.length}</span>
+                    </div>
+                  </div>
+
+                  {/* Expense Breakdown Mini */}
+                  {branchData.expensesByCategory.length > 0 && (
+                    <div className="px-4 pb-4">
+                      <p className="text-xs font-semibold text-secondary mb-2">{t('Expense Breakdown')}</p>
+                      <div className="space-y-1">
+                        {branchData.expensesByCategory.slice(0, 3).map((cat) => (
+                          <div key={cat.category} className="flex justify-between text-xs">
+                            <span className="text-secondary">{t(cat.category)}</span>
+                            <span className="font-semibold">{cat.total.toFixed(0)} {t(currency)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recent Expenses Mini */}
+                  {branchExp.length > 0 && (
+                    <div className="px-4 pb-4">
+                      <p className="text-xs font-semibold text-secondary mb-2">{t('Recent Expenses')}</p>
+                      <div className="space-y-1 max-h-[120px] overflow-y-auto">
+                        {branchExp.slice(0, 3).map((exp) => (
+                          <div key={exp.id} className="flex justify-between text-xs py-1 border-b border-outline-variant/5">
+                            <span className="text-secondary truncate flex-1">{exp.description}</span>
+                            <span className="font-semibold ml-2">{Number(exp.amount).toFixed(0)} {t(currency)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Combined Totals Row */}
+          <div className="bg-primary-container rounded-xl p-6 text-white">
+            <h3 className="text-lg font-headline font-bold mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined">analytics</span>
+              {t('Combined Total - All Branches')}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white/10 rounded-lg p-4">
+                <p className="text-white/70 text-xs font-bold uppercase tracking-widest">{t('Total Income')}</p>
+                <p className="text-2xl font-bold mt-1">
+                  {Array.from(branchReports.values()).reduce((sum, d) => sum + d.income, 0).toFixed(0)} {t(currency)}
+                </p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-4">
+                <p className="text-white/70 text-xs font-bold uppercase tracking-widest">{t('Total Expenses')}</p>
+                <p className="text-2xl font-bold mt-1">
+                  {Array.from(branchReports.values()).reduce((sum, d) => sum + d.totalExpenses, 0).toFixed(0)} {t(currency)}
+                </p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-4">
+                <p className="text-white/70 text-xs font-bold uppercase tracking-widest">{t('Total Net Profit')}</p>
+                <p className="text-2xl font-bold mt-1">
+                  {Array.from(branchReports.values()).reduce((sum, d) => sum + d.netProfit, 0) >= 0 ? '+' : ''}
+                  {Array.from(branchReports.values()).reduce((sum, d) => sum + d.netProfit, 0).toFixed(0)} {t(currency)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Summary Cards (Combined View Only) ---- */}
+      {viewMode === 'combined' && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_20px_40px_rgba(25,28,29,0.03)] flex flex-col justify-between h-40">
           <span className="text-secondary font-headline text-xs font-bold uppercase tracking-widest">{t('Income')}</span>
@@ -311,8 +478,10 @@ export default function ProfitPage() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* ---- Section Tabs ---- */}
+      {/* ---- Section Tabs (Combined View Only) ---- */}
+      {viewMode === 'combined' && (
       <div className="flex gap-1 bg-surface-container rounded-lg p-1">
         {tabs.map((tab) => (
           <button
@@ -332,9 +501,10 @@ export default function ProfitPage() {
           </button>
         ))}
       </div>
+      )}
 
-      {/* ==== SUMMARY SECTION ==== */}
-      {activeSection === 'summary' && (
+      {/* ==== SUMMARY SECTION (Combined View Only) ==== */}
+      {viewMode === 'combined' && activeSection === 'summary' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Expense breakdown by category */}
           <div className="bg-surface-container-lowest rounded-2xl overflow-hidden">
