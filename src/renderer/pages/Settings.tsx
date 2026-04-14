@@ -381,6 +381,7 @@ export default function SettingsPage() {
           name_en: data.name_en,
           prefix: data.prefix,
           address: data.address || null,
+          phone: data.phone || null,
         });
       } else {
         await window.electronAPI.branches.create({
@@ -388,6 +389,7 @@ export default function SettingsPage() {
           name_en: data.name_en,
           prefix: data.prefix,
           address: data.address || null,
+          phone: data.phone || null,
         });
       }
       closeBranchModal();
@@ -681,10 +683,24 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2 mb-6">
-                  <div className="flex items-center gap-2 text-sm text-secondary">
-                    <span className="material-symbols-outlined text-base">location_on</span>
-                    {branch.address || t('No address set')}
-                  </div>
+                  {branch.address && (
+                    <div className="flex items-center gap-2 text-sm text-secondary">
+                      <span className="material-symbols-outlined text-base">location_on</span>
+                      {branch.address}
+                    </div>
+                  )}
+                  {branch.phone && (
+                    <div className="flex items-center gap-2 text-sm text-secondary">
+                      <span className="material-symbols-outlined text-base">phone</span>
+                      {branch.phone}
+                    </div>
+                  )}
+                  {!branch.address && !branch.phone && (
+                    <div className="flex items-center gap-2 text-sm text-secondary">
+                      <span className="material-symbols-outlined text-base">info</span>
+                      {t('No address or phone set')}
+                    </div>
+                  )}
                 </div>
 
                 <button
