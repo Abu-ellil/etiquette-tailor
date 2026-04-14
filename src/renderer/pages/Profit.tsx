@@ -771,8 +771,8 @@ export default function ProfitPage() {
         </div>
       )}
 
-      {/* ==== OVERDUE SECTION ==== */}
-      {activeSection === 'overdue' && (
+      {/* ==== OVERDUE SECTION (Combined View Only) ==== */}
+      {viewMode === 'combined' && activeSection === 'overdue' && (
         <div className="bg-surface-container-lowest rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-surface-container-high">
             <h2 className="text-lg font-headline font-bold text-on-surface flex items-center gap-2">
