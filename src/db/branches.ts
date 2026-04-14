@@ -7,6 +7,7 @@ export interface Branch {
   prefix: string;
   last_sequence: number;
   address?: string;
+  phone?: string;
   created_at?: string;
 }
 

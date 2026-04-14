@@ -24,6 +24,7 @@ interface Branch {
   name_en: string;
   prefix: string;
   address?: string;
+  phone?: string;
 }
 
 interface UserFormValues {
@@ -41,6 +42,7 @@ interface BranchFormValues {
   name_en: string;
   prefix: string;
   address: string;
+  phone: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -350,7 +352,7 @@ export default function SettingsPage() {
 
   const openAddBranch = () => {
     setEditingBranch(null);
-    resetBranch({ name_ar: '', name_en: '', prefix: '', address: '' });
+    resetBranch({ name_ar: '', name_en: '', prefix: '', address: '', phone: '' });
     setBranchModalOpen(true);
   };
 
@@ -361,6 +363,7 @@ export default function SettingsPage() {
       name_en: branch.name_en,
       prefix: branch.prefix,
       address: branch.address || '',
+      phone: branch.phone || '',
     });
     setBranchModalOpen(true);
   };
@@ -1542,6 +1545,24 @@ export default function SettingsPage() {
                       className="input-field"
                       placeholder={t('Street / area')}
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">
+                      {t('Phone')}
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="material-symbols-outlined absolute left-4 text-outline">phone</span>
+                      <input
+                        {...regBranch('phone')}
+                        type="tel"
+                        className="input-field pl-12"
+                        placeholder={t('Branch phone number')}
+                      />
+                    </div>
+                    <p className="text-on-surface-variant text-[11px] mt-1.5 ml-1">
+                      {t('This phone will be shown on invoices for this branch')}
+                    </p>
                   </div>
 
                   <div className="flex items-center justify-end gap-3 pt-2">

@@ -33,6 +33,7 @@ export function initializeSchema() {
       prefix TEXT UNIQUE NOT NULL,
       last_sequence INTEGER DEFAULT 0,
       address TEXT,
+      phone TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -253,6 +254,23 @@ export function initializeSchema() {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS daily_production (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      worker_id INTEGER NOT NULL REFERENCES users(id),
+      production_date DATE NOT NULL,
+      piece_type TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      wage_rate REAL NOT NULL,
+      wage_amount REAL NOT NULL,
+      notes TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_daily_production_worker_date ON daily_production(worker_id, production_date)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_daily_production_date ON daily_production(production_date)`);
+
   const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get() as { count: number };
   if (branchCount.count === 0) {
     seedDatabase();
@@ -389,7 +407,7 @@ function migrateColumns() {
   }
 
   // Get existing columns for each table
-  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates', 'piece_types', 'order_items']) {
+  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates', 'piece_types', 'order_items', 'branches']) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     tables[table] = cols.map((c) => c.name);
   }
@@ -413,6 +431,12 @@ function migrateColumns() {
     `);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)`);
   } catch { /* table already exists */ }
+
+  // Add phone to branches
+  if (!tables.branches?.includes('phone')) {
+    console.log('Migrating: adding phone to branches');
+    db.exec('ALTER TABLE branches ADD COLUMN phone TEXT');
+  }
 
   // Add default_rate to users
   if (!tables.users?.includes('default_rate')) {

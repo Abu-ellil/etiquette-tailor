@@ -58,6 +58,7 @@ interface BranchInfo {
   name_en: string;
   prefix: string;
   address?: string;
+  phone?: string;
 }
 
 const DEFAULT_SECTION_ORDER = [
@@ -173,6 +174,7 @@ export default function InvoicePage() {
               name_en: orderData.branch_name || '',
               prefix: orderData.branch_prefix || '',
               address: orderData.branch_address || '',
+              phone: orderData.branch_phone || '',
             });
           }
 
@@ -267,9 +269,9 @@ export default function InvoicePage() {
       </div>
     ) : null,
 
-    phone: (showPhone && shopPhone) ? (
+    phone: (showPhone && (branch?.phone || shopPhone)) ? (
       <div key="phone" className="text-center mb-3">
-        <div className="text-[11px]">{shopPhone}</div>
+        <div className="text-[11px]">{branch?.phone || shopPhone}</div>
       </div>
     ) : null,
 

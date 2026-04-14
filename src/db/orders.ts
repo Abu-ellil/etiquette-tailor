@@ -21,6 +21,8 @@ export interface Order {
   branch_name?: string;
   branch_name_ar?: string;
   branch_prefix?: string;
+  branch_phone?: string;
+  branch_address?: string;
 }
 
 export interface OrderMeasurement {
@@ -162,7 +164,7 @@ export function getAllOrders(branchId?: number, status?: string): Order[] {
   let query = `
     SELECT o.*, c.name as customer_name, c.phone as customer_phone,
       COALESCE(ps.paid_sum, 0) as paid,
-      b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix
+      b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix, b.phone as branch_phone, b.address as branch_address
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN (SELECT order_id, SUM(amount) as paid_sum FROM order_payments GROUP BY order_id) ps ON ps.order_id = o.id
@@ -193,7 +195,7 @@ export function getOrder(id: number): Order | undefined {
   `).run(id, id);
   const stmt = db.prepare(`
     SELECT o.*, c.name as customer_name, c.phone as customer_phone,
-      b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix
+      b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix, b.phone as branch_phone, b.address as branch_address
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN branches b ON o.branch_id = b.id
@@ -545,7 +547,7 @@ export function searchOrders(query: string, branchId?: number): Order[] {
   const searchTerm = `%${query}%`;
   let sql = `
     SELECT o.*, c.name as customer_name, c.phone as customer_phone,
-      b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix
+      b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix, b.phone as branch_phone, b.address as branch_address
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN branches b ON o.branch_id = b.id

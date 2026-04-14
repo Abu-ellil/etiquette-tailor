@@ -28,20 +28,21 @@ export function setSettings(settings: Record<string, string>): void {
   transaction();
 }
 
-export function updateBranch(id: number, data: { name_ar?: string; name_en?: string; prefix?: string; address?: string }): void {
+export function updateBranch(id: number, data: { name_ar?: string; name_en?: string; prefix?: string; address?: string; phone?: string }): void {
   const fields: string[] = [];
   const values: any[] = [];
   if (data.name_ar !== undefined) { fields.push('name_ar = ?'); values.push(data.name_ar); }
   if (data.name_en !== undefined) { fields.push('name_en = ?'); values.push(data.name_en); }
   if (data.prefix !== undefined) { fields.push('prefix = ?'); values.push(data.prefix); }
   if (data.address !== undefined) { fields.push('address = ?'); values.push(data.address); }
+  if (data.phone !== undefined) { fields.push('phone = ?'); values.push(data.phone); }
   if (fields.length === 0) return;
   values.push(id);
   db.prepare(`UPDATE branches SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 }
 
-export function createBranch(data: { name_ar: string; name_en: string; prefix: string; address?: string }): { id: number } {
-  const stmt = db.prepare('INSERT INTO branches (name_ar, name_en, prefix, last_sequence, address) VALUES (?, ?, ?, 0, ?)');
-  const result = stmt.run(data.name_ar, data.name_en, data.prefix, data.address || null);
+export function createBranch(data: { name_ar: string; name_en: string; prefix: string; address?: string; phone?: string }): { id: number } {
+  const stmt = db.prepare('INSERT INTO branches (name_ar, name_en, prefix, last_sequence, address, phone) VALUES (?, ?, ?, 0, ?, ?)');
+  const result = stmt.run(data.name_ar, data.name_en, data.prefix, data.address || null, data.phone || null);
   return { id: result.lastInsertRowid as number };
 }
