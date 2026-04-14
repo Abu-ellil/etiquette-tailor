@@ -27,6 +27,7 @@ const SIDEBAR_ITEMS = [
   { path: '/measurements', labelKey: 'Measurements', icon: 'straighten', section: 'main' },
   { path: '/profit', labelKey: 'Profit', icon: 'account_balance_wallet', roles: ['admin', 'manager'], section: 'main' },
   { path: '/advanced-reports', labelKey: 'Reports', icon: 'analytics', roles: ['admin', 'manager'], section: 'main' },
+  { path: '/piece-types', labelKey: 'Piece Types', icon: 'category', roles: ['admin'], section: 'main' },
   // Workers
   { path: '/workers', labelKey: 'Workers', icon: 'badge', section: 'workers' },
   { path: '/worker-rates', labelKey: 'Worker Rates', icon: 'payments', section: 'workers' },
@@ -39,7 +40,7 @@ const SIDEBAR_ITEMS = [
   { path: '/daily-production', labelKey: 'Daily Production', icon: 'edit_calendar', roles: ['admin', 'manager'], section: 'workers' },
   { path: '/salary-summary', labelKey: 'Salary Summary', icon: 'account_balance_wallet', roles: ['admin', 'manager'], section: 'workers' },
   { path: '/worker-productivity', labelKey: 'Worker Productivity', icon: 'speed', roles: ['admin', 'manager'], section: 'workers' },
-  
+
   // System
   { path: '/backup', labelKey: 'Backup', icon: 'settings_backup_restore', section: 'system' },
   { path: '/sync', labelKey: 'Sync', icon: 'sync', roles: ['admin', 'manager'], section: 'system' },
@@ -55,7 +56,7 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings'],
+  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings', '/piece-types'],
   manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/sync'],
   reception: ['/dashboard', '/customers', '/orders', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],

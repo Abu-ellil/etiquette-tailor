@@ -104,6 +104,20 @@ export interface ElectronAPI {
     getAll: () => Promise<any[]>;
     updateBasePrice: (name_en: string, base_price: number) => Promise<void>;
     getBasePrice: (name_en: string) => Promise<number>;
+    create: (data: any) => Promise<number>;
+    update: (id: number, data: any) => Promise<void>;
+    delete: (id: number) => Promise<void>;
+  };
+
+  dailyProduction: {
+    create: (data: any) => Promise<any>;
+    getAll: (filters?: { worker_id?: number; start_date?: string; end_date?: string }) => Promise<any[]>;
+    getByDate: (date: string) => Promise<any[]>;
+    getWorkerSummary: (workerId: number, startDate: string, endDate: string) => Promise<any>;
+    getAllWorkersProduction: (startDate: string, endDate: string) => Promise<any[]>;
+    getGrouped: (startDate: string, endDate: string) => Promise<any[]>;
+    delete: (id: number) => Promise<void>;
+    update: (id: number, data: any) => Promise<void>;
   };
 
   reports: {

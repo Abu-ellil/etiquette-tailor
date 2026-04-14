@@ -677,6 +677,20 @@ export default {
   'Delete this record?': 'حذف هذا السجل؟',
   'Failed to delete record.': 'فشل حذف السجل.',
 
+  // Piece Types
+  'Piece Types': 'أنواع القطع',
+  'Manage piece types and base prices': 'إدارة أنواع القطع والأسعار الأساسية',
+  'Add Piece Type': 'إضافة نوع قطعة',
+  'Add New Piece Type': 'إضافة نوع قطعة جديد',
+  'Edit Piece Type': 'تعديل نوع القطعة',
+  'No piece types found.': 'لا توجد أنواع قطع.',
+  'Name (English)': 'الاسم (إنجليزي)',
+  'Name (Arabic)': 'الاسم (عربي)',
+  'e.g., Abaya': 'مثلاً: Abaya',
+  'e.g., عباءة': 'مثلاً: عباءة',
+  'Failed to save piece type.': 'فشل حفظ نوع القطعة.',
+  'Failed to delete piece type.': 'فشل حذف نوع القطعة.',
+
   // Worker Productivity
   'Worker Productivity': 'إنتاجية العمال',
   'Efficiency': 'الكفاءة',

@@ -26,6 +26,7 @@ import BackupPage from './pages/Backup';
 import SyncPage from './pages/Sync';
 import SettingsPage from './pages/Settings';
 import NotificationsPage from './pages/Notifications';
+import PieceTypesPage from './pages/PieceTypes';
 import AppLayout from './components/AppLayout';
 
 export interface Session {
@@ -38,7 +39,7 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings', '/notifications'],
+  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings', '/notifications', '/piece-types'],
   manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/sync', '/notifications'],
   reception: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/notifications'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue', '/notifications'],
@@ -319,6 +320,14 @@ export default function App() {
             element={
               <ProtectedRoute path="/notifications" session={session}>
                 <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="piece-types"
+            element={
+              <ProtectedRoute path="/piece-types" session={session}>
+                <PieceTypesPage />
               </ProtectedRoute>
             }
           />

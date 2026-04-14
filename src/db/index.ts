@@ -5,6 +5,6 @@ export { getAllOrders, getOrder, getOrderByNumber, createOrder, createOrderWithT
 export { getAllWorkers, getWorker, createWorker, updateWorker as updateWorkerUser, deactivateWorker as deactivateWorkerUser, getWorkerRates, setWorkerRate, getActiveRate, calculateWage, getWorkerEarnings, getWorkerTasks, getMonthlyEarnings, getWorkerOrderDetails, recalculateTaskWages, getWorkerAccount, addWorkerPayment, getWorkerPayments, batchWorkerPayments, getAllWorkerProductivity, getOverdueTasks, getWorkerWorkloads, getRecommendedWorkers } from './workers';
 export { authenticateUser, getAllUsers, getUser, getUserByUsername, createUser, updateUser, deactivateUser } from './auth';
 export { getSetting, getAllSettings, setSetting, setSettings, updateBranch, createBranch } from './settings';
-export { getPieceTypes, updateBasePrice, getBasePrice } from './pieceTypes';
+export { getPieceTypes, updateBasePrice, getBasePrice, createPieceType, updatePieceType, deletePieceType, PieceType } from './pieceTypes';
 export { createNotification, getNotificationsForUser, getUnreadCount, markAsRead, markAllAsRead, softDeleteNotification, generateOverdueNotifications } from './notifications';
 export { createExpense, getExpenses, deleteExpense, getProfitReport } from './expenses';

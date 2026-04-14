@@ -5,6 +5,7 @@ interface ProductionEntry {
   worker_id: number;
   piece_type: string;
   quantity: number;
+  base_price?: number;
   wage_rate?: number;
   wage_amount?: number;
 }
@@ -99,7 +100,7 @@ export default function DailyProductionPage() {
     }
   };
 
-  const calculateWage = async (workerId: number, pieceType: string, quantity: number): Promise<{ rate: number; amount: number } | null> => {
+  const calculateWage = async (workerId: number, pieceType: string, quantity: number): Promise<{ rate: number; amount: number; basePrice: number } | null> => {
     const rate = await loadWorkerRate(workerId, pieceType);
     if (!rate) return null;
 
@@ -110,7 +111,7 @@ export default function DailyProductionPage() {
       ? basePrice * (rate.rate / 100) * quantity
       : rate.rate * quantity;
 
-    return { rate: rate.rate, amount: wageAmount };
+    return { rate: rate.rate, amount: wageAmount, basePrice };
   };
 
   const addEntry = () => {
@@ -133,9 +134,11 @@ export default function DailyProductionPage() {
         if (wage) {
           updated[index].wage_rate = wage.rate;
           updated[index].wage_amount = wage.amount;
+          updated[index].base_price = wage.basePrice;
         } else {
           updated[index].wage_rate = undefined;
           updated[index].wage_amount = undefined;
+          updated[index].base_price = undefined;
         }
       }
     }
@@ -252,7 +255,7 @@ export default function DailyProductionPage() {
             <div className="space-y-3">
               {entries.map((entry, index) => (
                 <div key={index} className="border border-outline-variant/20 rounded-lg p-4 space-y-3">
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-5 gap-4">
                     {/* Worker */}
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">
@@ -299,6 +302,18 @@ export default function DailyProductionPage() {
                         onChange={(e) => updateEntry(index, 'quantity', Number(e.target.value))}
                         className="input-field w-full"
                       />
+                    </div>
+
+                    {/* Base Price */}
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">
+                        {t('Base Price')}
+                      </label>
+                      <div className="input-field w-full bg-surface-container-high flex items-center justify-center">
+                        <span className="font-bold text-secondary">
+                          {entry.base_price ? `${entry.base_price.toFixed(2)} ${t(currency)}` : '--'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Wage */}

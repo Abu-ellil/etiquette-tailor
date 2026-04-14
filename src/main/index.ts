@@ -84,6 +84,9 @@ import {
   getPieceTypes,
   updateBasePrice,
   getBasePrice,
+  createPieceType,
+  updatePieceType,
+  deletePieceType,
   recalculateTaskWages,
   getReportStats,
   addOrderPayment,
@@ -750,6 +753,18 @@ function registerIpcHandlers() {
 
   ipcMain.handle('pieceTypes:getBasePrice', async (_event, name_en: string) => {
     return getBasePrice(name_en);
+  });
+
+  ipcMain.handle('pieceTypes:create', async (_event, data: any) => {
+    return createPieceType(data);
+  });
+
+  ipcMain.handle('pieceTypes:update', async (_event, id: number, data: any) => {
+    return updatePieceType(id, data);
+  });
+
+  ipcMain.handle('pieceTypes:delete', async (_event, id: number) => {
+    return deletePieceType(id);
   });
 
   // Notifications
