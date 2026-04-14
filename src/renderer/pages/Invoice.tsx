@@ -166,18 +166,14 @@ export default function InvoicePage() {
             worker_name: workerName,
           });
 
+          // Set branch info from order data (already fetched with branch details)
           if (orderData.branch_id) {
-            try {
-              const branchData = await window.electronAPI?.branches?.getById?.(orderData.branch_id);
-              if (branchData) {
-                setBranch({
-                  name_ar: branchData.name_ar || '',
-                  name_en: branchData.name_en || '',
-                  prefix: branchData.prefix || '',
-                  address: branchData.address || '',
-                });
-              }
-            } catch { /* branch fetch failed */ }
+            setBranch({
+              name_ar: orderData.branch_name_ar || '',
+              name_en: orderData.branch_name || '',
+              prefix: orderData.branch_prefix || '',
+              address: orderData.branch_address || '',
+            });
           }
 
           // Fetch previous outstanding balance (from other orders)
@@ -271,9 +267,9 @@ export default function InvoicePage() {
       </div>
     ) : null,
 
-    phone: (showPhone && order.customer_phone) ? (
+    phone: (showPhone && shopPhone) ? (
       <div key="phone" className="text-center mb-3">
-        <div className="text-[11px]">{order.customer_phone}</div>
+        <div className="text-[11px]">{shopPhone}</div>
       </div>
     ) : null,
 
