@@ -258,6 +258,13 @@ export function initializeSchema() {
     seedDatabase();
   }
 
+  // Migrations: add missing columns to existing tables FIRST
+  // This must run before any queries that might reference new columns
+  migrateColumns();
+
+  // Migration: Fix plain text passwords
+  migratePasswords();
+
   // Seed piece types if empty
   const pieceTypeCount = db.prepare('SELECT COUNT(*) as count FROM piece_types').get() as { count: number };
   if (pieceTypeCount.count === 0) {
@@ -300,12 +307,6 @@ export function initializeSchema() {
   }
   // Clean up old key from previous version
   db.prepare("DELETE FROM settings WHERE key = 'invoice_show_header'").run();
-
-  // Migrations: add missing columns to existing tables
-  migrateColumns();
-
-  // Migration: Fix plain text passwords
-  migratePasswords();
 
   console.log('Database schema initialized successfully');
 }
