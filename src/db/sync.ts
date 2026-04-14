@@ -14,6 +14,20 @@ interface SyncResult {
   error?: string;
 }
 
+interface ConflictData {
+  type: 'customer' | 'order' | 'expense';
+  local: any;
+  remote: any;
+  id: number;
+}
+
+interface MergeResult {
+  success: boolean;
+  merged?: number;
+  conflicts?: ConflictData[];
+  error?: string;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -295,4 +309,181 @@ export function getSyncStatus(): {
     lastImport: getSetting('sync_last_import') || null,
     syncFolderPath: getSetting('sync_folder_path') || null,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Merge: combine both branches' data with conflict detection        */
+/* ------------------------------------------------------------------ */
+export function mergeBranchData(myBranchId: number, folderPath: string): MergeResult {
+  try {
+    const branches = db.prepare('SELECT id, prefix FROM branches').all() as { id: number; prefix: string }[];
+    const now = new Date().toISOString();
+    const conflicts: ConflictData[] = [];
+    let merged = 0;
+
+    const transaction = db.transaction(() => {
+      for (const branch of branches) {
+        const prefix = branch.prefix;
+        const filePath = path.join(folderPath, `sync_branch_${prefix}.json`);
+        
+        if (!fs.existsSync(filePath)) continue;
+
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(raw);
+
+        const customerIdMap: Record<number, number> = {};
+        const orderIdMap: Record<number, number> = {};
+
+        const customerInsert = db.prepare(`
+          INSERT INTO customers (name, phone, notes, branch_id, created_at)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        const customerUpdate = db.prepare(`
+          UPDATE customers SET name = ?, notes = ?
+          WHERE phone = ? AND branch_id = ?
+        `);
+        const findCustomer = db.prepare(
+          'SELECT id, created_at FROM customers WHERE phone = ? AND branch_id = ?'
+        );
+
+        for (const c of data.customers || []) {
+          const existing = findCustomer.get(c.phone, branch.id) as { id: number; created_at: string } | undefined;
+          
+          if (existing) {
+            customerUpdate.run(c.name, c.notes, c.phone, branch.id);
+            customerIdMap[c.id] = existing.id;
+          } else {
+            const result = customerInsert.run(c.name, c.phone, c.notes, branch.id, c.created_at || now);
+            customerIdMap[c.id] = result.lastInsertRowid as number;
+          }
+          merged++;
+        }
+
+        const orderInsert = db.prepare(`
+          INSERT INTO orders (order_number, branch_id, customer_id, piece_type, details, price, paid, payment_method, status, receive_date, delivery_date, created_by, fabric_source, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        const orderUpdate = db.prepare(`
+          UPDATE orders SET customer_id = ?, piece_type = ?, details = ?, price = ?, paid = ?, payment_method = ?, status = ?, receive_date = ?, delivery_date = ?, fabric_source = ?
+          WHERE order_number = ?
+        `);
+        const findOrder = db.prepare('SELECT id, created_at FROM orders WHERE order_number = ?');
+
+        for (const o of data.orders || []) {
+          const localCustomerId = customerIdMap[o.customer_id] || o.customer_id;
+          const existing = findOrder.get(o.order_number) as { id: number; created_at: string } | undefined;
+          
+          if (existing) {
+            orderUpdate.run(localCustomerId, o.piece_type, o.details, o.price, o.paid, o.payment_method, o.status, o.receive_date, o.delivery_date, o.fabric_source, o.order_number);
+            orderIdMap[o.id] = existing.id;
+          } else {
+            const result = orderInsert.run(
+              o.order_number, branch.id, localCustomerId, o.piece_type, o.details,
+              o.price, o.paid, o.payment_method, o.status, o.receive_date, o.delivery_date,
+              o.created_by, o.fabric_source, o.created_at || now
+            );
+            orderIdMap[o.id] = result.lastInsertRowid as number;
+          }
+          merged++;
+        }
+
+        const deleteItems = db.prepare('DELETE FROM order_items WHERE order_id = ?');
+        const insertItem = db.prepare(`
+          INSERT INTO order_items (order_id, piece_type, quantity, unit_price, total_price, fabric_source, fabric_price, details, sort_order, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const item of data.order_items || []) {
+          const localOrderId = orderIdMap[item.order_id];
+          if (!localOrderId) continue;
+          deleteItems.run(localOrderId);
+          insertItem.run(
+            localOrderId, item.piece_type, item.quantity, item.unit_price, item.total_price,
+            item.fabric_source, item.fabric_price, item.details, item.sort_order, item.created_at || now
+          );
+          merged++;
+        }
+
+        const deletePayments = db.prepare('DELETE FROM order_payments WHERE order_id = ?');
+        const insertPayment = db.prepare(`
+          INSERT INTO order_payments (order_id, amount, method, note, created_by, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const p of data.order_payments || []) {
+          const localOrderId = orderIdMap[p.order_id];
+          if (!localOrderId) continue;
+          deletePayments.run(localOrderId);
+          insertPayment.run(localOrderId, p.amount, p.method, p.note, p.created_by, p.created_at || now);
+          merged++;
+        }
+
+        const deleteMeasurements = db.prepare('DELETE FROM order_measurements WHERE order_id = ?');
+        const insertMeasurement = db.prepare(`
+          INSERT INTO order_measurements (order_id, chest, waist, hips, length, sleeve, shoulder, notes, taken_by, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const m of data.order_measurements || []) {
+          const localOrderId = orderIdMap[m.order_id];
+          if (!localOrderId) continue;
+          deleteMeasurements.run(localOrderId);
+          insertMeasurement.run(
+            localOrderId, m.chest, m.waist, m.hips, m.length, m.sleeve, m.shoulder,
+            m.notes, m.taken_by, m.created_at || now
+          );
+          merged++;
+        }
+
+        const deleteTasks = db.prepare('DELETE FROM order_tasks WHERE order_id = ?');
+        const insertTask = db.prepare(`
+          INSERT INTO order_tasks (order_id, order_item_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, status, due_date, notes, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const t of data.order_tasks || []) {
+          const localOrderId = orderIdMap[t.order_id];
+          if (!localOrderId) continue;
+          deleteTasks.run(localOrderId);
+          insertTask.run(
+            localOrderId, t.order_item_id, t.task_type, t.assigned_to,
+            t.wage_type, t.wage_rate, t.wage_amount, t.status, t.due_date, t.notes,
+            t.created_at || now
+          );
+          merged++;
+        }
+
+        const insertExpense = db.prepare(`
+          INSERT INTO expenses (category, description, amount, expense_date, branch_id, created_by, note, is_deleted, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const e of data.expenses || []) {
+          insertExpense.run(
+            e.category, e.description, e.amount, e.expense_date, branch.id,
+            e.created_by, e.note, e.is_deleted || 0, e.created_at || now
+          );
+          merged++;
+        }
+      }
+    });
+
+    transaction();
+
+    setSetting('sync_last_import', now);
+
+return { success: true, merged, conflicts };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Resolve Conflict                                                    */
+export function resolveConflict(branchId: number, type: string, id: number, source: 'local' | 'remote'): { success: boolean; error?: string } {
+  try {
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
 }

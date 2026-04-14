@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, autoUpdater } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, autoUpdater, dialog } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -116,7 +116,7 @@ import {
 } from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 import { syncAllOrderPayments } from '../db/orders';
-import { exportBranchData, importBranchData, getSyncStatus } from '../db/sync';
+import { exportBranchData, importBranchData, getSyncStatus, mergeBranchData, resolveConflict } from '../db/sync';
 import db from '../db/schema';
 
 function saveSession(session: any) {
@@ -716,6 +716,25 @@ function registerIpcHandlers() {
 
   ipcMain.handle('sync:getStatus', async () => {
     return getSyncStatus();
+  });
+
+  ipcMain.handle('sync:merge', async (_event, branchId: number, folderPath: string) => {
+    return mergeBranchData(branchId, folderPath);
+  });
+
+  ipcMain.handle('sync:resolveConflict', async (_event, branchId: number, type: string, id: number, source: 'local' | 'remote') => {
+    return resolveConflict(branchId, type, id, source);
+  });
+
+  ipcMain.handle('sync:selectFolder', async () => {
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      properties: ['openDirectory'],
+      title: 'Select Sync Folder',
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
   });
 
   ipcMain.handle('window:minimize', () => mainWindow?.minimize());

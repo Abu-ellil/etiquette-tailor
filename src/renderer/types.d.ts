@@ -145,6 +145,15 @@ export interface ElectronAPI {
     getProfitReport: (startDate: string, endDate: string, branchId?: number) => Promise<any>;
   };
 
+  sync: {
+    getStatus: () => Promise<{ lastExport: string | null; lastImport: string | null; syncFolderPath: string | null }>;
+    exportData: (branchId: number, folderPath: string) => Promise<any>;
+    importData: (branchId: number, folderPath: string) => Promise<any>;
+    mergeData: (branchId: number, folderPath: string) => Promise<any>;
+    resolveConflict: (branchId: number, type: string, id: number, source: 'local' | 'remote') => Promise<any>;
+    selectFolder: () => Promise<string | null>;
+  };
+
 }
 
 declare global {

@@ -142,10 +142,13 @@ export interface ElectronAPI {
     getProfitReport: (startDate: string, endDate: string, branchId?: number) => Promise<any>;
   };
 
-  sync: {
+sync: {
     exportData: (branchId: number, folderPath: string) => Promise<any>;
     importData: (branchId: number, folderPath: string) => Promise<any>;
     getStatus: () => Promise<any>;
+    mergeData: (branchId: number, folderPath: string) => Promise<any>;
+    resolveConflict: (branchId: number, type: string, id: number, source: 'local' | 'remote') => Promise<any>;
+    selectFolder: () => Promise<string | null>;
   };
 
   dailyProduction: {
@@ -303,10 +306,13 @@ const api: ElectronAPI = {
     getProfitReport: (startDate, endDate, branchId?) => ipcRenderer.invoke('expenses:getProfitReport', startDate, endDate, branchId),
   },
 
-  sync: {
-    exportData: (branchId, folderPath) => ipcRenderer.invoke('sync:export', branchId, folderPath),
-    importData: (branchId, folderPath) => ipcRenderer.invoke('sync:import', branchId, folderPath),
+sync: {
+    exportData: (branchId: number, folderPath: string) => ipcRenderer.invoke('sync:export', branchId, folderPath),
+    importData: (branchId: number, folderPath: string) => ipcRenderer.invoke('sync:import', branchId, folderPath),
     getStatus: () => ipcRenderer.invoke('sync:getStatus'),
+    mergeData: (branchId: number, folderPath: string) => ipcRenderer.invoke('sync:merge', branchId, folderPath),
+    resolveConflict: (branchId: number, type: string, id: number, source: 'local' | 'remote') => ipcRenderer.invoke('sync:resolveConflict', branchId, type, id, source),
+    selectFolder: () => ipcRenderer.invoke('sync:selectFolder'),
   },
 
   dailyProduction: {
