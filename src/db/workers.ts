@@ -336,13 +336,19 @@ export function getWorkerAccount(userId: number): WorkerAccount {
     WHERE assigned_to = ? AND status = 'done'
   `).get(userId) as { total_earnings: number; task_count: number };
 
+  const dailyProdEarnings = db.prepare(`
+    SELECT COALESCE(SUM(wage_amount), 0) as total_daily_earnings
+    FROM daily_production
+    WHERE worker_id = ?
+  `).get(userId) as { total_daily_earnings: number };
+
   const paid = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total_paid
     FROM worker_payments
     WHERE user_id = ?
   `).get(userId) as { total_paid: number };
 
-  const totalEarnings = earnings?.total_earnings || 0;
+  const totalEarnings = (earnings?.total_earnings || 0) + (dailyProdEarnings?.total_daily_earnings || 0);
   const totalPaid = paid?.total_paid || 0;
 
   return {
