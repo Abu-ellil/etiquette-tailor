@@ -410,6 +410,94 @@ ${order.details ? `*Notes:* ${order.details}` : ''}`;
               </span>
             )}
           </div>
+          {balance > 0.01 && (
+            <button
+              onClick={() => setShowAddPayment(true)}
+              className="w-full mt-2 py-3 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+            >
+              <span className="material-symbols-outlined">payments</span>
+              {t('Add Payment')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Add Payment Modal */}
+      {showAddPayment && (
+        <div className="modal-backdrop" onClick={() => setShowAddPayment(false)}>
+          <div className="flex min-h-full items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+            <div className="modal-content w-full max-w-md" onClick={e => e.stopPropagation()}>
+              <div className="px-6 py-6">
+                <h2 className="text-xl font-headline font-bold mb-4">{t('Record Payment')}</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-secondary mb-1">{t('Amount')} ({t(currency)})</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newPayment.amount}
+                      onChange={e => setNewPayment({...newPayment, amount: e.target.value})}
+                      className="input-field w-full"
+                      placeholder="0.00"
+                      autoFocus
+                    />
+                    {balance > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setNewPayment({...newPayment, amount: balance.toFixed(2)})}
+                        className="text-xs text-primary hover:underline mt-1"
+                      >
+                        {t('Pay full balance')}: {balance.toFixed(2)}
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-secondary mb-1">{t('Method')}</label>
+                    <select
+                      value={newPayment.method}
+                      onChange={e => setNewPayment({...newPayment, method: e.target.value as 'cash' | 'card'})}
+                      className="input-field w-full"
+                    >
+                      <option value="cash">{t('Cash')}</option>
+                      <option value="card">{t('Card')}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-secondary mb-1">{t('Note')} ({t('optional')})</label>
+                    <input
+                      type="text"
+                      value={newPayment.note}
+                      onChange={e => setNewPayment({...newPayment, note: e.target.value})}
+                      className="input-field w-full"
+                      placeholder={t('Payment note...')}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button onClick={() => setShowAddPayment(false)} className="px-4 py-2 text-sm text-secondary hover:bg-surface-container-high rounded-lg">
+                    {t('Cancel')}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!newPayment.amount || Number(newPayment.amount) <= 0) return;
+                      try {
+                        await window.electronAPI.orders.addPayment(Number(id), Number(newPayment.amount), newPayment.method, newPayment.note || null);
+                        setShowAddPayment(false);
+                        setNewPayment({ amount: '', method: 'cash', note: '' });
+                        loadOrder();
+                      } catch (err) {
+                        console.error('Payment failed:', err);
+                      }
+                    }}
+                    className="btn-primary px-6 py-2 text-sm"
+                    disabled={!newPayment.amount || Number(newPayment.amount) <= 0}
+                  >
+                    {t('Save Payment')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
