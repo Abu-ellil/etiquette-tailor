@@ -54,6 +54,7 @@ function getInitials(name: string): string {
 
 export default function CustomersPage() {
   const { t, currency } = useTranslation();
+  const session = JSON.parse(localStorage.getItem('session') || '{}');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -77,14 +78,14 @@ export default function CustomersPage() {
   const loadCustomers = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await window.electronAPI.customers.getAll();
+      const data = await window.electronAPI.customers.getAll(session.branch_id);
       setCustomers(data || []);
     } catch (err) {
       console.error('Failed to load customers:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session.branch_id]);
 
   useEffect(() => {
     loadCustomers();
@@ -96,7 +97,7 @@ export default function CustomersPage() {
     const handler = setTimeout(async () => {
       if (searchQuery.trim()) {
         try {
-          const results = await window.electronAPI.customers.search(searchQuery.trim());
+          const results = await window.electronAPI.customers.search(searchQuery.trim(), session.branch_id);
           setCustomers(results || []);
         } catch (err) {
           console.error('Search failed:', err);
@@ -107,7 +108,7 @@ export default function CustomersPage() {
     }, 300);
 
     return () => clearTimeout(handler);
-  }, [searchQuery, loadCustomers]);
+  }, [searchQuery, loadCustomers, session.branch_id]);
 
   /* ── Modal helpers ── */
 
@@ -144,6 +145,7 @@ export default function CustomersPage() {
           name: data.name,
           phone: data.phone,
           notes: data.notes,
+          branch_id: session.branch_id,
         });
       }
       closeModal();
