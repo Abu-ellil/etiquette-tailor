@@ -444,6 +444,12 @@ function migrateColumns() {
     db.exec('ALTER TABLE users ADD COLUMN default_rate REAL DEFAULT 0');
   }
 
+  // Add branch_id to users (if missing)
+  if (!tables.users?.includes('branch_id')) {
+    console.log('Migrating: adding branch_id to users');
+    db.exec('ALTER TABLE users ADD COLUMN branch_id INTEGER REFERENCES branches(id)');
+  }
+
   // Add base_price to piece_types
   if (!tables.piece_types?.includes('base_price')) {
     console.log('Migrating: adding base_price to piece_types');

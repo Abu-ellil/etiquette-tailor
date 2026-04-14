@@ -427,12 +427,13 @@ export function updateOrder(id: number, order: Partial<Order>): void {
 
   const stmt = db.prepare(`
     UPDATE orders SET
-      customer_id = ?, piece_type = ?, details = ?,
+      branch_id = ?, customer_id = ?, piece_type = ?, details = ?,
       price = ?, paid = ?, payment_method = ?,
       status = ?, delivery_date = ?
     WHERE id = ?
   `);
   stmt.run(
+    order.branch_id ?? existing.branch_id,
     order.customer_id ?? existing.customer_id,
     order.piece_type ?? existing.piece_type,
     order.details ?? existing.details ?? null,

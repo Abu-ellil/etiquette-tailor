@@ -25,6 +25,8 @@ const SIDEBAR_ITEMS = [
   { path: '/customers', labelKey: 'Customers', icon: 'group', section: 'main' },
   { path: '/orders', labelKey: 'Orders', icon: 'shopping_bag', section: 'main' },
   { path: '/measurements', labelKey: 'Measurements', icon: 'straighten', section: 'main' },
+  { path: '/profit', labelKey: 'Profit', icon: 'account_balance_wallet', roles: ['admin', 'manager'], section: 'main' },
+  { path: '/advanced-reports', labelKey: 'Reports', icon: 'analytics', roles: ['admin', 'manager'], section: 'main' },
   // Workers
   { path: '/workers', labelKey: 'Workers', icon: 'badge', section: 'workers' },
   { path: '/worker-rates', labelKey: 'Worker Rates', icon: 'payments', section: 'workers' },
@@ -37,9 +39,6 @@ const SIDEBAR_ITEMS = [
   { path: '/daily-production', labelKey: 'Daily Production', icon: 'edit_calendar', roles: ['admin', 'manager'], section: 'workers' },
   { path: '/salary-summary', labelKey: 'Salary Summary', icon: 'account_balance_wallet', roles: ['admin', 'manager'], section: 'workers' },
   { path: '/worker-productivity', labelKey: 'Worker Productivity', icon: 'speed', roles: ['admin', 'manager'], section: 'workers' },
-  // Reports
-  { path: '/profit', labelKey: 'Profit', icon: 'account_balance_wallet', roles: ['admin', 'manager'], section: 'reports' },
-  { path: '/advanced-reports', labelKey: 'Reports', icon: 'analytics', roles: ['admin', 'manager'], section: 'reports' },
   
   // System
   { path: '/backup', labelKey: 'Backup', icon: 'settings_backup_restore', section: 'system' },

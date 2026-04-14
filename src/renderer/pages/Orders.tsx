@@ -97,12 +97,14 @@ function StatusDropdown({
   orderBalance,
   onUpdated,
   t,
+  currency,
 }: {
   current: string;
   orderId: number;
   orderBalance: number;
   onUpdated: () => void;
   t: (key: string, params?: any) => string;
+  currency: string;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -203,6 +205,7 @@ export default function OrdersPage() {
   const { t, currency } = useTranslation();
   const session = JSON.parse(localStorage.getItem('session') || '{}');
   const isWorker = session.role === 'worker';
+  const isAdmin = session.role === 'admin';
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -216,11 +219,16 @@ export default function OrdersPage() {
   const [editForm, setEditForm] = React.useState<any>(null);
   const [editOriginalPrice, setEditOriginalPrice] = React.useState(0);
   const [editSaving, setEditSaving] = React.useState(false);
+  const [editBranches, setEditBranches] = React.useState<any[]>([]);
 
   const openEditModal = async (orderId: number) => {
     try {
-      const orderData = await window.electronAPI.orders.get(orderId);
+      const [orderData, branches] = await Promise.all([
+        window.electronAPI.orders.get(orderId),
+        window.electronAPI.branches.getAll(),
+      ]);
       setEditingOrder(orderData);
+      setEditBranches(branches);
       setEditForm({
         customer_name: orderData.customer_name || '',
         customer_phone: orderData.customer_phone || '',
@@ -252,6 +260,7 @@ export default function OrdersPage() {
         });
       }
       await window.electronAPI.orders.update(editingOrder.id, {
+        branch_id: editForm.branch_id,
         customer_id: editingOrder.customer_id,
         piece_type: editForm.piece_type,
         details: editForm.details,
@@ -295,9 +304,11 @@ export default function OrdersPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      // Admins see all branches, workers see only their branch
+      const branchId = isAdmin ? undefined : session.branch_id;
       const [allOrders, orderStats] = await Promise.all([
-        window.electronAPI.orders.getAll(session.branch_id),
-        window.electronAPI.orders.getStats(session.branch_id),
+        window.electronAPI.orders.getAll(branchId),
+        window.electronAPI.orders.getStats(branchId),
       ]);
       setOrders(allOrders);
       setStats(orderStats);
@@ -551,6 +562,7 @@ ${order.details ? `*Notes:* ${order.details}` : ''}`;
                         orderBalance={balance}
                         onUpdated={fetchData}
                         t={t}
+                        currency={currency}
                       />
                       <span className="text-xs px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface font-semibold">
                         {itemsSummary}
@@ -692,7 +704,7 @@ ${order.details ? `*Notes:* ${order.details}` : ''}`;
                   </div>
                 </div>
 
-                {/* Order fields */}
+{/* Order fields */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Piece Type')}</label>
@@ -709,9 +721,21 @@ ${order.details ? `*Notes:* ${order.details}` : ''}`;
                     </select>
                   </div>
                   {!isWorker && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{`${t('Price')} (${t(currency)})`}</label>
+                  <>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{t('Branch')}</label>
+                    <select
+                      value={editForm.branch_id}
+                      onChange={(e) => setEditForm({...editForm, branch_id: Number(e.target.value)})}
+                      className="input-field w-full appearance-none"
+                    >
+                      {editBranches.map((b: any) => (
+                        <option key={b.id} value={b.id}>{b.name_en}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-1">{`${t('Price')} (${t(currency)})`}</label>
                         <input type="number" value={editForm.price} onChange={(e) => setEditForm({...editForm, price: e.target.value})} className="input-field w-full" />
                       </div>
                       <div>

@@ -93,9 +93,9 @@ export function getExpenses(filters?: {
 
   const where = conditions.join(' AND ');
   const stmt = db.prepare(
-    `SELECT e.* FROM expenses e WHERE ${where} ORDER BY e.expense_date DESC, e.created_at DESC`,
+    `SELECT e.*, b.name_en as branch_name FROM expenses e LEFT JOIN branches b ON e.branch_id = b.id WHERE ${where} ORDER BY e.expense_date DESC, e.created_at DESC`,
   );
-  return stmt.all(...params) as Expense[];
+  return stmt.all(...params) as (Expense & { branch_name?: string | null })[];
 }
 
 export function deleteExpense(id: number): void {
@@ -163,17 +163,17 @@ export function getProfitReport(
 
   // 2. Wages paid: total worker_payments in period
   const wagesParams: any[] = [startDate, endDate + 'T23:59:59'];
-  if (branchId) {
-    wagesParams.push(branchId);
+  let wagesPaid = 0;
+  try {
+    const wagesRow = db.prepare(`
+      SELECT COALESCE(SUM(wp.amount), 0) as total
+      FROM worker_payments wp
+      WHERE wp.created_at >= ? AND wp.created_at <= ?
+    `).get(...wagesParams) as { total: number };
+    wagesPaid = wagesRow.total;
+  } catch {
+    wagesPaid = 0;
   }
-  const wagesRow = db.prepare(`
-    SELECT COALESCE(SUM(wp.amount), 0) as total
-    FROM worker_payments wp
-    ${branchId ? 'JOIN users u ON wp.user_id = u.id' : ''}
-    WHERE wp.created_at >= ? AND wp.created_at <= ?
-    ${branchId ? ' AND u.branch_id = ?' : ''}
-  `).get(...wagesParams) as { total: number };
-  const wagesPaid = wagesRow.total;
 
   // 3. Other expenses
   const otherExpenses = getExpenseTotal(startDate, endDate, branchId);
@@ -184,13 +184,14 @@ export function getProfitReport(
   const netProfit = income - totalExpenses;
 
   // 5. Worker summary (productivity + earnings + payments)
-  const workerBranchFilter = branchId ? ' AND u.branch_id = ?' : '';
-  const workerParams: any[] = [];
-  if (branchId) workerParams.push(branchId);
-
-  const workers = db.prepare(
-    `SELECT id, name, worker_type, branch_id FROM users WHERE role = 'worker' AND active = 1${workerBranchFilter} ORDER BY name`
-  ).all(...workerParams) as { id: number; name: string; worker_type: string | null; branch_id: number }[];
+  let workers: { id: number; name: string; worker_type: string | null; branch_id: number | null }[] = [];
+  try {
+    workers = db.prepare(
+      `SELECT id, name, worker_type, branch_id FROM users WHERE role = 'worker' AND active = 1 ORDER BY name`
+    ).all() as typeof workers;
+  } catch {
+    workers = [];
+  }
 
   const workerSummary: WorkerProfitSummary[] = workers.map((w) => {
     const taskParams: any[] = [w.id, startDate, endDate + 'T23:59:59'];

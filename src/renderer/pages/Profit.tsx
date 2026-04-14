@@ -13,6 +13,8 @@ interface ExpenseRow {
   expense_date: string;
   note: string | null;
   created_at?: string;
+  branch_id?: number | null;
+  branch_name?: string | null;
 }
 
 interface WorkerSummary {
@@ -84,6 +86,8 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 export default function ProfitPage() {
   const { t, currency } = useTranslation();
+  const session = JSON.parse(localStorage.getItem('session') || '{}');
+  const isAdmin = session.role === 'admin';
 
   // Date range — default to current month
   const [startDate, setStartDate] = useState(() => {
@@ -112,6 +116,7 @@ export default function ProfitPage() {
   const [expAmount, setExpAmount] = useState('');
   const [expDate, setExpDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [expNote, setExpNote] = useState('');
+  const [expBranchId, setExpBranchId] = useState<number | null>(null);
   const [expSubmitting, setExpSubmitting] = useState(false);
 
   // Payment modal
@@ -179,7 +184,7 @@ export default function ProfitPage() {
         description: expDescription || expCategory,
         amount: Number(expAmount),
         expense_date: expDate,
-        branch_id: selectedBranch || null,
+        branch_id: expBranchId,
         note: expNote || null,
       });
       setShowExpenseModal(false);
@@ -192,6 +197,12 @@ export default function ProfitPage() {
     } finally {
       setExpSubmitting(false);
     }
+  };
+
+  const openExpenseModal = () => {
+    const defaultBranch = session.branch_id || (branches[0]?.id) || null;
+    setExpBranchId(defaultBranch);
+    setShowExpenseModal(true);
   };
 
   const handleDeleteExpense = async (id: number) => {
@@ -553,7 +564,7 @@ export default function ProfitPage() {
             <div className="px-6 py-4 border-b border-surface-container-high flex justify-between items-center">
               <h2 className="text-lg font-headline font-bold text-on-surface">{t('Recent Expenses')}</h2>
               <button
-                onClick={() => setShowExpenseModal(true)}
+                onClick={openExpenseModal}
                 className="btn-primary flex items-center gap-2 py-2 px-4 text-xs"
               >
                 <span className="material-symbols-outlined text-sm">add</span>
@@ -573,6 +584,7 @@ export default function ProfitPage() {
                       <th>{t('Date')}</th>
                       <th>{t('Category')}</th>
                       <th>{t('Description')}</th>
+                      <th>{t('Branch')}</th>
                       <th>{t('Amount')}</th>
                       <th></th>
                     </tr>
@@ -588,6 +600,7 @@ export default function ProfitPage() {
                           </span>
                         </td>
                         <td className="text-sm">{exp.description}</td>
+                        <td className="text-sm text-secondary">{exp.branch_name || '-'}</td>
                         <td className="font-bold text-on-surface">{Number(exp.amount).toFixed(0)} {t(currency)}</td>
                         <td>
                           <button
@@ -712,7 +725,7 @@ export default function ProfitPage() {
         <div className="space-y-6">
           <div className="flex justify-end">
             <button
-              onClick={() => setShowExpenseModal(true)}
+              onClick={openExpenseModal}
               className="btn-primary flex items-center gap-2 py-3 px-6 text-sm"
             >
               <span className="material-symbols-outlined">add_circle</span>
@@ -734,6 +747,7 @@ export default function ProfitPage() {
                       <th>{t('Date')}</th>
                       <th>{t('Category')}</th>
                       <th>{t('Description')}</th>
+                      <th>{t('Branch')}</th>
                       <th>{t('Note')}</th>
                       <th>{t('Amount')}</th>
                       <th></th>
@@ -750,6 +764,7 @@ export default function ProfitPage() {
                           </span>
                         </td>
                         <td className="text-sm">{exp.description}</td>
+                        <td className="text-sm text-secondary">{exp.branch_name || '-'}</td>
                         <td className="text-secondary text-sm">{exp.note || '--'}</td>
                         <td className="font-bold text-on-surface">{Number(exp.amount).toFixed(0)} {t(currency)}</td>
                         <td>
@@ -873,7 +888,7 @@ export default function ProfitPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">{`${t('Amount')} (${t(currency)})`}</label>
                       <div className="relative flex items-center">
@@ -899,6 +914,27 @@ export default function ProfitPage() {
                         className="input-field"
                       />
                     </div>
+                    {isAdmin ? (
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">{t('Branch')}</label>
+                        <select
+                          value={expBranchId ?? ''}
+                          onChange={(e) => setExpBranchId(e.target.value ? Number(e.target.value) : null)}
+                          className="input-field appearance-none"
+                        >
+                          {branches.map((b: any) => (
+                            <option key={b.id} value={b.id}>{b.name_en}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : session.branch_id ? (
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">{t('Branch')}</label>
+                        <div className="input-field bg-surface-container-high text-secondary">
+                          {branches.find((b: any) => b.id === session.branch_id)?.name_en || session.branch_id}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div>
