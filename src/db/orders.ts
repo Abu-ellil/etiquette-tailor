@@ -216,7 +216,7 @@ export function getOrderByNumber(orderNumber: string): Order | undefined {
 
 export function createOrder(order: Omit<Order, 'id' | 'balance'>, measurements?: OrderMeasurement, items?: Omit<OrderItem, 'id' | 'order_id'>[]): number {
   const transaction = db.transaction(() => {
-    const orderNumber = generateOrderNumber(order.branch_id);
+    const orderNumber = order.order_number?.trim() || generateOrderNumber(order.branch_id);
 
     // Calculate total from items if provided
     const totalPrice = items && items.length > 0

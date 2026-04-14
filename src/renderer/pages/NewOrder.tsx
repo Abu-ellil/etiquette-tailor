@@ -52,7 +52,7 @@ export default function NewOrderPage() {
   });
   const [formData, setFormData] = useState({
     customerFullName: '',
-    customerFirstName: '',
+    invoiceNumber: '',
     phoneNumber: '',
     paidAmount: '',
     paymentMethod: 'cash' as 'cash' | 'card',
@@ -253,6 +253,7 @@ export default function NewOrderPage() {
       const orderData = {
         branch_id: branchId,
         customer_id: customerId,
+        order_number: formData.invoiceNumber.trim() || undefined,
         piece_type: validItems[0]?.piece_type || '',
         details: alterDetails || undefined,
         price: totalPrice,
@@ -412,13 +413,13 @@ export default function NewOrderPage() {
 
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('Customer First Name')}
+                  {t('Invoice Number')}
                 </label>
                 <input
                   className="input-field"
-                  value={formData.customerFirstName}
-                  onChange={e => updateField('customerFirstName', e.target.value)}
-                  placeholder={t('Enter first name only')}
+                  value={formData.invoiceNumber || ''}
+                  onChange={e => updateField('invoiceNumber', e.target.value)}
+                  placeholder={t('Enter invoice number')}
                   disabled={submitting}
                 />
               </div>
