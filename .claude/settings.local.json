@@ -58,7 +58,9 @@
       "Bash(cygpath -w /tmp/empty_dir)",
       "Bash(cmd //c \"robocopy /MIR /R:1 /W:1 $\\(cygpath -w /tmp/empty_dir\\) D:\\\\DEV2\\\\etiquette-tailor\\\\out\\\\etiquette-tailor-win32-x64\\\\resources\")",
       "Bash(git rebase:*)",
-      "Bash(GIT_EDITOR=true git rebase:*)"
+      "Bash(GIT_EDITOR=true git rebase:*)",
+      "Bash(pkill:*)",
+      "Bash(git stash:*)"
     ]
   }
 }

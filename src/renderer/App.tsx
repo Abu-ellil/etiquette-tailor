@@ -11,6 +11,7 @@ import OrderDetailPage from './pages/OrderDetail';
 import MeasurementsPage from './pages/Measurements';
 import WorkersPage from './pages/Workers';
 import WorkerPayRatesPage from './pages/WorkerPayRates';
+import DailyProductionPage from './pages/DailyProduction';
 import WorkerWageReportPage from './pages/WorkerWageReport';
 import SalarySummaryPage from './pages/SalarySummary';
 import WorkerProductivityPage from './pages/WorkerProductivity';
@@ -37,8 +38,8 @@ export interface Session {
 }
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings', '/notifications'],
-  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/sync', '/notifications'],
+  admin: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings', '/notifications'],
+  manager: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/sync', '/notifications'],
   reception: ['/dashboard', '/customers', '/orders', '/orders/:id', '/workflow', '/measurements', '/notifications'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue', '/notifications'],
 };
@@ -205,6 +206,14 @@ export default function App() {
             element={
               <ProtectedRoute path="/task-management" session={session}>
                 <TaskManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="daily-production"
+            element={
+              <ProtectedRoute path="/daily-production" session={session}>
+                <DailyProductionPage />
               </ProtectedRoute>
             }
           />

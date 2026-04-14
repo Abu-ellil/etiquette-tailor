@@ -11,12 +11,18 @@ import {
   createUser,
   updateUser,
   deactivateUser,
+} from '../db/auth';
+import {
   getAllBranches,
   getBranchById,
+} from '../db/branches';
+import {
   getAllWorkers,
   getWorkerRates,
   setWorkerRate,
   getActiveRate,
+} from '../db/workers';
+import {
   getAllCustomers,
   searchCustomers,
   createCustomer,
@@ -24,6 +30,8 @@ import {
   deleteCustomer,
   getCustomerOrders,
   getCustomerOutstandingOrders,
+} from '../db/customers';
+import {
   getAllOrders,
   getOrder,
   searchOrders,
@@ -39,6 +47,14 @@ import {
   reassignTask,
   getOrderStats,
   getAllTasks,
+  getPaymentSplit,
+  getMonthlyRevenue,
+  getRecentOrders,
+  getDailyStats,
+  getWorkerContribution,
+  getAdvancedReport,
+} from '../db/orders';
+import {
   getWorkerTasks,
   getMonthlyEarnings,
   getWorkerOrderDetails,
@@ -51,6 +67,18 @@ import {
   getOverdueTasks,
   getWorkerWorkloads,
   getRecommendedWorkers,
+} from '../db/workers';
+import {
+  createDailyProduction,
+  getDailyProduction,
+  getDailyProductionByDate,
+  getWorkerProductionSummary,
+  getAllWorkersProduction,
+  getDailyProductionGrouped,
+  deleteDailyProduction,
+  updateDailyProduction,
+} from '../db/dailyProduction';
+import {
   getAllSettings,
   setSettings,
   updateBranch,
@@ -273,6 +301,42 @@ function registerIpcHandlers() {
 
   ipcMain.handle('workers:getRecommended', async (_event, pieceType: string, taskType: string) => {
     return getRecommendedWorkers(pieceType, taskType);
+  });
+
+  // Daily Production handlers
+  ipcMain.handle('dailyProduction:create', async (_event, data: any) => {
+    return createDailyProduction({
+      ...data,
+      created_by: currentSession?.userId ?? null,
+    });
+  });
+
+  ipcMain.handle('dailyProduction:getAll', async (_event, filters?: { worker_id?: number; start_date?: string; end_date?: string }) => {
+    return getDailyProduction(filters);
+  });
+
+  ipcMain.handle('dailyProduction:getByDate', async (_event, date: string) => {
+    return getDailyProductionByDate(date);
+  });
+
+  ipcMain.handle('dailyProduction:getWorkerSummary', async (_event, workerId: number, startDate: string, endDate: string) => {
+    return getWorkerProductionSummary(workerId, startDate, endDate);
+  });
+
+  ipcMain.handle('dailyProduction:getAllWorkersProduction', async (_event, startDate: string, endDate: string) => {
+    return getAllWorkersProduction(startDate, endDate);
+  });
+
+  ipcMain.handle('dailyProduction:getGrouped', async (_event, startDate: string, endDate: string) => {
+    return getDailyProductionGrouped(startDate, endDate);
+  });
+
+  ipcMain.handle('dailyProduction:delete', async (_event, id: number) => {
+    return deleteDailyProduction(id);
+  });
+
+  ipcMain.handle('dailyProduction:update', async (_event, id: number, data: any) => {
+    return updateDailyProduction(id, data);
   });
 
   ipcMain.handle('customers:getAll', async (_event, branchId?: number) => {

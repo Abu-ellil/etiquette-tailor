@@ -147,6 +147,17 @@ export interface ElectronAPI {
     importData: (branchId: number, folderPath: string) => Promise<any>;
     getStatus: () => Promise<any>;
   };
+
+  dailyProduction: {
+    create: (data: any) => Promise<number>;
+    getAll: (filters?: { worker_id?: number; start_date?: string; end_date?: string }) => Promise<any[]>;
+    getByDate: (date: string) => Promise<any[]>;
+    getWorkerSummary: (workerId: number, startDate: string, endDate: string) => Promise<any>;
+    getAllWorkersProduction: (startDate: string, endDate: string) => Promise<any[]>;
+    getGrouped: (startDate: string, endDate: string) => Promise<any[]>;
+    delete: (id: number) => Promise<void>;
+    update: (id: number, data: any) => Promise<void>;
+  };
 }
 
 const api: ElectronAPI = {
@@ -296,6 +307,17 @@ const api: ElectronAPI = {
     exportData: (branchId, folderPath) => ipcRenderer.invoke('sync:export', branchId, folderPath),
     importData: (branchId, folderPath) => ipcRenderer.invoke('sync:import', branchId, folderPath),
     getStatus: () => ipcRenderer.invoke('sync:getStatus'),
+  },
+
+  dailyProduction: {
+    create: (data) => ipcRenderer.invoke('dailyProduction:create', data),
+    getAll: (filters?) => ipcRenderer.invoke('dailyProduction:getAll', filters),
+    getByDate: (date) => ipcRenderer.invoke('dailyProduction:getByDate', date),
+    getWorkerSummary: (workerId, startDate, endDate) => ipcRenderer.invoke('dailyProduction:getWorkerSummary', workerId, startDate, endDate),
+    getAllWorkersProduction: (startDate, endDate) => ipcRenderer.invoke('dailyProduction:getAllWorkersProduction', startDate, endDate),
+    getGrouped: (startDate, endDate) => ipcRenderer.invoke('dailyProduction:getGrouped', startDate, endDate),
+    delete: (id) => ipcRenderer.invoke('dailyProduction:delete', id),
+    update: (id, data) => ipcRenderer.invoke('dailyProduction:update', id, data),
   },
 };
 

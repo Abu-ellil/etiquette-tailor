@@ -657,6 +657,26 @@ export default {
   '{count} payments recorded successfully.': 'تم تسجيل {count} دفعات بنجاح.',
   'Enter payment amounts for workers below': 'أدخل مبالغ الدفع للعمال أدناه',
 
+  // Daily Production
+  'Daily Production': 'الإنتاجية اليومية',
+  'Record worker daily output and calculate wages': 'تسجيل إنتاجية العمال اليومية وحساب الأجور',
+  'New Entries': 'إدخالات جديدة',
+  'Add Entry': 'إضافة إدخال',
+  'No entries yet. Click "Add Entry" to start.': 'لا توجد إدخالات بعد. اضغط "إضافة إدخال" للبدء.',
+  'Select worker': 'اختر العامل',
+  'Select type': 'اختر النوع',
+  'Remove': 'حذف',
+  'Save All Entries': 'حفظ جميع الإدخالات',
+  'Records for {date}': 'سجلات {date}',
+  'No records found for this date.': 'لا توجد سجلات لهذا التاريخ.',
+  'Total for this date': 'إجمالي هذا التاريخ',
+  'Daily production recorded successfully!': 'تم تسجيل الإنتاجية اليومية بنجاح!',
+  'Please add at least one production entry.': 'الرجاء إضافة إدخال إنتاجية واحد على الأقل.',
+  'Please fill in all fields with valid values. Some entries are missing wage rates.': 'الرجاء تعبئة جميع الحقول بقيم صحيحة. بعض الإدخالات لا تحتوي على نسب أجر.',
+  'Failed to save daily production.': 'فشل حفظ الإنتاجية اليومية.',
+  'Delete this record?': 'حذف هذا السجل؟',
+  'Failed to delete record.': 'فشل حذف السجل.',
+
   // Worker Productivity
   'Worker Productivity': 'إنتاجية العمال',
   'Efficiency': 'الكفاءة',

@@ -34,6 +34,7 @@ const SIDEBAR_ITEMS = [
   { path: '/task-board', labelKey: 'Task Board', icon: 'view_kanban', roles: ['admin', 'manager'], section: 'tasks' },
   { path: '/task-management', labelKey: 'Task Management', icon: 'manage_accounts', roles: ['admin', 'manager'], section: 'tasks' },
   { path: '/worker-wage-report', labelKey: 'Worker Wage Report', icon: 'receipt_long', roles: ['admin', 'manager'], section: 'workers' },
+  { path: '/daily-production', labelKey: 'Daily Production', icon: 'edit_calendar', roles: ['admin', 'manager'], section: 'workers' },
   { path: '/salary-summary', labelKey: 'Salary Summary', icon: 'account_balance_wallet', roles: ['admin', 'manager'], section: 'workers' },
   { path: '/worker-productivity', labelKey: 'Worker Productivity', icon: 'speed', roles: ['admin', 'manager'], section: 'workers' },
   // Reports
@@ -55,8 +56,8 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings'],
-  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/sync'],
+  admin: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/backup', '/sync', '/settings'],
+  manager: ['/dashboard', '/customers', '/orders', '/measurements', '/workers', '/worker-rates', '/task-management', '/worker-wage-report', '/daily-production', '/salary-summary', '/worker-productivity', '/task-board', '/profit', '/reports', '/advanced-reports', '/sync'],
   reception: ['/dashboard', '/customers', '/orders', '/measurements'],
   worker: ['/dashboard', '/my-tasks', '/cutting-queue'],
 };

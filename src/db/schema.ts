@@ -407,7 +407,7 @@ function migrateColumns() {
   }
 
   // Get existing columns for each table
-  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates', 'piece_types', 'order_items', 'branches']) {
+  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates', 'piece_types', 'order_items', 'branches', 'daily_production']) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     tables[table] = cols.map((c) => c.name);
   }
@@ -634,6 +634,29 @@ function migrateColumns() {
     }
   } catch (e) {
     console.log('customers nullable name migration skipped:', (e as Error).message);
+  }
+
+  // ── Daily Production table migration ──
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS daily_production (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        worker_id INTEGER NOT NULL REFERENCES users(id),
+        production_date DATE NOT NULL,
+        piece_type TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        wage_rate REAL NOT NULL,
+        wage_amount REAL NOT NULL,
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_daily_production_worker_date ON daily_production(worker_id, production_date)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_daily_production_date ON daily_production(production_date)`);
+    console.log('Migration: daily_production table created');
+  } catch (e) {
+    console.log('daily_production table creation skipped:', (e as Error).message);
   }
 }
 
