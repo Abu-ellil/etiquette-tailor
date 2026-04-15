@@ -101,6 +101,9 @@ export interface ElectronAPI {
     getAll: () => Promise<any[]>;
     updateBasePrice: (name_en: string, base_price: number) => Promise<void>;
     getBasePrice: (name_en: string) => Promise<number>;
+    create: (data: any) => Promise<any>;
+    update: (id: number, data: any) => Promise<any>;
+    delete: (id: number) => Promise<void>;
   };
 
   reports: {
@@ -264,6 +267,9 @@ const api: ElectronAPI = {
     getAll: () => ipcRenderer.invoke('pieceTypes:getAll'),
     updateBasePrice: (name_en: string, base_price: number) => ipcRenderer.invoke('pieceTypes:updateBasePrice', name_en, base_price),
     getBasePrice: (name_en: string) => ipcRenderer.invoke('pieceTypes:getBasePrice', name_en),
+    create: (data: any) => ipcRenderer.invoke('pieceTypes:create', data),
+    update: (id: number, data: any) => ipcRenderer.invoke('pieceTypes:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('pieceTypes:delete', id),
   },
 
   reports: {
