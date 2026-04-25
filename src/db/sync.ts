@@ -252,8 +252,8 @@ export function importBranchData(myBranchId: number, folderPath: string): SyncRe
       // --- Order Tasks (delete + re-insert per order) ---
       const deleteTasks = db.prepare('DELETE FROM order_tasks WHERE order_id = ?');
       const insertTask = db.prepare(`
-        INSERT INTO order_tasks (order_id, order_item_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, status, due_date, notes, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO order_tasks (order_id, order_item_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, task_quantity, status, started_at, completed_at, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       for (const t of data.order_tasks || []) {
@@ -262,8 +262,8 @@ export function importBranchData(myBranchId: number, folderPath: string): SyncRe
         deleteTasks.run(localOrderId);
         insertTask.run(
           localOrderId, t.order_item_id, t.task_type, t.assigned_to,
-          t.wage_type, t.wage_rate, t.wage_amount, t.status, t.due_date, t.notes,
-          t.created_at || now
+          t.wage_type, t.wage_rate, t.wage_amount, t.task_quantity || 1,
+          t.status, t.started_at || null, t.completed_at || null, t.notes
         );
         counts.order_tasks++;
       }
@@ -437,8 +437,8 @@ export function mergeBranchData(myBranchId: number, folderPath: string): MergeRe
 
         const deleteTasks = db.prepare('DELETE FROM order_tasks WHERE order_id = ?');
         const insertTask = db.prepare(`
-          INSERT INTO order_tasks (order_id, order_item_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, status, due_date, notes, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO order_tasks (order_id, order_item_id, task_type, assigned_to, wage_type, wage_rate, wage_amount, task_quantity, status, started_at, completed_at, notes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         for (const t of data.order_tasks || []) {
@@ -447,8 +447,8 @@ export function mergeBranchData(myBranchId: number, folderPath: string): MergeRe
           deleteTasks.run(localOrderId);
           insertTask.run(
             localOrderId, t.order_item_id, t.task_type, t.assigned_to,
-            t.wage_type, t.wage_rate, t.wage_amount, t.status, t.due_date, t.notes,
-            t.created_at || now
+            t.wage_type, t.wage_rate, t.wage_amount, t.task_quantity || 1,
+            t.status, t.started_at || null, t.completed_at || null, t.notes
           );
           merged++;
         }

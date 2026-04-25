@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { format, isPast, parseISO } from 'date-fns';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -206,6 +207,7 @@ export default function OrdersPage() {
   const session = JSON.parse(localStorage.getItem('session') || '{}');
   const isWorker = session.role === 'worker';
   const isAdmin = session.role === 'admin';
+  const { activeBranchId } = useActiveBranch();
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -305,7 +307,7 @@ export default function OrdersPage() {
     setLoading(true);
     try {
       // Admins see all branches, workers see only their branch
-      const branchId = isAdmin ? undefined : session.branch_id;
+      const branchId = isAdmin ? undefined : activeBranchId;
       const [allOrders, orderStats] = await Promise.all([
         window.electronAPI.orders.getAll(branchId),
         window.electronAPI.orders.getStats(branchId),
@@ -331,7 +333,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [session.branch_id]);
+  }, [activeBranchId]);
 
   useEffect(() => {
     fetchData();

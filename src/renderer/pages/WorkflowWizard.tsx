@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 import StepIndicator from '../components/StepIndicator';
 
 interface Customer { id: number; name: string; phone: string; notes: string; }
@@ -81,6 +82,7 @@ function StepCard({ icon, title, currentStep, isLastStep, submitting, validation
 export default function WorkflowWizard() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
 
   const [session, setSession] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -228,7 +230,7 @@ export default function WorkflowWizard() {
   };
 
   const onCreateCustomer = async (data: { name: string; phone: string; notes: string }) => {
-    const newId = await window.electronAPI.customers.create({ name: data.name, phone: customerQuery, notes: data.notes, branch_id: session?.branch_id || 1 });
+    const newId = await window.electronAPI.customers.create({ name: data.name, phone: customerQuery, notes: data.notes, branch_id: activeBranchId });
     setSelectedCustomer({ id: newId, name: data.name, phone: customerQuery, notes: data.notes || '' });
     setCustomerQuery(data.name);
     setShowNewCustomer(false);
@@ -265,7 +267,7 @@ export default function WorkflowWizard() {
       const validItems = items.filter(i => i.piece_type);
       const hasMeasurements = Object.values(measurements).some(v => v !== undefined && v !== null);
       const payload = {
-        branch_id: session.branch_id,
+        branch_id: activeBranchId,
         customer_id: selectedCustomer!.id,
         created_by: session.userId,
         payment_method: paymentMethod,

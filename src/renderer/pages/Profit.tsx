@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -88,6 +89,7 @@ export default function ProfitPage() {
   const { t, currency } = useTranslation();
   const session = JSON.parse(localStorage.getItem('session') || '{}');
   const isAdmin = session.role === 'admin';
+  const { activeBranchId } = useActiveBranch();
 
   // Date range — default to current month
   const [startDate, setStartDate] = useState(() => {
@@ -200,7 +202,7 @@ export default function ProfitPage() {
   };
 
   const openExpenseModal = () => {
-    const defaultBranch = session.branch_id || (branches[0]?.id) || null;
+    const defaultBranch = activeBranchId || (branches[0]?.id) || null;
     setExpBranchId(defaultBranch);
     setShowExpenseModal(true);
   };
@@ -927,11 +929,11 @@ export default function ProfitPage() {
                           ))}
                         </select>
                       </div>
-                    ) : session.branch_id ? (
+                    ) : activeBranchId ? (
                       <div>
                         <label className="block text-xs font-semibold uppercase tracking-[0.05em] text-secondary mb-2 px-1">{t('Branch')}</label>
                         <div className="input-field bg-surface-container-high text-secondary">
-                          {branches.find((b: any) => b.id === session.branch_id)?.name_en || session.branch_id}
+                          {branches.find((b: any) => b.id === activeBranchId)?.name_en || activeBranchId}
                         </div>
                       </div>
                     ) : null}

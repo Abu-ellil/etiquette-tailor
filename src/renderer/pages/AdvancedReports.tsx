@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area,
@@ -61,7 +62,7 @@ export default function AdvancedReportsPage() {
     }
   }, []);
 
-  const branchId = session.branch_id || undefined;
+  const branchId = useActiveBranch().activeBranchId || undefined;
   const isAdmin = session.role === 'admin';
 
   const [tab, setTab] = useState<ReportTab>('summary');

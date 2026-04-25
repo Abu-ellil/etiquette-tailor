@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -44,12 +45,7 @@ export default function NewOrderPage() {
 
   /* Form state */
   const [submitting, setSubmitting] = useState(false);
-  const [branchId, setBranchId] = useState(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem('session') || '{}');
-      return s.branch_id || 1;
-    } catch { return 1; }
-  });
+  const { activeBranchId: branchId, setActiveBranchId: setBranchId } = useActiveBranch();
   const [formData, setFormData] = useState({
     customerFullName: '',
     invoiceNumber: '',

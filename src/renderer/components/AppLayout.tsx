@@ -4,6 +4,7 @@ import TitleBar from './TitleBar';
 import NotificationBell from './NotificationBell';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../contexts/I18nContext';
+import { BranchProvider, useActiveBranch } from '../contexts/BranchContext';
 
 interface Session {
   userId: number;
@@ -96,6 +97,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
   };
 
   return (
+    <BranchProvider defaultBranchId={session.branch_id || 1}>
     <div className="flex flex-col h-screen bg-surface">
       <TitleBar />
       <div className="flex flex-1 overflow-hidden relative">
@@ -191,6 +193,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
               style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             >
               <span className="text-sm text-on-surface-variant font-medium">{session.name}</span>
+              <BranchSelector />
               <NotificationBell session={session} />
               <button
                 onClick={() => setTheme(isDark ? 'light' : 'dark')}
@@ -212,6 +215,38 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
           </div>
         </main>
       </div>
+    </div>
+    </BranchProvider>
+  );
+}
+
+function BranchSelector() {
+  const { activeBranch, branches, activeBranchId, setActiveBranchId } = useActiveBranch();
+
+  if (branches.length <= 1) {
+    return activeBranch ? (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-container text-on-primary-container text-xs font-semibold">
+        <span className="material-symbols-outlined text-sm">store</span>
+        {activeBranch.prefix} — {activeBranch.name_en}
+      </span>
+    ) : null;
+  }
+
+  return (
+    <div className="relative">
+      <span className="material-symbols-outlined text-sm absolute left-2 top-1/2 -translate-y-1/2 text-on-primary-container pointer-events-none">store</span>
+      <select
+        value={activeBranchId}
+        onChange={(e) => setActiveBranchId(Number(e.target.value))}
+        className="appearance-none pl-7 pr-6 py-1 rounded-full bg-primary-container text-on-primary-container text-xs font-semibold border-none outline-none cursor-pointer"
+      >
+        {branches.map((b) => (
+          <option key={b.id} value={b.id} className="text-on-surface">
+            {b.prefix} — {b.name_en}
+          </option>
+        ))}
+      </select>
+      <span className="material-symbols-outlined text-sm absolute right-1.5 top-1/2 -translate-y-1/2 text-on-primary-container pointer-events-none">expand_more</span>
     </div>
   );
 }

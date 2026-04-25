@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, isPast } from 'date-fns';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -128,6 +129,8 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const { activeBranchId } = useActiveBranch();
+
   const isWorker = session.role === 'worker';
   const isTailor = isWorker && session.worker_type === 'tailor';
   const isCutter = isWorker && session.worker_type === 'master_cutter';
@@ -146,7 +149,7 @@ export default function DashboardPage() {
             await window.electronAPI.notifications.generateOverdue();
           } catch { /* non-critical */ }
 
-          const branchFilter = isManager ? session.branch_id : undefined;
+          const branchFilter = isManager ? activeBranchId : undefined;
           const [statsData, ordersData] = await Promise.all([
             window.electronAPI.orders.getStats(branchFilter),
             window.electronAPI.orders.getAll(branchFilter),
@@ -169,7 +172,7 @@ export default function DashboardPage() {
           );
           setOrderItemsMap(itemsMap);
 
-          const tasks = await window.electronAPI.orders.getAllTasks(isManager ? { branchId: session.branch_id } : {});
+          const tasks = await window.electronAPI.orders.getAllTasks(isManager ? { branchId: activeBranchId } : {});
           setAllTasks(tasks || []);
 
           try {
@@ -719,14 +722,14 @@ function WorkerDashboard({ tasks, isCutter, loading }: { tasks: any[]; isCutter:
   // Load branch name
   React.useEffect(() => {
     async function load() {
-      if (!session.branch_id) return;
+      if (!activeBranchId) return;
       try {
-        const branch = await window.electronAPI.branches.getById(session.branch_id);
+        const branch = await window.electronAPI.branches.getById(activeBranchId);
         if (branch) setBranchName(branch.name_en || branch.name_ar || '--');
       } catch {}
     }
     load();
-  }, [session.branch_id]);
+  }, [activeBranchId]);
 
   const filtered = isCutter
     ? tasks.filter((t) => t.task_type === 'cutting')

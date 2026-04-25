@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -37,10 +38,7 @@ interface MergeResult {
 /* ------------------------------------------------------------------ */
 export default function SyncPage() {
   const { t } = useTranslation();
-  const session = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('session') || '{}'); }
-    catch { return {}; }
-  }, []);
+  const { activeBranchId } = useActiveBranch();
 
   const [folderPath, setFolderPath] = useState('');
   const [status, setStatus] = useState<SyncStatus | null>(null);
@@ -85,7 +83,7 @@ export default function SyncPage() {
     setResultType('export');
     try {
       await saveFolderPath(folderPath.trim());
-      const result = await window.electronAPI.sync.exportData(session.branch_id, folderPath.trim());
+      const result = await window.electronAPI.sync.exportData(activeBranchId, folderPath.trim());
       setLastResult(result);
       await loadStatus();
     } catch (err: any) {
@@ -102,7 +100,7 @@ export default function SyncPage() {
     setResultType('import');
     try {
       await saveFolderPath(folderPath.trim());
-      const result = await window.electronAPI.sync.importData(session.branch_id, folderPath.trim());
+      const result = await window.electronAPI.sync.importData(activeBranchId, folderPath.trim());
       setLastResult(result);
       await loadStatus();
     } catch (err: any) {
@@ -119,7 +117,7 @@ export default function SyncPage() {
     setResultType('merge');
     try {
       await saveFolderPath(folderPath.trim());
-      const result = await window.electronAPI.sync.mergeData(session.branch_id, folderPath.trim());
+      const result = await window.electronAPI.sync.mergeData(activeBranchId, folderPath.trim());
       
       if (result.conflicts && result.conflicts.length > 0) {
         setConflicts(result.conflicts);
@@ -138,7 +136,7 @@ export default function SyncPage() {
   async function resolveConflict(conflict: ConflictData, keepLocal: boolean) {
     try {
       await window.electronAPI.sync.resolveConflict(
-        session.branch_id,
+        activeBranchId,
         conflict.type,
         conflict.id,
         keepLocal ? 'local' : 'remote'
