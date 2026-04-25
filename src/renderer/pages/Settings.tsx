@@ -125,6 +125,10 @@ export default function SettingsPage() {
   const [sectionOrder, setSectionOrder] = useState<string[]>([]);
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
   const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number; up: boolean } | null>(null);
+  const [appVersion, setAppVersion] = useState('');
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'error'>('idle');
+  const [updateVersion, setUpdateVersion] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const {
     register,
@@ -184,6 +188,37 @@ export default function SettingsPage() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    window.electronAPI.updater.getVersion().then((v) => setAppVersion(v)).catch(() => {});
+
+    const unsubAvailable = window.electronAPI.updater.onUpdateAvailable((info) => {
+      setUpdateStatus('downloading');
+      setUpdateVersion(info.version);
+    });
+    const unsubNotAvailable = window.electronAPI.updater.onUpdateNotAvailable(() => {
+      setUpdateStatus('not-available');
+    });
+    const unsubDownloaded = window.electronAPI.updater.onUpdateDownloaded(() => {
+      setUpdateStatus('downloaded');
+      setDownloadProgress(100);
+    });
+    const unsubError = window.electronAPI.updater.onUpdateError((msg) => {
+      setUpdateStatus('error');
+      console.error('Update error:', msg);
+    });
+    const unsubProgress = window.electronAPI.updater.onDownloadProgress((progress) => {
+      setDownloadProgress(Math.round(progress.percent));
+    });
+
+    return () => {
+      unsubAvailable();
+      unsubNotAvailable();
+      unsubDownloaded();
+      unsubError();
+      unsubProgress();
+    };
+  }, []);
+
   /* ---- Click-away for action menu ---- */
 
   useEffect(() => {
@@ -215,6 +250,16 @@ export default function SettingsPage() {
   };
 
   /* ---- Preferences save ---- */
+
+  const handleCheckForUpdates = async () => {
+    setUpdateStatus('checking');
+    setDownloadProgress(0);
+    try {
+      await window.electronAPI.updater.check();
+    } catch {
+      setUpdateStatus('error');
+    }
+  };
 
   const handlePrefsSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1215,6 +1260,74 @@ export default function SettingsPage() {
               )}
               {saving ? t('Saving...') : t('Save Preferences')}
             </button>
+          </div>
+
+          <div className="bg-surface-container-lowest rounded-2xl p-8 space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="material-symbols-outlined text-primary text-xl">system_update</span>
+              <h3 className="font-headline font-bold text-lg text-on-surface">{t('About & Updates')}</h3>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-outline text-lg">info</span>
+                <div>
+                  <div className="text-sm font-semibold text-on-surface">
+                    {t('Etiquette Tailor')} <span className="text-secondary font-normal">v{appVersion}</span>
+                  </div>
+                  <div className="text-xs text-secondary">
+                    {updateStatus === 'not-available' && t('You are on the latest version')}
+                    {updateStatus === 'error' && t('Could not check for updates')}
+                  </div>
+                </div>
+              </div>
+
+              {updateStatus === 'downloaded' ? (
+                <button
+                  type="button"
+                  onClick={() => window.electronAPI.updater.quitAndInstall()}
+                  className="btn-primary px-6 py-2.5 text-sm flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-base">restart_alt</span>
+                  {t('Restart & Install')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCheckForUpdates}
+                  disabled={updateStatus === 'checking' || updateStatus === 'downloading'}
+                  className="px-6 py-2.5 text-sm flex items-center gap-2 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+                >
+                  {(updateStatus === 'checking' || updateStatus === 'downloading') && (
+                    <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
+                  )}
+                  {updateStatus === 'checking' && t('Checking...')}
+                  {updateStatus === 'downloading' && t('Downloading {progress}%').replace('{progress}', String(downloadProgress))}
+                  {updateStatus === 'idle' && t('Check for Updates')}
+                  {updateStatus === 'not-available' && t('Check for Updates')}
+                  {updateStatus === 'error' && t('Retry')}
+                  {updateStatus === 'available' && t('Check for Updates')}
+                </button>
+              )}
+            </div>
+
+            {updateStatus === 'downloading' && (
+              <div className="w-full bg-surface-container-high rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  style={{ width: `${downloadProgress}%` }}
+                />
+              </div>
+            )}
+
+            {updateStatus === 'downloaded' && updateVersion && (
+              <div className="flex items-center gap-2 px-4 py-3 bg-primary/10 rounded-xl">
+                <span className="material-symbols-outlined text-primary text-lg">new_releases</span>
+                <span className="text-sm text-primary font-semibold">
+                  {t('Version {version} is ready to install').replace('{version}', updateVersion)}
+                </span>
+              </div>
+            )}
           </div>
         </form>
       )}

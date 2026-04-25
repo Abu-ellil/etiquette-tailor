@@ -61,7 +61,8 @@
       "Bash(GIT_EDITOR=true git rebase:*)",
       "Bash(pkill:*)",
       "Bash(git stash:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")"
     ]
   }
 }

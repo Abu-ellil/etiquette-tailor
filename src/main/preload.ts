@@ -164,6 +164,17 @@ sync: {
     delete: (id: number) => Promise<void>;
     update: (id: number, data: any) => Promise<void>;
   };
+
+  updater: {
+    check: () => Promise<{ checking?: boolean; error?: string }>;
+    quitAndInstall: () => Promise<void>;
+    getVersion: () => Promise<string>;
+    onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string | Electron.ReleaseNoteInfo[] }) => void) => () => void;
+    onUpdateNotAvailable: (callback: () => void) => () => void;
+    onUpdateDownloaded: (callback: () => void) => () => void;
+    onUpdateError: (callback: (msg: string) => void) => () => void;
+    onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => () => void;
+  };
 }
 
 const api: ElectronAPI = {
@@ -330,6 +341,37 @@ sync: {
     getGrouped: (startDate, endDate) => ipcRenderer.invoke('dailyProduction:getGrouped', startDate, endDate),
     delete: (id) => ipcRenderer.invoke('dailyProduction:delete', id),
     update: (id, data) => ipcRenderer.invoke('dailyProduction:update', id, data),
+  },
+
+  updater: {
+    check: () => ipcRenderer.invoke('updater:check'),
+    quitAndInstall: () => ipcRenderer.invoke('updater:quitAndInstall'),
+    getVersion: () => ipcRenderer.invoke('updater:getVersion'),
+    onUpdateAvailable: (cb) => {
+      const handler = (_e: any, info: any) => cb(info);
+      ipcRenderer.on('update:available', handler);
+      return () => ipcRenderer.removeListener('update:available', handler);
+    },
+    onUpdateNotAvailable: (cb) => {
+      const handler = () => cb();
+      ipcRenderer.on('update:not-available', handler);
+      return () => ipcRenderer.removeListener('update:not-available', handler);
+    },
+    onUpdateDownloaded: (cb) => {
+      const handler = () => cb();
+      ipcRenderer.on('update:downloaded', handler);
+      return () => ipcRenderer.removeListener('update:downloaded', handler);
+    },
+    onUpdateError: (cb) => {
+      const handler = (_e: any, msg: string) => cb(msg);
+      ipcRenderer.on('update:error', handler);
+      return () => ipcRenderer.removeListener('update:error', handler);
+    },
+    onDownloadProgress: (cb) => {
+      const handler = (_e: any, progress: any) => cb(progress);
+      ipcRenderer.on('update:progress', handler);
+      return () => ipcRenderer.removeListener('update:progress', handler);
+    },
   },
 };
 

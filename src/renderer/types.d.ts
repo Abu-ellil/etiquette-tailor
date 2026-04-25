@@ -168,6 +168,17 @@ export interface ElectronAPI {
     selectFolder: () => Promise<string | null>;
   };
 
+  updater: {
+    check: () => Promise<{ checking?: boolean; error?: string }>;
+    quitAndInstall: () => Promise<void>;
+    getVersion: () => Promise<string>;
+    onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string | any[] }) => void) => () => void;
+    onUpdateNotAvailable: (callback: () => void) => () => void;
+    onUpdateDownloaded: (callback: () => void) => () => void;
+    onUpdateError: (callback: (msg: string) => void) => () => void;
+    onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => () => void;
+  };
+
 }
 
 declare global {

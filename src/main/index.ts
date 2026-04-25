@@ -740,6 +740,23 @@ function registerIpcHandlers() {
     return result.filePaths[0];
   });
 
+  ipcMain.handle('updater:check', async () => {
+    try {
+      await autoUpdater.checkForUpdates();
+      return { checking: true };
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  });
+
+  ipcMain.handle('updater:quitAndInstall', () => {
+    autoUpdater.quitAndInstall();
+  });
+
+  ipcMain.handle('updater:getVersion', () => {
+    return app.getVersion();
+  });
+
   ipcMain.handle('window:minimize', () => mainWindow?.minimize());
 
   // Piece types
@@ -821,18 +838,40 @@ app.on('ready', () => {
   registerIpcHandlers();
   createWindow();
 
-  // Auto-updater (production only)
-  if (app.isPackaged) {
-    autoUpdater.setFeedURL({
-      url: 'https://github.com/Abu-ellil/etiquette-tailor/releases/latest/download/',
-    });
-    autoUpdater.checkForUpdates();
-    // Check every 30 minutes
-    setInterval(() => autoUpdater.checkForUpdates(), 30 * 60 * 1000);
+  autoUpdater.setFeedURL({
+    url: 'https://github.com/Abu-ellil/etiquette-tailor/releases/latest/download/',
+  });
 
-    autoUpdater.on('update-downloaded', () => {
-      autoUpdater.quitAndInstall();
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update:available', {
+      version: info.version,
+      releaseNotes: info.releaseNotes,
     });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    mainWindow?.webContents.send('update:not-available');
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    mainWindow?.webContents.send('update:downloaded');
+  });
+
+  autoUpdater.on('error', (err) => {
+    mainWindow?.webContents.send('update:error', err?.message || 'Unknown error');
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    mainWindow?.webContents.send('update:progress', {
+      percent: progress.percent,
+      transferred: progress.transferred,
+      total: progress.total,
+    });
+  });
+
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates();
+    setInterval(() => autoUpdater.checkForUpdates(), 30 * 60 * 1000);
   }
 });
 
