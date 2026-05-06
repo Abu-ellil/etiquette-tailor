@@ -23,6 +23,7 @@ export interface Order {
   branch_prefix?: string;
   branch_phone?: string;
   branch_address?: string;
+  is_deleted?: number;
 }
 
 export interface OrderMeasurement {
@@ -169,7 +170,7 @@ export function getAllOrders(branchId?: number, status?: string): Order[] {
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN (SELECT order_id, SUM(amount) as paid_sum FROM order_payments GROUP BY order_id) ps ON ps.order_id = o.id
     LEFT JOIN branches b ON o.branch_id = b.id
-  WHERE 1=1
+  WHERE o.is_deleted = 0
   `;
   const params: any[] = [];
 
@@ -199,7 +200,7 @@ export function getOrder(id: number): Order | undefined {
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN branches b ON o.branch_id = b.id
-    WHERE o.id = ?
+    WHERE o.id = ? AND o.is_deleted = 0
   `);
   return stmt.get(id) as Order | undefined;
 }
@@ -209,7 +210,7 @@ export function getOrderByNumber(orderNumber: string): Order | undefined {
     SELECT o.*, c.name as customer_name, c.phone as customer_phone
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
-    WHERE o.order_number = ?
+    WHERE o.order_number = ? AND o.is_deleted = 0
   `);
   return stmt.get(orderNumber) as Order | undefined;
 }
@@ -421,29 +422,38 @@ export function createOrderWithTasks(payload: WorkflowPayload): { orderId: numbe
 }
 
 export function updateOrder(id: number, order: Partial<Order>): void {
-  // Support partial updates — only set provided fields
   const existing = db.prepare('SELECT * FROM orders WHERE id = ?').get(id) as Record<string, any> | undefined;
   if (!existing) throw new Error('Order not found');
 
-  const stmt = db.prepare(`
-    UPDATE orders SET
-      branch_id = ?, customer_id = ?, piece_type = ?, details = ?,
-      price = ?, paid = ?, payment_method = ?,
-      status = ?, delivery_date = ?
-    WHERE id = ?
-  `);
-  stmt.run(
-    order.branch_id ?? existing.branch_id,
-    order.customer_id ?? existing.customer_id,
-    order.piece_type ?? existing.piece_type,
-    order.details ?? existing.details ?? null,
-    order.price ?? existing.price,
-    order.paid ?? existing.paid ?? 0,
-    order.payment_method ?? existing.payment_method,
-    order.status ?? existing.status,
-    order.delivery_date ?? existing.delivery_date ?? null,
-    id
-  );
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  const setField = (col: string) => {
+    if (col in order) {
+      fields.push(`${col} = ?`);
+      values.push((order as any)[col]);
+    }
+  };
+
+  setField('branch_id');
+  setField('customer_id');
+  setField('piece_type');
+  setField('details');
+  setField('price');
+  setField('paid');
+  setField('payment_method');
+  setField('status');
+  setField('delivery_date');
+  setField('receive_date');
+  setField('fabric_source');
+  setField('created_by');
+  setField('is_deleted');
+
+  if (fields.length === 0) return;
+
+  values.push(id);
+  const stmt = db.prepare(`UPDATE orders SET ${fields.join(', ')} WHERE id = ?`);
+  stmt.run(...values);
 }
 
 export function updateOrderStatus(id: number, status: string): void {
@@ -552,7 +562,7 @@ export function searchOrders(query: string, branchId?: number): Order[] {
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN branches b ON o.branch_id = b.id
-    WHERE (o.order_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)
+    WHERE o.is_deleted = 0 AND (o.order_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)
   `;
   const params: any[] = [searchTerm, searchTerm, searchTerm];
 
@@ -624,7 +634,7 @@ export function getAllTasks(filters?: { branchId?: number; workerId?: number; ta
     LEFT JOIN piece_types pt ON oi.piece_type = pt.name_en
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN users u ON ot.assigned_to = u.id
-    WHERE 1=1
+    WHERE o.is_deleted = 0
   `;
   const params: any[] = [];
 
@@ -674,7 +684,7 @@ export function getOrderStats(branchId?: number): { total: number; in_progress: 
       COALESCE(SUM(CASE WHEN status != 'delivered' AND delivery_date < ? THEN 1 ELSE 0 END), 0) as overdue,
       COALESCE(SUM(CASE WHEN status != 'delivered' THEN price ELSE 0 END), 0) as revenue
     FROM orders
-    WHERE 1=1 ${branchFilter}
+    WHERE is_deleted = 0 ${branchFilter}
   `);
   return stmt.get(today, ...params) as { total: number; in_progress: number; ready: number; delivered: number; overdue: number; revenue: number };
 }
@@ -715,7 +725,7 @@ export function getReportStats(branchId?: number, period?: string): ReportStats 
       COUNT(*) as totalOrders,
       COALESCE(SUM(price), 0) as revenue
     FROM orders
-    WHERE 1=1 ${branchFilter}${dateFilter}
+    WHERE is_deleted = 0 ${branchFilter}${dateFilter}
   `);
   const orderStats = stmt.get(...params) as { totalOrders: number; revenue: number };
 
@@ -733,7 +743,7 @@ export function getReportStats(branchId?: number, period?: string): ReportStats 
     SELECT COALESCE(SUM(ot.wage_amount), 0) as workersCost
     FROM order_tasks ot
     JOIN orders o ON ot.order_id = o.id
-    WHERE 1=1 ${costFilter}${costDateFilter}
+    WHERE o.is_deleted = 0 ${costFilter}${costDateFilter}
   `);
   const costResult = costStmt.get(...costParams) as { workersCost: number };
 
@@ -769,7 +779,7 @@ export function getPaymentSplit(branchId?: number, period?: string): PaymentSpli
       COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN price ELSE 0 END), 0) as cashAmount,
       COUNT(*) as total
     FROM orders
-    WHERE 1=1 ${branchFilter}${dateFilter}
+    WHERE is_deleted = 0 ${branchFilter}${dateFilter}
   `);
   const result = stmt.get(...params) as { cardAmount: number; cashAmount: number; total: number };
 
@@ -801,7 +811,7 @@ export function getMonthlyRevenue(months: number = 6, branchId?: number): Monthl
       strftime('%Y-%m', created_at) as month_key,
       COALESCE(SUM(price), 0) as value
     FROM orders
-    WHERE created_at >= date('now', '-${months} months') ${branchFilter}
+    WHERE is_deleted = 0 AND created_at >= date('now', '-${months} months') ${branchFilter}
     GROUP BY strftime('%Y-%m', created_at)
     ORDER BY month_key ASC
   `);
@@ -830,7 +840,7 @@ export function getRecentOrders(limit: number = 10, branchId?: number, period?: 
     SELECT o.*, c.name as customer_name
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
-    WHERE 1=1 ${branchFilter}${orderDateFilter}
+    WHERE o.is_deleted = 0 ${branchFilter}${orderDateFilter}
     ORDER BY o.created_at DESC
     LIMIT ?
   `);
@@ -931,7 +941,7 @@ export interface AdvancedReportData {
 }
 
 export function getAdvancedReport(filter: AdvancedReportFilter): AdvancedReportData {
-  let where = 'WHERE 1=1';
+  let where = 'WHERE o.is_deleted = 0';
   const params: any[] = [];
 
   if (filter.branchId) {
@@ -977,7 +987,7 @@ export function getAdvancedReport(filter: AdvancedReportFilter): AdvancedReportD
     FROM order_tasks ot
     JOIN orders o ON ot.order_id = o.id
     JOIN users u ON ot.assigned_to = u.id
-    WHERE 1=1 ${workerWhere}
+    WHERE o.is_deleted = 0 ${workerWhere}
     GROUP BY u.id, u.name
     ORDER BY order_count DESC
   `).all(...workerParams) as { worker_id: number; worker_name: string; order_count: number; revenue: number }[];
@@ -1025,7 +1035,7 @@ export function getDailyStats(days: number, branchId?: number): DailyStat[] {
       COUNT(*) as orders,
       COALESCE(SUM(price), 0) as revenue
     FROM orders
-    WHERE date(created_at) >= date('now', '-${days} days')${branchFilter}
+    WHERE is_deleted = 0 AND date(created_at) >= date('now', '-${days} days')${branchFilter}
     GROUP BY date(created_at)
     ORDER BY date ASC
   `).all(...params) as { date: string; orders: number; revenue: number }[];
@@ -1054,7 +1064,7 @@ export function getWorkerContribution(branchId?: number, startDate?: string, end
     FROM order_tasks ot
     JOIN orders o ON ot.order_id = o.id
     JOIN users u ON ot.assigned_to = u.id
-    WHERE 1=1${filter}
+    WHERE o.is_deleted = 0${filter}
     GROUP BY u.id, u.name
     ORDER BY task_count DESC
   `).all(...params) as WorkerContribution[];

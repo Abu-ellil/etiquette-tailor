@@ -64,7 +64,7 @@ export function getCustomerOrders(customerId: number): any[] {
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN (SELECT order_id, SUM(amount) as paid_sum FROM order_payments GROUP BY order_id) ps ON ps.order_id = o.id
-    WHERE o.customer_id = ?
+    WHERE o.customer_id = ? AND o.is_deleted = 0
     ORDER BY o.created_at DESC
   `);
   return stmt.all(customerId);
@@ -78,7 +78,7 @@ export function getCustomerOutstandingOrders(customerId: number): any[] {
       o.status, o.delivery_date, o.created_at
     FROM orders o
     LEFT JOIN (SELECT order_id, SUM(amount) as paid_sum FROM order_payments GROUP BY order_id) ps ON ps.order_id = o.id
-    WHERE o.customer_id = ? AND o.status != 'delivered' AND (o.price - COALESCE(ps.paid_sum, 0)) > 0
+    WHERE o.customer_id = ? AND o.is_deleted = 0 AND o.status != 'delivered' AND (o.price - COALESCE(ps.paid_sum, 0)) > 0
     ORDER BY o.created_at DESC
   `);
   return stmt.all(customerId);

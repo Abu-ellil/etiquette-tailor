@@ -326,6 +326,15 @@ export function initializeSchema() {
   // Clean up old key from previous version
   db.prepare("DELETE FROM settings WHERE key = 'invoice_show_header'").run();
 
+  // Migration: Seed auto-sync settings
+  const autoSyncKeys: [string, string][] = [
+    ['auto_sync_enabled', '0'],
+    ['auto_sync_interval', '30'],
+  ];
+  for (const [key, value] of autoSyncKeys) {
+    insertIgnoreSetting.run(key, value);
+  }
+
   console.log('Database schema initialized successfully');
 }
 
@@ -503,6 +512,11 @@ function migrateColumns() {
     }
 
     tables.orders.push('branch_id');
+  }
+
+  if (!tables.orders?.includes('is_deleted')) {
+    console.log('Migrating: adding is_deleted to orders');
+    db.exec('ALTER TABLE orders ADD COLUMN is_deleted INTEGER DEFAULT 0');
   }
 
   // Add missing columns

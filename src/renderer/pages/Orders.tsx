@@ -638,7 +638,7 @@ ${order.details ? `*Notes:* ${order.details}` : ''}`;
                     <button
                       onClick={() => {
                         if (confirm(t('Delete order {number}? This cannot be undone.').replace('{number}', order.order_number))) {
-                          window.electronAPI.orders.update(order.id, { is_deleted: 1 }).then(fetchData);
+                          window.electronAPI.orders.delete(order.id).then(fetchData);
                         }
                       }}
                       className="p-2 hover:bg-error/10 rounded-lg text-secondary hover:text-error transition-colors"

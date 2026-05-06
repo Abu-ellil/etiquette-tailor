@@ -63,6 +63,7 @@ export interface ElectronAPI {
     createWithTasks: (payload: any) => Promise<{ orderId: number; orderNumber: string }>;
     update: (id: number, data: any) => Promise<any>;
     updateStatus: (id: number, status: string) => Promise<any>;
+    delete: (id: number) => Promise<void>;
     getMeasurements: (orderId: number) => Promise<any>;
     updateMeasurements: (orderId: number, data: any) => Promise<any>;
     getTasks: (orderId: number) => Promise<any[]>;
@@ -145,13 +146,18 @@ export interface ElectronAPI {
     getProfitReport: (startDate: string, endDate: string, branchId?: number) => Promise<any>;
   };
 
-sync: {
+ sync: {
     exportData: (branchId: number, folderPath: string) => Promise<any>;
     importData: (branchId: number, folderPath: string) => Promise<any>;
     getStatus: () => Promise<any>;
     mergeData: (branchId: number, folderPath: string) => Promise<any>;
     resolveConflict: (branchId: number, type: string, id: number, source: 'local' | 'remote') => Promise<any>;
     selectFolder: () => Promise<string | null>;
+    enableAuto: () => Promise<any>;
+    disableAuto: () => Promise<any>;
+    setAutoInterval: (seconds: number) => Promise<any>;
+    getAutoStatus: () => Promise<any>;
+    onAutoImported: (callback: (data: any) => void) => () => void;
   };
 
   dailyProduction: {
@@ -240,6 +246,7 @@ const api: ElectronAPI = {
     createWithTasks: (payload: any) => ipcRenderer.invoke('orders:createWithTasks', payload),
     update: (id, data) => ipcRenderer.invoke('orders:update', id, data),
     updateStatus: (id, status) => ipcRenderer.invoke('orders:updateStatus', id, status),
+    delete: (id) => ipcRenderer.invoke('orders:delete', id),
     getMeasurements: (orderId) => ipcRenderer.invoke('orders:getMeasurements', orderId),
     updateMeasurements: (orderId, data) => ipcRenderer.invoke('orders:updateMeasurements', orderId, data),
     getTasks: (orderId) => ipcRenderer.invoke('orders:getTasks', orderId),
@@ -323,13 +330,22 @@ const api: ElectronAPI = {
     getProfitReport: (startDate, endDate, branchId?) => ipcRenderer.invoke('expenses:getProfitReport', startDate, endDate, branchId),
   },
 
-sync: {
+ sync: {
     exportData: (branchId: number, folderPath: string) => ipcRenderer.invoke('sync:export', branchId, folderPath),
     importData: (branchId: number, folderPath: string) => ipcRenderer.invoke('sync:import', branchId, folderPath),
     getStatus: () => ipcRenderer.invoke('sync:getStatus'),
     mergeData: (branchId: number, folderPath: string) => ipcRenderer.invoke('sync:merge', branchId, folderPath),
     resolveConflict: (branchId: number, type: string, id: number, source: 'local' | 'remote') => ipcRenderer.invoke('sync:resolveConflict', branchId, type, id, source),
     selectFolder: () => ipcRenderer.invoke('sync:selectFolder'),
+    enableAuto: () => ipcRenderer.invoke('sync:enableAuto'),
+    disableAuto: () => ipcRenderer.invoke('sync:disableAuto'),
+    setAutoInterval: (seconds: number) => ipcRenderer.invoke('sync:setAutoInterval', seconds),
+    getAutoStatus: () => ipcRenderer.invoke('sync:getAutoStatus'),
+    onAutoImported: (cb) => {
+      const handler = (_e: any, data: any) => cb(data);
+      ipcRenderer.on('sync:auto-imported', handler);
+      return () => ipcRenderer.removeListener('sync:auto-imported', handler);
+    },
   },
 
   dailyProduction: {

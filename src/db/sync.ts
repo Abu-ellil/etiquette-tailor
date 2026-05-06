@@ -28,6 +28,15 @@ interface MergeResult {
   error?: string;
 }
 
+interface AutoSyncStatus {
+  enabled: boolean;
+  interval: number;
+  lastAutoExport: string | null;
+  lastAutoImport: string | null;
+  lastRemoteCheck: string | null;
+  remoteFileAge: number | null;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -39,6 +48,22 @@ function getBranchPrefix(branchId: number): string {
 function getOtherBranchInfo(myBranchId: number): { id: number; prefix: string } | null {
   const row = db.prepare('SELECT id, prefix FROM branches WHERE id != ? LIMIT 1').get(myBranchId) as { id: number; prefix: string } | undefined;
   return row ? { id: row.id, prefix: row.prefix } : null;
+}
+
+function getRemoteSyncFilePath(folderPath: string, myBranchId: number): { path: string; prefix: string } | null {
+  const other = getOtherBranchInfo(myBranchId);
+  if (!other) return null;
+  return { path: path.join(folderPath, `sync_branch_${other.prefix}.json`), prefix: other.prefix };
+}
+
+function getFileModifiedTime(filePath: string): number | null {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const stat = fs.statSync(filePath);
+    return stat.mtimeMs;
+  } catch {
+    return null;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -486,4 +511,80 @@ export function resolveConflict(branchId: number, type: string, id: number, sour
   } catch (err: any) {
     return { success: false, error: err.message };
   }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Auto-Sync                                                          */
+/* ------------------------------------------------------------------ */
+export function checkForRemoteUpdate(folderPath: string, myBranchId: number): { hasUpdate: boolean; fileAge: number | null } {
+  const remote = getRemoteSyncFilePath(folderPath, myBranchId);
+  if (!remote) return { hasUpdate: false, fileAge: null };
+
+  const remoteModTime = getFileModifiedTime(remote.path);
+  if (remoteModTime === null) return { hasUpdate: false, fileAge: null };
+
+  const lastImport = getSetting('auto_sync_last_import');
+  if (!lastImport) return { hasUpdate: true, fileAge: null };
+
+  try {
+    const lastImportTime = new Date(lastImport).getTime();
+    const age = remoteModTime - lastImportTime;
+    if (age > 0) {
+      return { hasUpdate: true, fileAge: Math.round(age / 1000) };
+    }
+    return { hasUpdate: false, fileAge: Math.round(age / 1000) };
+  } catch {
+    return { hasUpdate: true, fileAge: null };
+  }
+}
+
+export function getAutoSyncStatus(branchId: number, folderPath: string | null): AutoSyncStatus {
+  const enabled = getSetting('auto_sync_enabled') === '1';
+  const interval = parseInt(getSetting('auto_sync_interval') || '30', 10);
+
+  let remoteFileAge: number | null = null;
+  if (folderPath) {
+    const check = checkForRemoteUpdate(folderPath, branchId);
+    remoteFileAge = check.fileAge;
+  }
+
+  return {
+    enabled,
+    interval,
+    lastAutoExport: getSetting('auto_sync_last_export') || null,
+    lastAutoImport: getSetting('auto_sync_last_import') || null,
+    lastRemoteCheck: getSetting('auto_sync_last_remote_check') || null,
+    remoteFileAge,
+  };
+}
+
+export function enableAutoSync(): void {
+  setSetting('auto_sync_enabled', '1');
+}
+
+export function disableAutoSync(): void {
+  setSetting('auto_sync_enabled', '0');
+}
+
+export function setAutoSyncInterval(seconds: number): void {
+  setSetting('auto_sync_interval', String(seconds));
+}
+
+export function recordAutoExport(): string {
+  const now = new Date().toISOString();
+  setSetting('auto_sync_last_export', now);
+  return now;
+}
+
+export function recordAutoImport(): string {
+  const now = new Date().toISOString();
+  setSetting('auto_sync_last_import', now);
+  return now;
+}
+
+export function getRemoteFileInfo(folderPath: string, myBranchId: number): { exists: boolean; mtime: number | null } {
+  const remote = getRemoteSyncFilePath(folderPath, myBranchId);
+  if (!remote) return { exists: false, mtime: null };
+  const mtime = getFileModifiedTime(remote.path);
+  return { exists: mtime !== null, mtime };
 }

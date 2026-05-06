@@ -31,6 +31,7 @@ import {
   searchOrders,
   createOrder,
   createOrderWithTasks,
+  WorkflowPayload,
   updateOrder,
   updateOrderStatus,
   getOrderMeasurements,
@@ -47,59 +48,8 @@ import {
   getDailyStats,
   getWorkerContribution,
   getAdvancedReport,
-} from '../db/orders';
-import {
-  getWorkerTasks,
-  getMonthlyEarnings,
-  getWorkerOrderDetails,
-  getWorkerAccount,
-  addWorkerPayment,
-  getWorkerPayments,
-  getWorkerEarnings,
-  batchWorkerPayments,
-  getAllWorkerProductivity,
-  getOverdueTasks,
-  getWorkerWorkloads,
-  getRecommendedWorkers,
-  getAllWorkers,
-  getWorkerRates,
-  setWorkerRate,
-  getActiveRate,
-} from '../db/workers';
-import {
-  createDailyProduction,
-  getDailyProduction,
-  getDailyProductionByDate,
-  getWorkerProductionSummary,
-  getAllWorkersProduction,
-  getDailyProductionGrouped,
-  deleteDailyProduction,
-  updateDailyProduction,
-} from '../db/dailyProduction';
-import {
-  getAllSettings,
-  setSettings,
-  updateBranch,
-  createBranch,
-  getPieceTypes,
-  updateBasePrice,
-  getBasePrice,
-  createPieceType,
-  updatePieceType,
-  deletePieceType,
-  recalculateTaskWages,
-  getReportStats,
-  addOrderPayment,
-  getOrderPayments,
-  deleteOrderPayment,
-  getOrderItems,
-  createOrderItem,
-  updateOrderItem,
-  deleteOrderItem,
-  recalculateOrderTotal,
-  saveReportEmail,
-  getReportEmails,
-  deleteReportEmail,
+  getSetting,
+  setSetting,
 } from '../db';
 import {
   createExpense,
@@ -119,7 +69,7 @@ import {
 } from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 import { syncAllOrderPayments } from '../db/orders';
-import { exportBranchData, importBranchData, getSyncStatus, mergeBranchData, resolveConflict } from '../db/sync';
+import { exportBranchData, importBranchData, getSyncStatus, mergeBranchData, resolveConflict, getAutoSyncStatus, enableAutoSync, disableAutoSync, setAutoSyncInterval, recordAutoExport, recordAutoImport, checkForRemoteUpdate, getRemoteFileInfo } from '../db/sync';
 import db from '../db/schema';
 
 function saveSession(session: any) {
@@ -149,6 +99,92 @@ if (started) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+
+// Auto-sync
+let autoSyncTimer: NodeJS.Timeout | null = null;
+
+function currentBranchId(): number {
+  return currentSession?.branch_id || 1;
+}
+
+function startAutoSyncLoop(): void {
+  if (autoSyncTimer) {
+    console.log('[auto-sync] already running');
+    return;
+  }
+
+  const intervalStr = getSetting('auto_sync_interval') || '30';
+  const intervalSec = parseInt(intervalStr, 10);
+  const intervalMs = intervalSec * 1000;
+  const folderPath = getSetting('sync_folder_path');
+
+  if (!folderPath) {
+    console.log('[auto-sync] no folder path set, skipping');
+    return;
+  }
+
+  console.log(`[auto-sync] starting with interval ${intervalSec}s, folder: ${folderPath}`);
+
+  const doSync = () => {
+    if (getSetting('auto_sync_enabled') !== '1') {
+      console.log('[auto-sync] disabled, stopping loop');
+      stopAutoSyncLoop();
+      return;
+    }
+
+    try {
+      const folder = getSetting('sync_folder_path');
+      if (!folder) return;
+
+      const branchId = currentBranchId();
+      console.log(`[auto-sync] cycle start: branch ${branchId}`);
+
+      // Always export our data
+      const exportResult = exportBranchData(branchId, folder);
+      recordAutoExport();
+      console.log(`[auto-sync] export: ${exportResult.success ? 'ok' : exportResult.error}`);
+
+      // If remote file exists, always import (importBranchData is idempotent)
+      const fileInfo = getRemoteFileInfo(folder, branchId);
+      console.log(`[auto-sync] remote exists: ${fileInfo.exists}`);
+
+      if (fileInfo.exists) {
+        const result = importBranchData(branchId, folder);
+        if (result.success) {
+          recordAutoImport();
+          console.log('[auto-sync] imported:', result.counts);
+          mainWindow?.webContents.send('sync:auto-imported', {
+            success: true,
+            counts: result.counts,
+          });
+        } else {
+          console.error('[auto-sync] import error:', result.error);
+        }
+      }
+
+      setSetting('auto_sync_last_remote_check', new Date().toISOString());
+    } catch (err) {
+      console.error('[auto-sync] error:', err);
+    }
+  };
+
+  doSync();
+  autoSyncTimer = setInterval(doSync, intervalMs);
+}
+
+function stopAutoSyncLoop(): void {
+  if (autoSyncTimer) {
+    clearInterval(autoSyncTimer);
+    autoSyncTimer = null;
+  }
+}
+
+function restartAutoSyncLoop(): void {
+  stopAutoSyncLoop();
+  if (getSetting('auto_sync_enabled') === '1') {
+    startAutoSyncLoop();
+  }
+}
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({
@@ -413,6 +449,10 @@ function registerIpcHandlers() {
       }
     } catch (e) { console.error('Notification error:', e); }
     return result;
+  });
+
+  ipcMain.handle('orders:delete', async (_event, orderId: number) => {
+    return updateOrder(orderId, { is_deleted: 1 });
   });
 
   ipcMain.handle('orders:getMeasurements', async (_event, orderId: number) => {
@@ -740,6 +780,30 @@ function registerIpcHandlers() {
     return result.filePaths[0];
   });
 
+  // Auto-sync
+  ipcMain.handle('sync:enableAuto', async () => {
+    enableAutoSync();
+    lastRemoteMtime = null; // reset so existing files are detected
+    startAutoSyncLoop();
+    return getAutoSyncStatus(currentBranchId(), getSetting('sync_folder_path'));
+  });
+
+  ipcMain.handle('sync:disableAuto', async () => {
+    disableAutoSync();
+    stopAutoSyncLoop();
+    return getAutoSyncStatus(currentBranchId(), getSetting('sync_folder_path'));
+  });
+
+  ipcMain.handle('sync:setAutoInterval', async (_event, seconds: number) => {
+    setAutoSyncInterval(seconds);
+    restartAutoSyncLoop();
+    return { success: true };
+  });
+
+  ipcMain.handle('sync:getAutoStatus', async () => {
+    return getAutoSyncStatus(currentBranchId(), getSetting('sync_folder_path'));
+  });
+
   ipcMain.handle('updater:check', async () => {
     try {
       await autoUpdater.checkForUpdates();
@@ -872,6 +936,11 @@ app.on('ready', () => {
   if (app.isPackaged) {
     autoUpdater.checkForUpdates();
     setInterval(() => autoUpdater.checkForUpdates(), 30 * 60 * 1000);
+  }
+
+  // Start auto-sync if enabled
+  if (getSetting('auto_sync_enabled') === '1' && getSetting('sync_folder_path')) {
+    startAutoSyncLoop();
   }
 });
 

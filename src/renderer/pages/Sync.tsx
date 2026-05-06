@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../contexts/I18nContext';
 import { useActiveBranch } from '../contexts/BranchContext';
 
@@ -9,6 +9,15 @@ interface SyncStatus {
   lastExport: string | null;
   lastImport: string | null;
   syncFolderPath: string | null;
+}
+
+interface AutoSyncStatus {
+  enabled: boolean;
+  interval: number;
+  lastAutoExport: string | null;
+  lastAutoImport: string | null;
+  lastRemoteCheck: string | null;
+  remoteFileAge: number | null;
 }
 
 interface SyncResult {
@@ -42,6 +51,7 @@ export default function SyncPage() {
 
   const [folderPath, setFolderPath] = useState('');
   const [status, setStatus] = useState<SyncStatus | null>(null);
+  const [autoStatus, setAutoStatus] = useState<AutoSyncStatus | null>(null);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
@@ -50,10 +60,28 @@ export default function SyncPage() {
   const [conflicts, setConflicts] = useState<ConflictData[]>([]);
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [mergeResult, setMergeResult] = useState<MergeResult | null>(null);
+  const [autoSyncToggle, setAutoSyncToggle] = useState(false);
+  const [autoInterval, setAutoInterval] = useState(30);
+  const [autoSyncLoading, setAutoSyncLoading] = useState(false);
+  const [autoSyncStatus, setAutoSyncStatus] = useState<'idle' | 'exporting' | 'importing' | 'error'>('idle');
 
   // Load status on mount
   useEffect(() => {
     loadStatus();
+    loadAutoStatus();
+  }, []);
+
+  // Listen for auto-import events
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.sync?.onAutoImported?.((data: any) => {
+      if (data.success) {
+        setAutoSyncStatus('importing');
+        loadStatus();
+        loadAutoStatus();
+        setTimeout(() => setAutoSyncStatus('idle'), 2000);
+      }
+    });
+    return () => unsubscribe?.();
   }, []);
 
   async function loadStatus() {
@@ -65,6 +93,17 @@ export default function SyncPage() {
       }
     } catch (err) {
       console.error('Failed to load sync status:', err);
+    }
+  }
+
+  async function loadAutoStatus() {
+    try {
+      const as = await window.electronAPI.sync.getAutoStatus();
+      setAutoStatus(as);
+      setAutoSyncToggle(as.enabled);
+      setAutoInterval(as.interval);
+    } catch (err) {
+      console.error('Failed to load auto-sync status:', err);
     }
   }
 
@@ -86,6 +125,7 @@ export default function SyncPage() {
       const result = await window.electronAPI.sync.exportData(activeBranchId, folderPath.trim());
       setLastResult(result);
       await loadStatus();
+      await loadAutoStatus();
     } catch (err: any) {
       setLastResult({ success: false, error: err.message });
     } finally {
@@ -103,6 +143,7 @@ export default function SyncPage() {
       const result = await window.electronAPI.sync.importData(activeBranchId, folderPath.trim());
       setLastResult(result);
       await loadStatus();
+      await loadAutoStatus();
     } catch (err: any) {
       setLastResult({ success: false, error: err.message });
     } finally {
@@ -118,18 +159,46 @@ export default function SyncPage() {
     try {
       await saveFolderPath(folderPath.trim());
       const result = await window.electronAPI.sync.mergeData(activeBranchId, folderPath.trim());
-      
+
       if (result.conflicts && result.conflicts.length > 0) {
         setConflicts(result.conflicts);
         setShowConflictModal(true);
       }
-      
+
       setMergeResult(result);
       await loadStatus();
+      await loadAutoStatus();
     } catch (err: any) {
       setMergeResult({ success: false, error: err.message });
     } finally {
       setMerging(false);
+    }
+  }
+
+  async function handleAutoSyncToggle(enabled: boolean) {
+    setAutoSyncLoading(true);
+    setAutoSyncToggle(enabled);
+    try {
+      if (enabled) {
+        await window.electronAPI.sync.enableAuto();
+      } else {
+        await window.electronAPI.sync.disableAuto();
+      }
+      await loadAutoStatus();
+    } catch (err) {
+      console.error('Failed to toggle auto-sync:', err);
+      setAutoSyncToggle(!enabled);
+    } finally {
+      setAutoSyncLoading(false);
+    }
+  }
+
+  async function handleIntervalChange(seconds: number) {
+    setAutoInterval(seconds);
+    try {
+      await window.electronAPI.sync.setAutoInterval(seconds);
+    } catch (err) {
+      console.error('Failed to set auto-sync interval:', err);
     }
   }
 
@@ -142,7 +211,7 @@ export default function SyncPage() {
         keepLocal ? 'local' : 'remote'
       );
       setConflicts(prev => prev.filter(c => c.id !== conflict.id || c.type !== conflict.type));
-      
+
       if (conflicts.length === 1) {
         setShowConflictModal(false);
       }
@@ -159,6 +228,12 @@ export default function SyncPage() {
     } catch {
       return ts;
     }
+  };
+
+  const formatSeconds = (s: number | null) => {
+    if (s === null) return '--';
+    if (s < 0) return `${Math.abs(s)}s ago`;
+    return `${s}s old`;
   };
 
   return (
@@ -203,6 +278,71 @@ export default function SyncPage() {
         </div>
       </div>
 
+      {/* Auto-Sync */}
+      <div className="bg-surface-container-lowest rounded-2xl shadow-[0px_8px_24px_rgba(25,28,29,0.08)] p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-on-surface flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">sync</span>
+            {t('Automatic Sync')}
+          </h2>
+          <div className="flex items-center gap-2">
+            {autoSyncStatus === 'exporting' && (
+              <span className="text-xs text-secondary flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                {t('Exporting...')}
+              </span>
+            )}
+            {autoSyncStatus === 'importing' && (
+              <span className="text-xs text-primary flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                {t('Syncing...')}
+              </span>
+            )}
+            <button
+              onClick={() => handleAutoSyncToggle(!autoSyncToggle)}
+              disabled={autoSyncLoading || !folderPath.trim()}
+              className={`relative w-12 h-6 rounded-full transition-colors ${autoSyncToggle ? 'bg-primary' : 'bg-surface-container-high'} ${autoSyncLoading || !folderPath.trim() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${autoSyncToggle ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+
+        {autoSyncToggle && (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm text-secondary">{t('Sync Interval')}</span>
+              <div className="flex items-center gap-2">
+                {[15, 30, 60].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => handleIntervalChange(s)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${autoInterval === s ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-secondary hover:bg-surface-container-high/80'}`}
+                  >
+                    {s}s
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-surface-container-high rounded-xl p-3">
+                <p className="text-xs text-secondary mb-1">{t('Last Auto Export')}</p>
+                <p className="text-xs font-semibold text-on-surface truncate">{formatTimestamp(autoStatus?.lastAutoExport)}</p>
+              </div>
+              <div className="bg-surface-container-high rounded-xl p-3">
+                <p className="text-xs text-secondary mb-1">{t('Last Auto Import')}</p>
+                <p className="text-xs font-semibold text-on-surface truncate">{formatTimestamp(autoStatus?.lastAutoImport)}</p>
+              </div>
+              <div className="bg-surface-container-high rounded-xl p-3">
+                <p className="text-xs text-secondary mb-1">{t('Remote File Age')}</p>
+                <p className="text-xs font-semibold text-on-surface truncate">{formatSeconds(autoStatus?.remoteFileAge)}</p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Sync Status */}
       <div className="bg-surface-container-lowest rounded-2xl shadow-[0px_8px_24px_rgba(25,28,29,0.08)] p-5">
         <h2 className="text-base font-semibold text-on-surface mb-3 flex items-center gap-2">
@@ -224,8 +364,8 @@ export default function SyncPage() {
       {/* Action Buttons */}
       <div className="bg-surface-container-lowest rounded-2xl shadow-[0px_8px_24px_rgba(25,28,29,0.08)] p-5">
         <h2 className="text-base font-semibold text-on-surface mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary">sync</span>
-          {t('Sync Actions')}
+          <span className="material-symbols-outlined text-primary">sync_alt</span>
+          {t('Manual Sync Actions')}
         </h2>
         <div className="flex gap-4">
           <button
@@ -433,13 +573,12 @@ export default function SyncPage() {
           <li>{t('Install Google Drive Desktop on both computers')}</li>
           <li>{t('Create a shared folder in Google Drive (e.g., "TailorSync")')}</li>
           <li>{t('Enter the local path of that folder above on BOTH computers')}</li>
-          <li>{t('Click "Export" on this branch to send your data')}</li>
-          <li>{t('On the other branch, click "Import" to receive the data')}</li>
-          <li>{t('Repeat: Export on the other branch, then Import here')}</li>
+          <li>{t('Enable Automatic Sync for background syncing every N seconds')}</li>
+          <li>{t('Or use manual Export/Import when needed')}</li>
         </ol>
         <div className="mt-3 p-3 bg-yellow-50 rounded-xl border border-yellow-200">
           <p className="text-xs text-yellow-800">
-            <strong>{t('Important')}:</strong> {t('Each branch exports its own data. Import reads the OTHER branch\'s data file. Sync is one-way per operation — always Export from source, then Import on destination.')}
+            <strong>{t('Important')}:</strong> {t('Auto-sync will export your data and automatically import new data from the other branch. Manual operations still available when needed.')}
           </p>
         </div>
       </div>

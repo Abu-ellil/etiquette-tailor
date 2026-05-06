@@ -200,6 +200,16 @@ export default function InvoicePage() {
 
   const handlePrint = () => window.electronAPI?.print?.receipt?.();
 
+  const handleDelete = async () => {
+    if (!confirm(t('Delete invoice {number}? This cannot be undone.').replace('{number}', order.order_number))) return;
+    try {
+      await window.electronAPI.orders.delete(order.id);
+      navigate('/orders');
+    } catch (err) {
+      console.error('Failed to delete invoice:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -404,13 +414,22 @@ export default function InvoicePage() {
           </button>
           <h2 className="font-headline text-xl font-bold">{t('Preview Invoice')}</h2>
         </div>
-        <button
-          className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-md hover:opacity-90 transition-opacity"
-          onClick={() => handlePrint()}
-        >
-          <span className="material-symbols-outlined text-sm">print</span>
-          <span className="text-sm font-semibold">{t('Print Receipt')}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="p-2 hover:bg-error/10 rounded-lg text-secondary hover:text-error transition-colors"
+            onClick={handleDelete}
+            title={t('Delete Invoice')}
+          >
+            <span className="material-symbols-outlined">delete</span>
+          </button>
+          <button
+            className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-md hover:opacity-90 transition-opacity"
+            onClick={() => handlePrint()}
+          >
+            <span className="material-symbols-outlined text-sm">print</span>
+            <span className="text-sm font-semibold">{t('Print Receipt')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Thermal Receipt */}
