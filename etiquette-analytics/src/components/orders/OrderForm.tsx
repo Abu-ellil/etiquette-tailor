@@ -8,15 +8,16 @@ import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types/order'
 
 interface OrderFormProps {
   order?: Order
+  initialCustomerId?: number | null
   onSuccess?: () => void
   onCancel?: () => void
 }
 
-export function OrderForm({ order, onSuccess, onCancel }: OrderFormProps) {
+export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: OrderFormProps) {
   const [formData, setFormData] = useState<CreateOrderInput>({
     order_number: order?.order_number || '',
     branch_id: order?.branch_id || 1,
-    customer_id: order?.customer_id || 0,
+    customer_id: initialCustomerId || order?.customer_id || 0,
     details: order?.details || '',
     price: order?.price || 0,
     paid: order?.paid || 0,
@@ -31,11 +32,9 @@ export function OrderForm({ order, onSuccess, onCancel }: OrderFormProps) {
 
   const [customers, setCustomers] = useState<any[]>([])
   const [pieceTypes, setPieceTypes] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    // جلب العملاء والقطع
     Promise.all([
       fetch('/api/customers').then(r => r.json()),
       fetch('/api/piece-types').then(r => r.json()),
@@ -91,7 +90,6 @@ export function OrderForm({ order, onSuccess, onCancel }: OrderFormProps) {
     const newItems = [...(formData.items || [])]
     newItems[index] = { ...newItems[index], [field]: value }
 
-    // حساب الإجمالي
     if (field === 'quantity' || field === 'unit_price') {
       newItems[index].total_price = newItems[index].quantity * newItems[index].unit_price
     }
