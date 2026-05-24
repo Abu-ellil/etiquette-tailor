@@ -36,6 +36,14 @@ export default function SyncPage() {
   const [backfillResult, setBackfillResult] = useState<{ orders: number; customers: number; items: number; tasks: number; payments: number; users: number; pieceTypes: number } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any | null>(null);
+  const [branches, setBranches] = useState<any[]>([]);
+
+  // Load branches on mount
+  useEffect(() => {
+    window.electronAPI?.branches?.getAll?.()?.then((data: any[]) => {
+      setBranches(data || []);
+    })?.catch(() => {});
+  }, []);
 
   // Load status on mount
   useEffect(() => {
@@ -126,6 +134,15 @@ export default function SyncPage() {
     }
   }
 
+  async function handleBranchChange(branchId: string) {
+    try {
+      await window.electronAPI.settings.set({ active_branch_id: branchId });
+      await loadStatus();
+    } catch (err) {
+      console.error('Failed to change branch:', err);
+    }
+  }
+
   async function handleUploadDatabase() {
     if (!window.confirm(t('This will upload ALL data from a database file to Supabase with correct branch assignment. Continue?'))) return;
     setUploading(true);
@@ -173,8 +190,18 @@ export default function SyncPage() {
         </h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-surface-container-high rounded-xl p-3">
-            <p className="text-xs text-secondary mb-1">{t('Branch ID')}</p>
-            <p className="text-sm font-semibold text-on-surface">{status?.syncSource || '--'}</p>
+            <p className="text-xs text-secondary mb-1">{t('Active Branch')}</p>
+            <select
+              value={status?.syncSource?.replace('branch_', '') || '1'}
+              onChange={(e) => handleBranchChange(e.target.value)}
+              className="w-full text-sm font-semibold text-on-surface bg-transparent border-none outline-none cursor-pointer"
+            >
+              {branches.map((b: any) => (
+                <option key={b.id} value={b.id}>
+                  {b.prefix} — {b.name_en}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="bg-surface-container-high rounded-xl p-3">
             <p className="text-xs text-secondary mb-1">{t('Pending Changes')}</p>
