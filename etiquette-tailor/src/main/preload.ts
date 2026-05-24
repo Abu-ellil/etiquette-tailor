@@ -155,6 +155,15 @@ export interface ElectronAPI {
     disable: () => Promise<any>;
     setInterval: (minutes: number) => Promise<{ success: boolean }>;
     onCompleted: (callback: (data: any) => void) => () => void;
+    onRemoteChange: (callback: (data: { table: string; op: string }) => void) => () => void;
+    selectAndUploadDatabase: () => Promise<any>;
+  };
+
+  undoRedo: {
+    undo: () => Promise<{ success: boolean; description?: string; error?: string }>;
+    redo: () => Promise<{ success: boolean; description?: string; error?: string }>;
+    getState: () => Promise<{ canUndo: boolean; canRedo: boolean; undoDescription?: string; redoDescription?: string }>;
+    onStateChanged: (callback: (data: any) => void) => () => void;
   };
 
   dailyProduction: {
@@ -339,6 +348,23 @@ const api: ElectronAPI = {
       const handler = (_e: any, data: any) => cb(data);
       ipcRenderer.on('sync:completed', handler);
       return () => ipcRenderer.removeListener('sync:completed', handler);
+    },
+    onRemoteChange: (cb) => {
+      const handler = (_e: any, data: any) => cb(data);
+      ipcRenderer.on('sync:remoteChange', handler);
+      return () => ipcRenderer.removeListener('sync:remoteChange', handler);
+    },
+    selectAndUploadDatabase: () => ipcRenderer.invoke('sync:selectAndUploadDatabase'),
+  },
+
+  undoRedo: {
+    undo: () => ipcRenderer.invoke('undo:perform'),
+    redo: () => ipcRenderer.invoke('redo:perform'),
+    getState: () => ipcRenderer.invoke('undo:getState'),
+    onStateChanged: (cb) => {
+      const handler = (_e: any, data: any) => cb(data);
+      ipcRenderer.on('undo:stateChanged', handler);
+      return () => ipcRenderer.removeListener('undo:stateChanged', handler);
     },
   },
 

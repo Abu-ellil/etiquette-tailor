@@ -34,6 +34,8 @@ export default function SyncPage() {
   const [autoSyncLoading, setAutoSyncLoading] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState<{ orders: number; customers: number; items: number; tasks: number; payments: number; users: number; pieceTypes: number } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<any | null>(null);
 
   // Load status on mount
   useEffect(() => {
@@ -121,6 +123,20 @@ export default function SyncPage() {
       window.alert(t('Failed to backfill data: ') + err.message);
     } finally {
       setBackfilling(false);
+    }
+  }
+
+  async function handleUploadDatabase() {
+    if (!window.confirm(t('This will upload ALL data from a database file to Supabase with correct branch assignment. Continue?'))) return;
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const result = await window.electronAPI.sync.selectAndUploadDatabase();
+      setUploadResult(result);
+    } catch (err: any) {
+      setUploadResult({ success: false, errors: [err.message] });
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -262,6 +278,56 @@ export default function SyncPage() {
               <div><span className="font-bold">{backfillResult.users}</span> {t('Users')}</div>
               <div><span className="font-bold">{backfillResult.pieceTypes}</span> {t('Piece Types')}</div>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Upload Database */}
+      <div className="bg-surface-container-lowest rounded-2xl shadow-[0px_8px_24px_rgba(25,28,29,0.08)] p-5">
+        <h2 className="text-base font-semibold text-on-surface mb-2 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary">upload_file</span>
+          {t('Upload Database')}
+        </h2>
+        <p className="text-xs text-secondary mb-4">{t('Upload a SQLite database file to Supabase. Each branch\'s data will be kept separate.')}</p>
+        <button
+          onClick={handleUploadDatabase}
+          disabled={uploading}
+          className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-tertiary-container text-on-tertiary-container font-semibold text-sm hover:bg-tertiary-container/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {uploading ? (
+            <>
+              <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+              {t('Uploading...')}
+            </>
+          ) : (
+            <>
+              <span className="material-symbols-outlined text-lg">database_upload</span>
+              {t('Select & Upload Database File')}
+            </>
+          )}
+        </button>
+        {uploadResult && (
+          <div className={`mt-3 rounded-lg p-3 text-xs ${uploadResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            {uploadResult.success ? (
+              <>
+                <p className="font-semibold text-green-700 mb-1">{t('Upload Complete')}</p>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div><span className="font-bold">{uploadResult.branches}</span> {t('Branches')}</div>
+                  <div><span className="font-bold">{uploadResult.customers}</span> {t('Customers')}</div>
+                  <div><span className="font-bold">{uploadResult.orders}</span> {t('Orders')}</div>
+                  <div><span className="font-bold">{uploadResult.orderItems}</span> {t('Items')}</div>
+                  <div><span className="font-bold">{uploadResult.orderPayments}</span> {t('Payments')}</div>
+                  <div><span className="font-bold">{uploadResult.expenses}</span> {t('Expenses')}</div>
+                  <div><span className="font-bold">{uploadResult.users}</span> {t('Users')}</div>
+                  <div><span className="font-bold">{uploadResult.pieceTypes}</span> {t('Piece Types')}</div>
+                </div>
+              </>
+            ) : (
+              <div>
+                <p className="font-semibold text-red-700 mb-1">{t('Upload Failed')}</p>
+                <p className="text-red-600">{uploadResult.errors?.join(', ')}</p>
+              </div>
+            )}
           </div>
         )}
       </div>

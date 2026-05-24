@@ -206,7 +206,7 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
                 />
 
                 <div className="text-sm font-medium text-text-secondary py-1.5">
-                  {item.total_price} ر.س
+                  {item.total_price} ر.ق
                 </div>
               </div>
 

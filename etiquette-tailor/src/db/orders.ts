@@ -1,5 +1,6 @@
 import db from './connection';
 import { logChange } from './supabaseSync';
+import { recordOperation } from './undoRedo';
 
 export interface Order {
   id?: number;
@@ -491,7 +492,7 @@ export function createOrderWithTasks(payload: WorkflowPayload): { orderId: numbe
   return result;
 }
 
-export function updateOrder(id: number, order: Partial<Order>): void {
+export function updateOrder(id: number, order: Partial<Order>, userId?: number): void {
   const existing = db.prepare('SELECT * FROM orders WHERE id = ?').get(id) as Record<string, any> | undefined;
   if (!existing) throw new Error('Order not found');
 
@@ -524,9 +525,15 @@ export function updateOrder(id: number, order: Partial<Order>): void {
   values.push(id);
   const stmt = db.prepare(`UPDATE orders SET ${fields.join(', ')} WHERE id = ?`);
   stmt.run(...values);
+  logChange('orders', id, 'UPDATE', order);
+  if (userId) {
+    const after = db.prepare('SELECT * FROM orders WHERE id = ?').get(id) as Record<string, any>;
+    recordOperation('orders', id, 'UPDATE', existing, after, userId);
+  }
 }
 
-export function updateOrderStatus(id: number, status: string): void {
+export function updateOrderStatus(id: number, status: string, userId?: number): void {
+  const before = db.prepare('SELECT * FROM orders WHERE id = ?').get(id) as Record<string, any> | undefined;
   if (status === 'delivered') {
     const order = db.prepare('SELECT price, paid FROM orders WHERE id = ?').get(id) as { price: number; paid: number } | undefined;
     if (!order) throw new Error('Order not found');
@@ -536,6 +543,11 @@ export function updateOrderStatus(id: number, status: string): void {
   }
   const stmt = db.prepare('UPDATE orders SET status = ? WHERE id = ?');
   stmt.run(status, id);
+  logChange('orders', id, 'UPDATE', { status });
+  if (userId && before) {
+    const after = db.prepare('SELECT * FROM orders WHERE id = ?').get(id) as Record<string, any>;
+    recordOperation('orders', id, 'UPDATE', before, after, userId);
+  }
 }
 
 export function deleteOrder(id: number): void {
@@ -565,6 +577,7 @@ export function updateOrderMeasurements(orderId: number, measurements: Partial<O
     measurements.notes || null,
     orderId
   );
+  logChange('order_measurements', orderId, 'UPDATE', measurements);
 }
 
 export function getOrderTasks(orderId: number): OrderTask[] {
@@ -604,7 +617,8 @@ export function createOrderTask(task: Omit<OrderTask, 'id'>): number {
   return id;
 }
 
-export function updateTaskStatus(taskId: number, status: string): void {
+export function updateTaskStatus(taskId: number, status: string, userId?: number): void {
+  const before = db.prepare('SELECT * FROM order_tasks WHERE id = ?').get(taskId) as Record<string, any> | undefined;
   const now = new Date().toISOString();
   if (status === 'in_progress') {
     const stmt = db.prepare('UPDATE order_tasks SET status = ?, started_at = ? WHERE id = ?');
@@ -617,6 +631,10 @@ export function updateTaskStatus(taskId: number, status: string): void {
     stmt.run(status, taskId);
   }
   logChange('order_tasks', taskId, 'UPDATE', { status });
+  if (userId && before) {
+    const after = db.prepare('SELECT * FROM order_tasks WHERE id = ?').get(taskId) as Record<string, any>;
+    recordOperation('order_tasks', taskId, 'UPDATE', before, after, userId);
+  }
 }
 
 export function reassignTask(taskId: number, newUserId: number, wageType: string, wageRate: number, wageAmount: number): void {
@@ -625,6 +643,7 @@ export function reassignTask(taskId: number, newUserId: number, wageType: string
     WHERE id = ?
   `);
   stmt.run(newUserId, wageType, wageRate, wageAmount, taskId);
+  logChange('order_tasks', taskId, 'UPDATE', { assigned_to: newUserId, wage_type: wageType, wage_rate: wageRate, wage_amount: wageAmount });
 }
 
 export function searchOrders(query: string, branchId?: number): Order[] {
@@ -934,7 +953,7 @@ export interface OrderPayment {
   created_at: string;
 }
 
-export function addOrderPayment(orderId: number, amount: number, method: 'cash' | 'card', note: string | null, createdBy: number | null): number {
+export function addOrderPayment(orderId: number, amount: number, method: 'cash' | 'card', note: string | null, createdBy: number | null, userId?: number): number {
   const txn = db.transaction(() => {
     const insertStmt = db.prepare(
       'INSERT INTO order_payments (order_id, amount, method, note, created_by) VALUES (?, ?, ?, ?, ?)'
@@ -950,6 +969,11 @@ export function addOrderPayment(orderId: number, amount: number, method: 'cash' 
 
     db.prepare('UPDATE orders SET paid = ? WHERE id = ?').run(sumRow.total, orderId);
 
+    if (userId) {
+      const after = db.prepare('SELECT * FROM order_payments WHERE id = ?').get(id) as Record<string, any>;
+      recordOperation('order_payments', id, 'INSERT', null, after, userId);
+    }
+
     return id;
   });
 
@@ -963,10 +987,12 @@ export function getOrderPayments(orderId: number): OrderPayment[] {
   return stmt.all(orderId) as OrderPayment[];
 }
 
-export function deleteOrderPayment(paymentId: number): void {
+export function deleteOrderPayment(paymentId: number, userId?: number): void {
   const txn = db.transaction(() => {
-    const payment = db.prepare('SELECT order_id FROM order_payments WHERE id = ?').get(paymentId) as { order_id: number } | undefined;
+    const payment = db.prepare('SELECT * FROM order_payments WHERE id = ?').get(paymentId) as Record<string, any> | undefined;
     if (!payment) return;
+
+    const before = { ...payment };
 
     db.prepare('DELETE FROM order_payments WHERE id = ?').run(paymentId);
     logChange('order_payments', paymentId, 'DELETE');
@@ -977,6 +1003,10 @@ export function deleteOrderPayment(paymentId: number): void {
     ).get(payment.order_id) as { total: number };
 
     db.prepare('UPDATE orders SET paid = ? WHERE id = ?').run(sumRow.total, payment.order_id);
+
+    if (userId) {
+      recordOperation('order_payments', paymentId, 'DELETE', before, null, userId);
+    }
   });
 
   txn();

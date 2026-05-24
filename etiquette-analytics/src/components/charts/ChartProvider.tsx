@@ -43,7 +43,7 @@ export function ChartTooltip({ active, payload, label, formatter }: ChartTooltip
       {label && <p style={{ color: 'var(--text-tertiary)', fontSize: 12, marginBottom: 4 }}>{label}</p>}
       {payload.map((entry, i) => (
         <p key={i} style={{ color: entry.color as string, fontSize: 13, fontWeight: 600 }}>
-          {entry.name}: {formatter ? formatter(entry.value as number) : (entry.value as number)?.toLocaleString('ar-SA')}
+          {entry.name}: {formatter ? formatter(entry.value as number) : (entry.value as number)?.toLocaleString('ar-QA')}
         </p>
       ))}
     </div>

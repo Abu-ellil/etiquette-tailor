@@ -192,14 +192,14 @@ function TaskDetailContent() {
               <div className="flex items-center gap-3 text-sm">
                 <Clock className="w-4 h-4 text-text-muted" />
                 <span className="text-text-secondary">بدأ:</span>
-                <span className="font-medium text-text-primary">{new Date(task.started_at).toLocaleString('ar-SA')}</span>
+                <span className="font-medium text-text-primary">{new Date(task.started_at).toLocaleString('ar-QA')}</span>
               </div>
             )}
             {task.completed_at && (
               <div className="flex items-center gap-3 text-sm">
                 <Clock className="w-4 h-4 text-accent-success" />
                 <span className="text-text-secondary">أكتمل:</span>
-                <span className="font-medium text-text-primary">{new Date(task.completed_at).toLocaleString('ar-SA')}</span>
+                <span className="font-medium text-text-primary">{new Date(task.completed_at).toLocaleString('ar-QA')}</span>
               </div>
             )}
           </div>
@@ -279,13 +279,13 @@ function TaskDetailContent() {
                   <button onClick={() => { setEditingWage(false); setWageAmount(task.wage_amount || 0) }} className="p-2 min-h-[44px] min-w-[44px] bg-bg-tertiary rounded hover:bg-border-primary"><X className="w-4 h-4" /></button>
                 </div>
               ) : (
-                <span className="font-bold text-lg text-text-primary">{task.wage_amount.toLocaleString('ar-SA')} ر.س</span>
+                <span className="font-bold text-lg text-text-primary">{task.wage_amount.toLocaleString('ar-QA')} ر.ق</span>
               )}
             </div>
             {task.wage_type === 'percentage' && (
               <div className="mt-4 p-3 bg-accent-success-light rounded-lg">
                 <p className="text-sm text-text-secondary">إجمالي المستحق</p>
-                <p className="text-xl font-bold text-accent-success">{calculateWage().toLocaleString('ar-SA')} ر.س</p>
+                <p className="text-xl font-bold text-accent-success">{calculateWage().toLocaleString('ar-QA')} ر.ق</p>
               </div>
             )}
           </div>

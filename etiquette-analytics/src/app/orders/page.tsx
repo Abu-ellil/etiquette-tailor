@@ -123,19 +123,19 @@ export default function OrdersPage() {
             <div className="bg-bg-card rounded-lg p-4 shadow-sm border border-border-primary">
               <p className="text-sm text-text-tertiary">إجمالي القيمة</p>
               <p className="text-2xl font-bold text-text-primary">
-                {filteredOrders.reduce((sum, o) => sum + o.price, 0).toLocaleString('ar-SA')} ر.س
+                {filteredOrders.reduce((sum, o) => sum + o.price, 0).toLocaleString('ar-QA')} ر.ق
               </p>
             </div>
             <div className="bg-bg-card rounded-lg p-4 shadow-sm border border-border-primary">
               <p className="text-sm text-text-tertiary">المدفوع</p>
               <p className="text-2xl font-bold text-green-600">
-                {filteredOrders.reduce((sum, o) => sum + o.paid, 0).toLocaleString('ar-SA')} ر.س
+                {filteredOrders.reduce((sum, o) => sum + o.paid, 0).toLocaleString('ar-QA')} ر.ق
               </p>
             </div>
             <div className="bg-bg-card rounded-lg p-4 shadow-sm border border-border-primary">
               <p className="text-sm text-text-tertiary">المتبقي</p>
               <p className="text-2xl font-bold text-orange-600">
-                {filteredOrders.reduce((sum, o) => sum + (o.price - o.paid), 0).toLocaleString('ar-SA')} ر.س
+                {filteredOrders.reduce((sum, o) => sum + (o.price - o.paid), 0).toLocaleString('ar-QA')} ر.ق
               </p>
             </div>
           </div>

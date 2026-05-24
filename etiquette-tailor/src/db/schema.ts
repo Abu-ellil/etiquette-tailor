@@ -1,13 +1,5 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import { app } from 'electron';
 import crypto from 'crypto';
-
-const dbPath = path.join(app.getPath('userData'), 'app.db');
-const db = new Database(dbPath);
-
-db.pragma('foreign_keys = ON');
-db.pragma('journal_mode = WAL');
+import db from './connection';
 
 export default db;
 
@@ -286,6 +278,22 @@ export function initializeSchema() {
   `);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_sync_log_synced ON sync_log(synced, created_at)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_sync_log_table ON sync_log(table_name, record_id)`);
+
+  // Undo/redo stack
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS undo_stack (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      table_name TEXT NOT NULL,
+      record_id INTEGER NOT NULL,
+      operation TEXT NOT NULL CHECK(operation IN ('INSERT', 'UPDATE', 'DELETE')),
+      before_data TEXT,
+      after_data TEXT,
+      undone INTEGER DEFAULT 0,
+      session_user_id INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_undo_stack_user ON undo_stack(session_user_id, created_at DESC)`);
 
   const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get() as { count: number };
   if (branchCount.count === 0) {

@@ -1,21 +1,29 @@
-// شاشة WebView للتطبيق
-import { useState, useEffect } from 'react'
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, BackHandler } from 'react-native'
 import { WebView } from 'react-native-webview'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 
-const API_URL = 'http://192.168.1.100:3000' // نفس العنوان المستخدم في تسجيل الدخول
+const APP_URL = 'https://etiquette-tailor.vercel.app'
 
 export default function WebViewScreen() {
   const router = useRouter()
-  const [token, setToken] = useState<string | null>(null)
+  const webViewRef = useRef<WebView>(null)
   const [loading, setLoading] = useState(true)
+  const [canGoBack, setCanGoBack] = useState(false)
+
+  const handleBackPress = useCallback(() => {
+    if (canGoBack && webViewRef.current) {
+      webViewRef.current.goBack()
+      return true
+    }
+    return true
+  }, [canGoBack])
 
   useEffect(() => {
-    // جلب التوكن المحفوظ
-    SecureStore.getItemAsync('authToken').then(setToken)
-  }, [])
+    BackHandler.addEventListener('hardwareBackPress', handleBackPress)
+    return () => BackHandler.removeEventListener('hardwareBackPress', handleBackPress)
+  }, [handleBackPress])
 
   const handleLogout = async () => {
     await SecureStore.deleteItemAsync('authToken')
@@ -24,10 +32,6 @@ export default function WebViewScreen() {
   }
 
   const injectedJavaScript = `
-    // تخزين التوكن في localStorage للWebView
-    window.localStorage.setItem('auth-token', '${token}');
-
-    // إخفاء أزرار التنقل غير الضرورية في وضع الموبايل
     const style = document.createElement('style');
     style.textContent = \`
       .mobile-hide { display: none !important; }
@@ -36,21 +40,11 @@ export default function WebViewScreen() {
       }
     \`;
     document.head.appendChild(style);
-
     true;
   `
 
-  if (!token) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-      </View>
-    )
-  }
-
   return (
     <View style={styles.container}>
-      {/* Header ثابت */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Etiquette Tailor</Text>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
@@ -58,13 +52,14 @@ export default function WebViewScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* WebView */}
       <WebView
-        source={{ uri: API_URL }}
+        ref={webViewRef}
+        source={{ uri: APP_URL }}
         style={styles.webview}
         injectedJavaScript={injectedJavaScript}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => setLoading(false)}
+        onNavigationStateChange={(navState) => setCanGoBack(navState.canGoBack)}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
