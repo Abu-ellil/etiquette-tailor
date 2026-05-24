@@ -51,7 +51,9 @@
       "Bash(sed -i 's/const filters: any = {}/const filters: any = { branchId: activeBranchId }/' TaskManagement.tsx)",
       "Bash(sed -i 's/window\\\\.electronAPI\\\\.workers\\\\.getWorkloads\\(filterBranch || undefined\\)/window.electronAPI.workers.getWorkloads\\(filterBranch || activeBranchId\\)/' TaskManagement.tsx)",
       "Bash(sed -i 's/\\\\}, \\\\[filterBranch, filterWorker, filterType\\\\]/}, [filterBranch, filterWorker, filterType, activeBranchId]\\)/' TaskManagement.tsx)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)"
     ]
   }
 }
