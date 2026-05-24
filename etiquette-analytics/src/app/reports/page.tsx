@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useChartColors, ChartTooltip, ChartContainer } from '@/components/charts/ChartProvider'
@@ -297,7 +297,7 @@ export default function ReportsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
               <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 12 }} />
               <YAxis tick={{ fill: chartColors.text, fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip content={<ChartTooltip formatter={(v) => fmt(v)} />} />
+              <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
               <Legend iconType="circle" iconSize={8} formatter={(v: string) => <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{v}</span>} />
               <Bar dataKey="الإيرادات" fill={chartColors.colors[0]} radius={[4, 4, 0, 0]} />
               <Bar dataKey="المصروفات" fill={chartColors.colors[3]} radius={[4, 4, 0, 0]} />
@@ -322,7 +322,7 @@ export default function ReportsPage() {
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="transparent" />
                   ))}
                 </Pie>
-                <Tooltip content={<ChartTooltip formatter={(v) => fmt(v)} />} />
+                <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
                 <Legend
                   verticalAlign="bottom"
                   iconType="circle"
@@ -356,7 +356,7 @@ export default function ReportsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
               <XAxis dataKey="date" tick={{ fill: chartColors.text, fontSize: 11 }} interval={4} />
               <YAxis tick={{ fill: chartColors.text, fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip content={<ChartTooltip formatter={(v) => fmt(v)} />} />
+              <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
               <Area type="monotone" dataKey="الإيرادات" stroke={chartColors.colors[1]} strokeWidth={2} fill="url(#inflowGrad)" />
               <Area type="monotone" dataKey="المصروفات" stroke={chartColors.colors[3]} strokeWidth={2} fill="url(#outflowGrad)" />
             </AreaChart>

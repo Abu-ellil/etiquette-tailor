@@ -7,7 +7,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  type TooltipProps,
 } from 'recharts'
 import type { ReactNode } from 'react'
 
@@ -27,7 +26,14 @@ export function useChartColors() {
   }
 }
 
-export function ChartTooltip({ active, payload, label, formatter }: TooltipProps<number, string> & { formatter?: (v: number | undefined) => string }) {
+interface ChartTooltipProps {
+  active?: boolean
+  payload?: Array<{ value?: number; name?: string; color?: string }>
+  label?: string
+  formatter?: (v: number | undefined) => string
+}
+
+export function ChartTooltip({ active, payload, label, formatter }: ChartTooltipProps) {
   const { theme } = useTheme()
   if (!active || !payload?.length) return null
   return (
