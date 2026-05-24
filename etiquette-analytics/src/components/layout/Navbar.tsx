@@ -1,10 +1,9 @@
-// شريط التنقل الرئيسي
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from '@/lib/auth'
-import { useRouter } from 'next/navigation'
+import { useTheme } from '@/contexts/ThemeContext'
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -14,13 +13,17 @@ import {
   FileText,
   Settings,
   LogOut,
-  Plus
+  Plus,
+  Sun,
+  Moon,
+  Scissors,
 } from 'lucide-react'
 import { LanguageSwitcher } from '@/components/language/LanguageSwitcher'
 
 export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { theme, toggleTheme } = useTheme()
 
   const handleSignOut = async () => {
     await signOut()
@@ -39,52 +42,109 @@ export function Navbar() {
   ]
 
   return (
-    <nav className="bg-white border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <nav style={{
+      background: 'var(--bg-nav)',
+      borderBottom: '1px solid var(--border-primary)',
+      position: 'sticky',
+      top: 0,
+      zIndex: 40,
+      backdropFilter: 'blur(12px)',
+    }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="text-xl font-bold text-gray-900">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'var(--accent-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Scissors style={{ width: 20, height: 20, color: '#fff' }} />
+            </div>
+            <Link href="/dashboard" style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', textDecoration: 'none', letterSpacing: -0.5 }}>
               Etiquette
             </Link>
           </div>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center gap-1">
+          {/* Navigation */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             {navItems.map(item => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+              const isActive = pathname === item.href || (item.href !== '/orders/new' && pathname.startsWith(item.href + '/'))
               const Icon = item.icon
-
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`
-                    flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                    ${item.highlight
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    transition: 'all 0.15s ease',
+                    ...(item.highlight
+                      ? { background: 'var(--accent-primary)', color: '#fff' }
                       : isActive
-                        ? 'bg-gray-100 text-gray-900'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }
-                  `}
+                        ? { background: 'var(--accent-primary-light)', color: 'var(--accent-primary)' }
+                        : { color: 'var(--text-tertiary)' }
+                    ),
+                  }}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon style={{ width: 16, height: 16 }} />
                   {item.label}
                 </Link>
               )
             })}
           </div>
 
-          {/* Sign Out & Language */}
-          <div className="flex items-center gap-2">
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <LanguageSwitcher />
             <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg text-sm font-medium"
+              onClick={toggleTheme}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                border: '1px solid var(--border-primary)',
+                background: 'var(--bg-tertiary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                color: 'var(--text-secondary)',
+              }}
+              title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
             >
-              <LogOut className="w-4 h-4" />
-              تسجيل الخروج
+              {theme === 'dark' ? <Sun style={{ width: 18, height: 18 }} /> : <Moon style={{ width: 18, height: 18 }} />}
+            </button>
+            <button
+              onClick={handleSignOut}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 500,
+                color: 'var(--text-tertiary)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <LogOut style={{ width: 16, height: 16 }} />
+              خروج
             </button>
           </div>
         </div>

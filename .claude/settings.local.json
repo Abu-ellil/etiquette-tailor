@@ -23,7 +23,14 @@
       "Bash(mv etiquette-analytics/etiquette-mobile etiquette-mobile)",
       "Read(//d/d/DEV2/**)",
       "Bash(npx expo *)",
-      "Bash(ipconfig)"
+      "Bash(ipconfig)",
+      "Bash(gh release *)",
+      "Bash(gh auth *)",
+      "Bash(node -p \"require\\('./package.json'\\).version\")",
+      "Bash(gh.exe auth *)",
+      "Bash(\"/c/Users/MAS/AppData/Local/GitHubDesktop/bin/github\" auth *)",
+      "Bash(winget install *)",
+      "Bash(npx next *)"
     ]
   }
 }
