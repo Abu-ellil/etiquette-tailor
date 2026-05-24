@@ -3,6 +3,8 @@ import { supabase, type SyncLogEntry } from './supabase';
 import { getSetting, setSetting } from './settings';
 import { getIsApplyingRemote } from './realtimeSync';
 
+import Database from 'better-sqlite3';
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -665,5 +667,221 @@ export function backfillExistingData(): { orders: number; customers: number; ite
   tx();
 
   console.log('[sync] Backfilled existing data:', result);
+  return result;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Upload external database to Supabase (preserves branch_id)        */
+/* ------------------------------------------------------------------ */
+export async function uploadExternalDatabase(dbPath: string): Promise<{
+  success: boolean;
+  branches: number;
+  pieceTypes: number;
+  users: number;
+  customers: number;
+  orders: number;
+  orderItems: number;
+  orderPayments: number;
+  expenses: number;
+  errors: string[];
+}> {
+  const result = {
+    success: true,
+    branches: 0, pieceTypes: 0, users: 0, customers: 0,
+    orders: 0, orderItems: 0, orderPayments: 0, expenses: 0,
+    errors: [] as string[],
+  };
+
+  let extDb: Database.Database | null = null;
+
+  try {
+    extDb = new Database(dbPath, { readonly: true });
+
+    // 1. Branches
+    const branches = extDb.prepare('SELECT * FROM branches').all() as any[];
+    for (const b of branches) {
+      const { error } = await supabase.from('branches').upsert({
+        id: String(b.id),
+        name: b.name_ar || b.name_en,
+        prefix: b.prefix,
+      }, { onConflict: 'id' });
+      if (error) result.errors.push(`branches: ${error.message}`);
+      else result.branches++;
+    }
+
+    // 2. Piece Types (shared)
+    const pieceTypes = extDb.prepare('SELECT * FROM piece_types WHERE active = 1 OR active IS NULL').all() as any[];
+    for (const pt of pieceTypes) {
+      const { error } = await supabase.from('piece_types').upsert({
+        local_id: pt.id,
+        name_en: pt.name_en,
+        name_ar: pt.name_ar,
+        category: pt.category,
+        active: pt.active ?? 1,
+        sort_order: pt.sort_order || 0,
+        base_price: pt.base_price || 0,
+        sync_source: 'shared',
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'local_id,sync_source' });
+      if (error) result.errors.push(`piece_types ${pt.id}: ${error.message}`);
+      else result.pieceTypes++;
+    }
+
+    // 3. Users
+    const users = extDb.prepare('SELECT * FROM users').all() as any[];
+    for (const u of users) {
+      const recordBranch = u.branch_id || 1;
+      const recordSource = `branch_${recordBranch}`;
+      const { error } = await supabase.from('users').upsert({
+        local_id: u.id,
+        name: u.name,
+        username: u.username,
+        role: u.role,
+        worker_type: u.worker_type,
+        branch_id: recordBranch,
+        base_salary: u.base_salary || 0,
+        default_rate: u.default_rate || 0,
+        active: u.active ?? 1,
+        sync_source: recordSource,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'local_id,sync_source' });
+      if (error) result.errors.push(`users ${u.id}: ${error.message}`);
+      else result.users++;
+    }
+
+    // 4. Customers - build local_id → supabase id map per branch
+    const customerIdMap = new Map<number, number>();
+    const customers = extDb.prepare('SELECT * FROM customers WHERE is_deleted = 0 OR is_deleted IS NULL').all() as any[];
+    for (const c of customers) {
+      const recordBranch = c.branch_id || 1;
+      const recordSource = `branch_${recordBranch}`;
+      const { data, error } = await supabase.from('customers').upsert({
+        local_id: c.id,
+        name: c.name,
+        phone: c.phone,
+        notes: c.notes,
+        branch_id: recordBranch,
+        sync_source: recordSource,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'local_id,sync_source' }).select('id').single();
+      if (error) {
+        result.errors.push(`customers ${c.id}: ${error.message}`);
+      } else {
+        result.customers++;
+        if (data?.id) customerIdMap.set(c.id, data.id);
+      }
+    }
+
+    // 5. Orders - build local_id → supabase id map per branch
+    const orderIdMap = new Map<number, number>();
+    const orders = extDb.prepare('SELECT * FROM orders WHERE is_deleted = 0 OR is_deleted IS NULL').all() as any[];
+    for (const o of orders) {
+      const recordBranch = o.branch_id || 1;
+      const recordSource = `branch_${recordBranch}`;
+      const supaCustId = customerIdMap.get(o.customer_id) || o.customer_id;
+
+      const { data, error } = await supabase.from('orders').upsert({
+        local_id: o.id,
+        order_number: o.order_number,
+        branch_id: recordBranch,
+        customer_id: supaCustId,
+        piece_type: o.piece_type,
+        details: o.details,
+        price: o.price,
+        paid: o.paid,
+        payment_method: o.payment_method,
+        status: o.status,
+        receive_date: o.receive_date,
+        delivery_date: o.delivery_date,
+        created_by: o.created_by,
+        fabric_source: o.fabric_source || 'customer',
+        sync_source: recordSource,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'local_id,sync_source' }).select('id').single();
+      if (error) {
+        result.errors.push(`orders ${o.id}: ${error.message}`);
+      } else {
+        result.orders++;
+        if (data?.id) orderIdMap.set(o.id, data.id);
+      }
+    }
+
+    // 6. Order Items
+    const orderItems = extDb.prepare('SELECT oi.*, o.branch_id FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE oi.is_deleted = 0 OR oi.is_deleted IS NULL').all() as any[];
+    for (const oi of orderItems) {
+      const recordBranch = oi.branch_id || 1;
+      const recordSource = `branch_${recordBranch}`;
+      const supaOrderId = orderIdMap.get(oi.order_id) || oi.order_id;
+
+      const { error } = await supabase.from('order_items').upsert({
+        local_id: oi.id,
+        order_id: supaOrderId,
+        piece_type: oi.piece_type,
+        quantity: oi.quantity,
+        unit_price: oi.unit_price,
+        total_price: oi.total_price,
+        fabric_source: oi.fabric_source || 'customer',
+        fabric_price: oi.fabric_price || 0,
+        details: oi.details,
+        sort_order: oi.sort_order || 0,
+        sync_source: recordSource,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'local_id,sync_source' });
+      if (error) result.errors.push(`order_items ${oi.id}: ${error.message}`);
+      else result.orderItems++;
+    }
+
+    // 7. Order Payments
+    const orderPayments = extDb.prepare('SELECT op.*, o.branch_id FROM order_payments op JOIN orders o ON op.order_id = o.id').all() as any[];
+    for (const op of orderPayments) {
+      const recordBranch = op.branch_id || 1;
+      const recordSource = `branch_${recordBranch}`;
+      const supaOrderId = orderIdMap.get(op.order_id) || op.order_id;
+
+      const { error } = await supabase.from('order_payments').upsert({
+        local_id: op.id,
+        order_id: supaOrderId,
+        amount: op.amount,
+        method: op.method,
+        note: op.note,
+        created_by: op.created_by,
+        created_at: op.created_at,
+        sync_source: recordSource,
+      }, { onConflict: 'local_id,sync_source' });
+      if (error) result.errors.push(`order_payments ${op.id}: ${error.message}`);
+      else result.orderPayments++;
+    }
+
+    // 8. Expenses
+    const expenses = extDb.prepare('SELECT * FROM expenses WHERE is_deleted = 0 OR is_deleted IS NULL').all() as any[];
+    for (const e of expenses) {
+      const recordBranch = e.branch_id || 1;
+      const recordSource = `branch_${recordBranch}`;
+      const { error } = await supabase.from('expenses').upsert({
+        local_id: e.id,
+        category: e.category,
+        description: e.description,
+        amount: e.amount,
+        expense_date: e.expense_date,
+        branch_id: recordBranch,
+        created_by: e.created_by,
+        note: e.note,
+        is_deleted: e.is_deleted || 0,
+        sync_source: recordSource,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'local_id,sync_source' });
+      if (error) result.errors.push(`expenses ${e.id}: ${error.message}`);
+      else result.expenses++;
+    }
+
+    if (result.errors.length > 0) result.success = false;
+    console.log('[sync] Upload external DB result:', result);
+  } catch (err: any) {
+    result.success = false;
+    result.errors.push(err.message);
+  } finally {
+    extDb?.close();
+  }
+
   return result;
 }

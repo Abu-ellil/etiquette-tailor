@@ -156,6 +156,7 @@ export interface ElectronAPI {
     setInterval: (minutes: number) => Promise<{ success: boolean }>;
     onCompleted: (callback: (data: any) => void) => () => void;
     onRemoteChange: (callback: (data: { table: string; op: string }) => void) => () => void;
+    selectAndUploadDatabase: () => Promise<any>;
   };
 
   undoRedo: {
@@ -353,6 +354,7 @@ const api: ElectronAPI = {
       ipcRenderer.on('sync:remoteChange', handler);
       return () => ipcRenderer.removeListener('sync:remoteChange', handler);
     },
+    selectAndUploadDatabase: () => ipcRenderer.invoke('sync:selectAndUploadDatabase'),
   },
 
   undoRedo: {

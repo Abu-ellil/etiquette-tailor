@@ -15,7 +15,9 @@
       "Bash(node *)",
       "Bash(grep -rn \"ر\\\\.س\" src/ --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.js\")",
       "Bash(grep -rn \"'SAR'\" src/ --include=\"*.ts\" --include=\"*.tsx\")",
-      "Bash(grep -rn \"ar-SA\" src/ --include=\"*.ts\" --include=\"*.tsx\")"
+      "Bash(grep -rn \"ar-SA\" src/ --include=\"*.ts\" --include=\"*.tsx\")",
+      "mcp__supabase__list_tables",
+      "Bash(sqlite3 *)"
     ]
   }
 }

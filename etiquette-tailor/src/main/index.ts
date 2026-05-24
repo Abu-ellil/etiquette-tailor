@@ -71,7 +71,7 @@ import {
 } from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 import { syncAllOrderPayments } from '../db/orders';
-import { performSync, getSyncStatus as getSupabaseSyncStatus, enableSync, disableSync, setSyncInterval, backfillExistingData, setOnlineState } from '../db/supabaseSync';
+import { performSync, getSyncStatus as getSupabaseSyncStatus, enableSync, disableSync, setSyncInterval, backfillExistingData, setOnlineState, uploadExternalDatabase } from '../db/supabaseSync';
 import { subscribeToRemoteChanges, unsubscribeFromRemoteChanges } from '../db/realtimeSync';
 import { performUndo, performRedo, getUndoRedoState } from '../db/undoRedo';
 import { isOnline, startConnectivityCheck, stopConnectivityCheck, onConnectivityChange } from './connectivity';
@@ -802,6 +802,16 @@ function registerIpcHandlers() {
     setSyncInterval(minutes);
     restartSupabaseSyncLoop();
     return { success: true };
+  });
+
+  ipcMain.handle('sync:selectAndUploadDatabase', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select Database File',
+      filters: [{ name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3'] }],
+      properties: ['openFile'],
+    });
+    if (canceled || filePaths.length === 0) return { success: false, errors: ['Cancelled'] };
+    return uploadExternalDatabase(filePaths[0]);
   });
 
   // Undo/Redo

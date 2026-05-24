@@ -9,7 +9,7 @@ import { useChartColors, ChartTooltip, ChartContainer } from '@/components/chart
 import { AppShell } from '@/components/layout/AppShell'
 import {
   TrendingUp, TrendingDown, DollarSign, Calendar,
-  Loader2, Filter, Activity,
+  Loader2, Filter, Activity, ChevronDown,
 } from 'lucide-react'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -35,6 +35,7 @@ export default function ReportsPage() {
   const [endDate, setEndDate] = useState('')
   const [branchId, setBranchId] = useState<string>('')
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([])
+  const [expandedBranch, setExpandedBranch] = useState<string | null>(null)
 
   useEffect(() => {
     const now = new Date()
@@ -97,7 +98,7 @@ export default function ReportsPage() {
   }
 
   const summary = analyticsData.summary || {}
-  const branches = analyticsData.branches || {}
+  const branchesData = analyticsData.branches || {}
   const monthlyRevenue = analyticsData.monthlyRevenue || []
 
   const totalExpenses = expensesData.reduce((s, e) => s + (e.amount || 0), 0)
@@ -123,18 +124,6 @@ export default function ReportsPage() {
       الإيرادات: m.revenue,
       المصروفات: monthExpenses,
       'صافي الربح': m.revenue - monthExpenses,
-    }
-  })
-
-  const branchPL = Object.entries(branches).map(([id, b]: [string, any]) => {
-    const bExpenses = expensesData.filter(e => e.branch_id === parseInt(id)).reduce((s, e) => s + (e.amount || 0), 0)
-    return {
-      name: b.name,
-      revenue: b.totalRevenue,
-      expenses: bExpenses,
-      profit: b.totalRevenue - bExpenses,
-      orders: b.orderCount,
-      margin: b.totalRevenue > 0 ? ((b.totalRevenue - bExpenses) / b.totalRevenue * 100) : 0,
     }
   })
 
@@ -335,44 +324,135 @@ export default function ReportsPage() {
 
         {!branchId && (
         <div className="card">
-          <h3 className="section-title mb-5">الأرباح والخسائر حسب الفرع</h3>
-          {branchPL.map((branch, i) => (
-            <div key={i} className="branch-card-inner" style={{ marginBottom: i < branchPL.length - 1 ? 12 : 0 }}>
-              <div className="flex justify-between items-center mb-3">
-                <div>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{branch.name}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{branch.orders} طلب</p>
+          <h3 className="section-title mb-5">تفاصيل الفروع</h3>
+          {Object.entries(branchesData).map(([id, b]: [string, any], i) => {
+            const bExpenses = expensesData.filter(e => e.branch_id === parseInt(id)).reduce((s, e) => s + (e.amount || 0), 0)
+            const profit = b.totalRevenue - bExpenses
+            const margin = b.totalRevenue > 0 ? (profit / b.totalRevenue * 100) : 0
+            const isExpanded = expandedBranch === id
+
+            const bExpensesByCat = expensesData
+              .filter(e => e.branch_id === parseInt(id))
+              .reduce((acc: Record<string, number>, e: any) => {
+                acc[e.category] = (acc[e.category] || 0) + (e.amount || 0)
+                return acc
+              }, {})
+
+            return (
+              <div key={id} className="branch-card-inner" style={{ marginBottom: i < Object.keys(branchesData).length - 1 ? 12 : 0 }}>
+                {/* Header - clickable */}
+                <div
+                  onClick={() => setExpandedBranch(isExpanded ? null : id)}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-2">
+                      <ChevronDown
+                        size={18}
+                        style={{
+                          color: 'var(--text-muted)',
+                          transition: 'transform 0.2s ease',
+                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        }}
+                      />
+                      <div>
+                        <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{b.name}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{b.orderCount} طلب</p>
+                      </div>
+                    </div>
+                    <div className="text-left">
+                      <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: profit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                        {fmt(profit)}
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 600, color: margin >= 20 ? 'var(--accent-success)' : margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)' }}>
+                        هامش {margin.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="profit-bar-track">
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(Math.max(Math.abs(margin), 0), 100)}%`,
+                      borderRadius: 3,
+                      background: margin >= 20 ? 'var(--accent-success)' : margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)',
+                      transition: 'width 0.5s ease',
+                    }} />
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: branch.profit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
-                    {fmt(branch.profit)}
-                  </p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 600, color: branch.margin >= 20 ? 'var(--accent-success)' : branch.margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)' }}>
-                    هامش {branch.margin.toFixed(1)}%
-                  </p>
-                </div>
+
+                {/* Expanded details */}
+                {isExpanded && (
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-primary)' }}>
+                    {/* KPIs */}
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>الإيرادات</p>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--accent-primary)' }}>{fmt(b.totalRevenue)}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>المصروفات</p>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--accent-danger)' }}>{fmt(bExpenses)}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>صافي الربح</p>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: profit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>{fmt(profit)}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>الطلبات المكتملة</p>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{fmtN(b.completedOrders || 0)}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>الطلبات المعلقة</p>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--accent-warning)' }}>{fmtN(b.pendingOrders || 0)}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>متوسط قيمة الطلب</p>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(b.avgOrderValue || 0)}</p>
+                      </div>
+                    </div>
+
+                    {/* Remaining balance */}
+                    {(b.totalBalance > 0) && (
+                      <div style={{ background: 'var(--accent-warning-light)', borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
+                        <p style={{ margin: 0, fontSize: 12, color: 'var(--accent-warning)', fontWeight: 600 }}>
+                          الديون المتبقية: {fmt(b.totalBalance)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Expense breakdown by category */}
+                    {Object.keys(bExpensesByCat).length > 0 && (
+                      <div>
+                        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>المصروفات حسب الفئة</p>
+                        {Object.entries(bExpensesByCat)
+                          .sort(([, a], [, b]) => (b as number) - (a as number))
+                          .map(([cat, amount]) => {
+                            const pct = bExpenses > 0 ? ((amount as number) / bExpenses * 100) : 0
+                            return (
+                              <div key={cat} style={{ marginBottom: 8 }}>
+                                <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
+                                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{CATEGORY_LABELS[cat] || cat}</span>
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(amount as number)} ({pct.toFixed(0)}%)</span>
+                                </div>
+                                <div className="profit-bar-track">
+                                  <div style={{
+                                    height: '100%',
+                                    width: `${pct}%`,
+                                    borderRadius: 3,
+                                    background: PIE_COLORS[Object.keys(CATEGORY_LABELS).indexOf(cat) % PIE_COLORS.length],
+                                    transition: 'width 0.4s ease',
+                                  }} />
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="profit-bar-track">
-                <div style={{
-                  height: '100%',
-                  width: `${Math.min(Math.max(Math.abs(branch.margin), 0), 100)}%`,
-                  borderRadius: 3,
-                  background: branch.margin >= 20 ? 'var(--accent-success)' : branch.margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)',
-                  transition: 'width 0.5s ease',
-                }} />
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                <div>
-                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>الإيرادات</p>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--accent-primary)' }}>{fmt(branch.revenue)}</p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>المصروفات</p>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--accent-danger)' }}>{fmt(branch.expenses)}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
         )}
       </div>
