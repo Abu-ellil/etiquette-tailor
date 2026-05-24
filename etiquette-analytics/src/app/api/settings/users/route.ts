@@ -1,17 +1,17 @@
-// API لأنواع القطع
+// API للمستخدمين
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
 export async function GET() {
   try {
     const { data, error } = await supabase
-      .from('piece_types')
+      .from('users')
       .select('*')
-      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true })
 
     if (error) throw error
 
-    return NextResponse.json({ piece_types: data || [] })
+    return NextResponse.json({ users: data || [] })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
@@ -20,16 +20,18 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name_en, name_ar, category, base_price, sort_order, active } = body
+    const { name, username, role, worker_type, branch_id, base_salary, default_rate, active } = body
 
     const { data, error } = await supabase
-      .from('piece_types')
+      .from('users')
       .insert({
-        name_en,
-        name_ar,
-        category,
-        base_price: base_price || 0,
-        sort_order: sort_order || 0,
+        name,
+        username,
+        role,
+        worker_type,
+        branch_id,
+        base_salary,
+        default_rate,
         active: active ?? 1,
       })
       .select()
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
 
     if (error) throw error
 
-    return NextResponse.json({ piece_type: data }, { status: 201 })
+    return NextResponse.json({ user: data }, { status: 201 })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
