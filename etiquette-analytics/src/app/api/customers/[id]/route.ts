@@ -80,16 +80,50 @@ export async function PUT(
   }
 }
 
-// DELETE /api/customers/[id] - حذف عميل
+// DELETE /api/customers/[id] - حذف عميل مع طلباته
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const customerId = parseInt(id)
+
+  // جلب طلبات العميل
+  const { data: orders } = await supabase
+    .from('orders')
+    .select('id')
+    .eq('customer_id', customerId)
+
+  if (orders && orders.length > 0) {
+    const orderIds = orders.map((o) => o.id)
+
+    // جلب عناصر الطلبات
+    const { data: items } = await supabase
+      .from('order_items')
+      .select('id')
+      .in('order_id', orderIds)
+
+    if (items && items.length > 0) {
+      const itemIds = items.map((i) => i.id)
+      // حذف مهام عناصر الطلبات
+      await supabase.from('order_tasks').delete().in('order_item_id', itemIds)
+      // حذف عناصر الطلبات
+      await supabase.from('order_items').delete().in('order_id', orderIds)
+    }
+
+    // حذف باقي البيانات المرتبطة بالطلبات
+    await supabase.from('order_tasks').delete().in('order_id', orderIds)
+    await supabase.from('order_payments').delete().in('order_id', orderIds)
+    await supabase.from('order_measurements').delete().in('order_id', orderIds)
+    // حذف الطلبات
+    await supabase.from('orders').delete().in('id', orderIds)
+  }
+
+  // حذف العميل
   const { error } = await supabase
     .from('customers')
     .delete()
-    .eq('id', parseInt(id))
+    .eq('id', customerId)
 
   if (error) {
     return NextResponse.json(
