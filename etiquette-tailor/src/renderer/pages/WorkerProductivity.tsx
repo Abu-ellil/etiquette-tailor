@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 interface ProductivityData {
   user_id: number;
@@ -18,6 +19,7 @@ interface ProductivityData {
 
 export default function WorkerProductivityPage() {
   const { t } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
   const [productivity, setProductivity] = useState<ProductivityData[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<any[]>([]);
   const [period, setPeriod] = useState<'week' | 'month'>('month');
@@ -36,8 +38,8 @@ export default function WorkerProductivityPage() {
       setLoading(true);
       const range = getDateRange();
       const [prod, overdue] = await Promise.all([
-        window.electronAPI.workers.getProductivity(undefined, range.start, range.end),
-        window.electronAPI.workers.getOverdueTasks(),
+        window.electronAPI.workers.getProductivity(activeBranchId, range.start, range.end),
+        window.electronAPI.workers.getOverdueTasks(activeBranchId),
       ]);
       setProductivity((prod || []) as ProductivityData[]);
       setOverdueTasks((overdue || []) as any[]);
@@ -46,7 +48,7 @@ export default function WorkerProductivityPage() {
     } finally {
       setLoading(false);
     }
-  }, [getDateRange]);
+  }, [getDateRange, activeBranchId]);
 
   useEffect(() => {
     loadData();

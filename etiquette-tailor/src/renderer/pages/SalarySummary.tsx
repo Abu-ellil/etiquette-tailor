@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 interface Worker {
   id: number;
@@ -20,6 +21,7 @@ interface WorkerData {
 
 export default function SalarySummaryPage() {
   const { t, currency } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [workerData, setWorkerData] = useState<WorkerData[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -33,7 +35,7 @@ export default function SalarySummaryPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const workersData: Worker[] = await window.electronAPI.workers.getAll();
+      const workersData: Worker[] = await window.electronAPI.workers.getAll(activeBranchId);
       setWorkers(workersData || []);
 
       const data: WorkerData[] = await Promise.all(

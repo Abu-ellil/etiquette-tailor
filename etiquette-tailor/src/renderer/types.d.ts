@@ -34,7 +34,7 @@ export interface ElectronAPI {
   };
 
   workers: {
-    getAll: () => Promise<any[]>;
+    getAll: (branchId?: number) => Promise<any[]>;
     getRates: (workerId: number) => Promise<any[]>;
     setRate: (data: any) => Promise<any>;
     getActiveRate: (workerId: number, pieceType: string) => Promise<any>;

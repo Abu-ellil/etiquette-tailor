@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 // --- Types ---
 
@@ -44,6 +45,7 @@ interface CustomerProfile {
 
 export default function MeasurementsPage() {
   const { t } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
 
   const UPPER_BODY_FIELDS: { key: keyof MeasurementsData; label: string }[] = [
     { key: 'chest', label: t('Chest (Circumference)') },
@@ -96,26 +98,26 @@ export default function MeasurementsPage() {
 
   // Load all customers on mount
   useEffect(() => {
-    window.electronAPI.customers.getAll().then((data: Customer[]) => {
+    window.electronAPI.customers.getAll(activeBranchId).then((data: Customer[]) => {
       setCustomers(data);
     });
-  }, []);
+  }, [activeBranchId]);
 
   // Search customers when query changes
   useEffect(() => {
     if (searchQuery.trim().length === 0) {
-      window.electronAPI.customers.getAll().then((data: Customer[]) => {
+      window.electronAPI.customers.getAll(activeBranchId).then((data: Customer[]) => {
         setCustomers(data);
       });
       return;
     }
     const timer = setTimeout(() => {
-      window.electronAPI.customers.search(searchQuery).then((data: Customer[]) => {
+      window.electronAPI.customers.search(searchQuery, activeBranchId).then((data: Customer[]) => {
         setCustomers(data);
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, activeBranchId]);
 
   // Load customer profile when selected
   const loadCustomerProfile = useCallback(async (customer: Customer) => {

@@ -72,7 +72,7 @@ type QuickDate = 'today' | 'week' | 'month' | 'year' | 'custom';
 
 export default function AdvancedReportsPage() {
   const { t, currency } = useTranslation();
-  const { branches } = useActiveBranch();
+  const { branches, activeBranchId } = useActiveBranch();
 
   const session = useMemo(() => {
     try { return JSON.parse(localStorage.getItem('session') || '{}'); }
@@ -154,8 +154,8 @@ export default function AdvancedReportsPage() {
 
   /* ── Load workers & emails ── */
   useEffect(() => {
-    window.electronAPI.workers.getAll().then((d: any[]) => setWorkers(d || [])).catch(() => {});
-  }, []);
+    window.electronAPI.workers.getAll(activeBranchId).then((d: any[]) => setWorkers(d || [])).catch(() => {});
+  }, [activeBranchId]);
 
   useEffect(() => {
     window.electronAPI.reports.getEmails().then((d: any[]) => setSavedEmails(d || [])).catch(() => {});
@@ -166,7 +166,7 @@ export default function AdvancedReportsPage() {
     setLoading(true);
     try {
       const filter: any = {};
-      if (!isAdmin) filter.branchId = session.branch_id;
+      if (!isAdmin) filter.branchId = activeBranchId;
       else if (selectedBranch) filter.branchId = selectedBranch;
 
       if (startDate) filter.startDate = startDate;
@@ -174,7 +174,7 @@ export default function AdvancedReportsPage() {
       if (filterWorker) filter.workerId = parseInt(filterWorker);
       if (filterStatus) filter.status = filterStatus;
 
-      const apiBranchId = !isAdmin ? session.branch_id : selectedBranch;
+      const apiBranchId = !isAdmin ? activeBranchId : selectedBranch;
 
       const [data, daily, contribution] = await Promise.all([
         window.electronAPI.reports.getAdvanced(filter),
@@ -190,7 +190,7 @@ export default function AdvancedReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, filterWorker, filterStatus, selectedBranch, isAdmin, session.branch_id]);
+  }, [startDate, endDate, filterWorker, filterStatus, selectedBranch, isAdmin, activeBranchId]);
 
   useEffect(() => { loadReport(); }, [loadReport]);
 

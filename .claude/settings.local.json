@@ -35,7 +35,23 @@
       "Bash(xargs grep -l \"fetch\\\\|axios\\\\|supabase\")",
       "mcp__supabase__list_extensions",
       "mcp__supabase__get_logs",
-      "mcp__supabase__get_project_url"
+      "mcp__supabase__get_project_url",
+      "Bash(xxd)",
+      "mcp__supabase__search_docs",
+      "Bash(sed -i 's/window\\\\.electronAPI\\\\.customers\\\\.search\\(value\\\\.trim\\(\\)\\)/window.electronAPI.customers.search\\(value.trim\\(\\), branchId\\)/g' NewOrder.tsx)",
+      "Bash(sed -i 's/window\\\\.electronAPI\\\\.customers\\\\.search\\(fullName\\)/window.electronAPI.customers.search\\(fullName, branchId\\)/g' NewOrder.tsx)",
+      "Bash(sed -i 's/window\\\\.electronAPI\\\\.customers\\\\.getAll\\(\\)/window.electronAPI.customers.getAll\\(activeBranchId\\)/g' WorkflowWizard.tsx)",
+      "Bash(sed -i 's/window\\\\.electronAPI\\\\.customers\\\\.search\\(q\\)/window.electronAPI.customers.search\\(q, activeBranchId\\)/g' WorkflowWizard.tsx)",
+      "Bash(sed -i \"2a import { useActiveBranch } from '../contexts/BranchContext';\" TaskBoard.tsx)",
+      "Bash(sed -i \"s/const { t, currency } = useTranslation\\(\\);/const { t, currency } = useTranslation\\(\\);\\\\n  const { activeBranchId } = useActiveBranch\\(\\);/\" TaskBoard.tsx)",
+      "Bash(sed -i 's/window\\\\.electronAPI\\\\.workers\\\\.getAll\\(\\)/window.electronAPI.workers.getAll\\(activeBranchId\\)/g' TaskBoard.tsx)",
+      "Bash(sed -i 's/const effectiveFilters = { \\\\.\\\\.\\\\.filters };/const effectiveFilters = { ...filters, branchId: activeBranchId };/' TaskBoard.tsx)",
+      "Bash(sed -i \"2a import { useActiveBranch } from '../contexts/BranchContext';\" TaskManagement.tsx)",
+      "Bash(sed -i \"s/const { t, currency } = useTranslation\\(\\);/const { t, currency } = useTranslation\\(\\);\\\\n  const { activeBranchId } = useActiveBranch\\(\\);/\" TaskManagement.tsx)",
+      "Bash(sed -i 's/const filters: any = {}/const filters: any = { branchId: activeBranchId }/' TaskManagement.tsx)",
+      "Bash(sed -i 's/window\\\\.electronAPI\\\\.workers\\\\.getWorkloads\\(filterBranch || undefined\\)/window.electronAPI.workers.getWorkloads\\(filterBranch || activeBranchId\\)/' TaskManagement.tsx)",
+      "Bash(sed -i 's/\\\\}, \\\\[filterBranch, filterWorker, filterType\\\\]/}, [filterBranch, filterWorker, filterType, activeBranchId]\\)/' TaskManagement.tsx)",
+      "Bash(npx tsc *)"
     ]
   }
 }

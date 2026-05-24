@@ -97,7 +97,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
   };
 
   return (
-    <BranchProvider defaultBranchId={session.branch_id || 1}>
+    <BranchProvider defaultBranchId={session.branch_id || 1} sessionRole={session.role}>
     <div className="flex flex-col h-screen bg-surface">
       <TitleBar />
       <div className="flex flex-1 overflow-hidden relative">
@@ -222,6 +222,10 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
 
 function BranchSelector() {
   const { activeBranch, branches, activeBranchId, setActiveBranchId } = useActiveBranch();
+  const session = React.useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('session') || '{}'); } catch { return {}; }
+  }, []);
+  const isAdmin = session.role === 'admin';
 
   if (branches.length <= 1) {
     return activeBranch ? (
@@ -236,10 +240,18 @@ function BranchSelector() {
     <div className="relative">
       <span className="material-symbols-outlined text-sm absolute left-2 top-1/2 -translate-y-1/2 text-on-primary-container pointer-events-none">store</span>
       <select
-        value={activeBranchId}
-        onChange={(e) => setActiveBranchId(Number(e.target.value))}
+        value={activeBranchId ?? 'all'}
+        onChange={(e) => {
+          const v = e.target.value;
+          setActiveBranchId(v === 'all' ? undefined : Number(v));
+        }}
         className="appearance-none pl-7 pr-6 py-1 rounded-full bg-primary-container text-on-primary-container text-xs font-semibold border-none outline-none cursor-pointer"
       >
+        {isAdmin && (
+          <option value="all" className="text-on-surface">
+            All Branches
+          </option>
+        )}
         {branches.map((b) => (
           <option key={b.id} value={b.id} className="text-on-surface">
             {b.prefix} — {b.name_en}

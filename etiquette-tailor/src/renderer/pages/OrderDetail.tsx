@@ -2,11 +2,13 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import StatusChip from '../components/StatusChip';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, currency } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
   const [order, setOrder] = React.useState<any>(null);
   const [tasks, setTasks] = React.useState<any[]>([]);
   const [orderItems, setOrderItems] = React.useState<any[]>([]);
@@ -42,7 +44,7 @@ export default function OrderDetailPage() {
         window.electronAPI.orders.get(Number(id)),
         window.electronAPI.orders.getTasks(Number(id)),
         window.electronAPI.orders.getMeasurements(Number(id)),
-        window.electronAPI.workers.getAll(),
+        window.electronAPI.workers.getAll(activeBranchId),
         window.electronAPI.orders.getPayments(Number(id)),
         window.electronAPI.orders.getItems(Number(id)),
         window.electronAPI.pieceTypes.getAll(),
@@ -59,7 +61,7 @@ export default function OrderDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, activeBranchId]);
 
   React.useEffect(() => { loadOrder(); }, [loadOrder]);
 

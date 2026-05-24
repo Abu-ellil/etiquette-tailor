@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -40,6 +41,7 @@ interface PieceType {
 
 export default function WorkerPayRatesPage() {
   const { t, currency } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<number | null>(null);
   const [rates, setRates] = useState<Record<string, WorkerRate>>({});
@@ -55,7 +57,7 @@ export default function WorkerPayRatesPage() {
     try {
       setLoading(true);
       const [data, pt] = await Promise.all([
-        window.electronAPI.workers.getAll(),
+        window.electronAPI.workers.getAll(activeBranchId),
         window.electronAPI.pieceTypes.getAll(),
       ]);
       setWorkers(data || []);

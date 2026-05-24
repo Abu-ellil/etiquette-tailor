@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 interface Worker {
   id: number;
@@ -36,6 +37,7 @@ interface WorkerAssignerProps {
 }
 
 export default function WorkerAssigner({ items, t, onConfirm, onBack }: WorkerAssignerProps) {
+  const { activeBranchId } = useActiveBranch();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [assignments, setAssignments] = useState<ItemAssignment[]>(
     items.map(() => ({ tailors: [] }))
@@ -43,7 +45,7 @@ export default function WorkerAssigner({ items, t, onConfirm, onBack }: WorkerAs
   const [rateCache, setRateCache] = useState<Record<string, WorkerRate>>({});
 
   useEffect(() => {
-    window.electronAPI.workers.getAll().then((w: Worker[]) => setWorkers(w.filter((x: Worker) => x.active === 1)));
+    window.electronAPI.workers.getAll(activeBranchId).then((w: Worker[]) => setWorkers(w.filter((x: Worker) => x.active === 1)));
   }, []);
 
   const cutters = workers.filter(w => w.worker_type === 'master_cutter');

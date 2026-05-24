@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { format, parseISO } from 'date-fns';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -96,6 +97,7 @@ function formatDate(dateStr?: string): string {
 
 export default function WorkersPage() {
   const { t, currency } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,7 +141,7 @@ export default function WorkersPage() {
     try {
       setLoading(true);
       const [workersData, branchesData] = await Promise.all([
-        window.electronAPI.workers.getAll(),
+        window.electronAPI.workers.getAll(activeBranchId),
         window.electronAPI.branches.getAll(),
       ]);
       setWorkers(workersData || []);

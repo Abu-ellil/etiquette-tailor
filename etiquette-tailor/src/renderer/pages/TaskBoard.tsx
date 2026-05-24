@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import StatusChip from '../components/StatusChip';
+import { useActiveBranch } from '../contexts/BranchContext';
 import { useTranslation } from '../contexts/I18nContext';
 
 const TASK_TYPE_ICONS: Record<string, string> = {
@@ -10,6 +11,7 @@ const TASK_TYPE_ICONS: Record<string, string> = {
 
 export default function TaskBoardPage() {
   const { t, currency } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
   const [tasks, setTasks] = useState<any[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
@@ -26,13 +28,13 @@ export default function TaskBoardPage() {
       setLoading(true);
       const sess = await window.electronAPI.auth.getSession();
       setSession(sess);
-      const effectiveFilters = { ...filters };
+      const effectiveFilters = { ...filters, branchId: activeBranchId };
       if (sess?.role === 'manager') {
         effectiveFilters.branchId = sess.branch_id;
       }
       const [taskData, workerData, branchData, ptData] = await Promise.all([
         window.electronAPI.orders.getAllTasks(effectiveFilters),
-        window.electronAPI.workers.getAll(),
+        window.electronAPI.workers.getAll(activeBranchId),
         window.electronAPI.branches.getAll(),
         window.electronAPI.pieceTypes.getAll(),
       ]);
@@ -45,7 +47,7 @@ export default function TaskBoardPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, activeBranchId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

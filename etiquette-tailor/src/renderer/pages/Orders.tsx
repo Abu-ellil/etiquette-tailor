@@ -350,7 +350,7 @@ export default function OrdersPage() {
       }
       searchTimeout.current = setTimeout(async () => {
         try {
-          const results = await window.electronAPI.orders.search(q);
+          const results = await window.electronAPI.orders.search(q, activeBranchId);
           setOrders(results);
 
           // Fetch items for search results
