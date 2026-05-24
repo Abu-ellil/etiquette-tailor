@@ -1,0 +1,110 @@
+{
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "add": "إضافة",
+    "search": "بحث",
+    "loading": "جاري التحميل...",
+    "noData": "لا توجد بيانات",
+    "back": "عودة",
+    "next": "التالي",
+    "previous": "السابق",
+    "submit": "إرسال",
+    "close": "إغلاق",
+    "confirm": "تأكيد",
+    "actions": "إجراءات",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "amount": "المبلغ",
+    "total": "الإجمالي",
+    "notes": "ملاحظات"
+  },
+  "nav": {
+    "dashboard": "الرئيسية",
+    "orders": "الطلبات",
+    "customers": "العملاء",
+    "production": "الإنتاج",
+    "payments": "المدفوعات",
+    "reports": "التقارير",
+    "settings": "الإعدادات",
+    "signOut": "تسجيل الخروج"
+  },
+  "orders": {
+    "title": "الطلبات",
+    "newOrder": "طلب جديد",
+    "orderNumber": "رقم الطلب",
+    "customer": "العميل",
+    "pieceType": "نوع القطعة",
+    "price": "السعر",
+    "paid": "المدفوع",
+    "remaining": "المتبقي",
+    "deliveryDate": "تاريخ التسليم",
+    "status": {
+      "intake": "استلام",
+      "cutting": "قص",
+      "sewing": "خياطة",
+      "ready": "جاهز",
+      "delivered": "تم التسليم"
+    }
+  },
+  "customers": {
+    "title": "العملاء",
+    "newCustomer": "عميل جديد",
+    "name": "الاسم",
+    "phone": "الهاتف",
+    "branch": "الفرع",
+    "orders": "الطلبات",
+    "balance": "الرصيد"
+  },
+  "production": {
+    "title": "الإنتاج",
+    "tasks": "المهام",
+    "pending": "قيد الانتظار",
+    "inProgress": "قيد التنفيذ",
+    "done": "مكتمل",
+    "assignWorker": "تعيين عامل",
+    "taskType": {
+      "cutting": "قص",
+      "sewing": "خياطة",
+      "design": "تصميم"
+    }
+  },
+  "payments": {
+    "title": "المدفوعات",
+    "method": "طريقة الدفع",
+    "cash": "نقداً",
+    "card": "بطاقة",
+    "totalPayments": "إجمالي المدفوعات"
+  },
+  "expenses": {
+    "title": "المصروفات",
+    "category": "الفئة",
+    "categories": {
+      "rent": "إيجار",
+      "utilities": "مرافق",
+      "materials": "مواد",
+      "fabric": "أقمشة",
+      "supplies": "مستلزمات",
+      "salaries": "رواتب",
+      "other": "أخرى"
+    }
+  },
+  "reports": {
+    "title": "التقارير",
+    "totalRevenue": "إجمالي الإيرادات",
+    "totalExpenses": "المصروفات",
+    "netProfit": "صافي الربح",
+    "totalBalance": "الديون المتبقية"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "users": "المستخدمين",
+    "pieceTypes": "أنواع القطع",
+    "branches": "الفروع",
+    "notifications": "الإشعارات",
+    "language": "اللغة",
+    "security": "الأمان"
+  }
+}

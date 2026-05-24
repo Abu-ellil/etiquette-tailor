@@ -1,0 +1,110 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "loading": "Loading...",
+    "noData": "No data available",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "actions": "Actions",
+    "status": "Status",
+    "date": "Date",
+    "amount": "Amount",
+    "total": "Total",
+    "notes": "Notes"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "orders": "Orders",
+    "customers": "Customers",
+    "production": "Production",
+    "payments": "Payments",
+    "reports": "Reports",
+    "settings": "Settings",
+    "signOut": "Sign Out"
+  },
+  "orders": {
+    "title": "Orders",
+    "newOrder": "New Order",
+    "orderNumber": "Order Number",
+    "customer": "Customer",
+    "pieceType": "Piece Type",
+    "price": "Price",
+    "paid": "Paid",
+    "remaining": "Remaining",
+    "deliveryDate": "Delivery Date",
+    "status": {
+      "intake": "Intake",
+      "cutting": "Cutting",
+      "sewing": "Sewing",
+      "ready": "Ready",
+      "delivered": "Delivered"
+    }
+  },
+  "customers": {
+    "title": "Customers",
+    "newCustomer": "New Customer",
+    "name": "Name",
+    "phone": "Phone",
+    "branch": "Branch",
+    "orders": "Orders",
+    "balance": "Balance"
+  },
+  "production": {
+    "title": "Production",
+    "tasks": "Tasks",
+    "pending": "Pending",
+    "inProgress": "In Progress",
+    "done": "Done",
+    "assignWorker": "Assign Worker",
+    "taskType": {
+      "cutting": "Cutting",
+      "sewing": "Sewing",
+      "design": "Design"
+    }
+  },
+  "payments": {
+    "title": "Payments",
+    "method": "Payment Method",
+    "cash": "Cash",
+    "card": "Card",
+    "totalPayments": "Total Payments"
+  },
+  "expenses": {
+    "title": "Expenses",
+    "category": "Category",
+    "categories": {
+      "rent": "Rent",
+      "utilities": "Utilities",
+      "materials": "Materials",
+      "fabric": "Fabric",
+      "supplies": "Supplies",
+      "salaries": "Salaries",
+      "other": "Other"
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "totalRevenue": "Total Revenue",
+    "totalExpenses": "Total Expenses",
+    "netProfit": "Net Profit",
+    "totalBalance": "Outstanding Balance"
+  },
+  "settings": {
+    "title": "Settings",
+    "users": "Users",
+    "pieceTypes": "Piece Types",
+    "branches": "Branches",
+    "notifications": "Notifications",
+    "language": "Language",
+    "security": "Security"
+  }
+}
