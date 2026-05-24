@@ -34,7 +34,8 @@
       "mcp__supabase__get_advisors",
       "Bash(xargs grep -l \"fetch\\\\|axios\\\\|supabase\")",
       "mcp__supabase__list_extensions",
-      "mcp__supabase__get_logs"
+      "mcp__supabase__get_logs",
+      "mcp__supabase__get_project_url"
     ]
   }
 }
