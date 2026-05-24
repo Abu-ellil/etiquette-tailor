@@ -139,7 +139,7 @@ export default function OrderDetailPage() {
                       <td className="py-3 text-text-primary">{item.piece_type}</td>
                       <td className="py-3 text-center text-text-primary">{item.quantity}</td>
                       <td className="py-3 text-center text-text-primary">{item.unit_price}</td>
-                      <td className="py-3 text-center font-medium text-text-primary">{item.total_price} ر.س</td>
+                      <td className="py-3 text-center font-medium text-text-primary">{item.total_price} ر.ق</td>
                     </tr>
                   ))}
                 </tbody>
@@ -179,19 +179,19 @@ export default function OrderDetailPage() {
             <div>
               <p className="text-sm text-text-tertiary">إجمالي السعر</p>
               <p className="text-2xl font-bold text-text-primary">
-                {order.price.toLocaleString('ar-SA')} ر.س
+                {order.price.toLocaleString('ar-QA')} ر.ق
               </p>
             </div>
             <div>
               <p className="text-sm text-text-tertiary">المدفوع</p>
               <p className="text-2xl font-bold text-green-600">
-                {order.paid.toLocaleString('ar-SA')} ر.س
+                {order.paid.toLocaleString('ar-QA')} ر.ق
               </p>
             </div>
             <div>
               <p className="text-sm text-text-tertiary">المتبقي</p>
               <p className={`text-2xl font-bold ${balance > 0 ? 'text-orange-600' : 'text-text-primary'}`}>
-                {balance.toLocaleString('ar-SA')} ر.س
+                {balance.toLocaleString('ar-QA')} ر.ق
               </p>
             </div>
           </div>
@@ -204,9 +204,9 @@ export default function OrderDetailPage() {
                 {order.payments.map((payment: any) => (
                   <div key={payment.id} className="flex items-center justify-between py-2 px-3 bg-bg-secondary rounded-lg">
                     <div>
-                      <p className="font-medium text-text-primary">{payment.amount} ر.س</p>
+                      <p className="font-medium text-text-primary">{payment.amount} ر.ق</p>
                       <p className="text-xs text-text-tertiary">
-                        {new Date(payment.created_at).toLocaleDateString('ar-SA')}
+                        {new Date(payment.created_at).toLocaleDateString('ar-QA')}
                       </p>
                     </div>
                     <span className="text-sm text-text-secondary">
@@ -227,7 +227,7 @@ export default function OrderDetailPage() {
               <p className="text-sm text-text-tertiary">تاريخ الاستلام</p>
               <p className="font-medium text-text-primary">
                 {order.receive_date
-                  ? new Date(order.receive_date).toLocaleDateString('ar-SA')
+                  ? new Date(order.receive_date).toLocaleDateString('ar-QA')
                   : '-'}
               </p>
             </div>
@@ -235,7 +235,7 @@ export default function OrderDetailPage() {
               <p className="text-sm text-text-tertiary">تاريخ التسليم المحدد</p>
               <p className="font-medium text-text-primary">
                 {order.delivery_date
-                  ? new Date(order.delivery_date).toLocaleDateString('ar-SA')
+                  ? new Date(order.delivery_date).toLocaleDateString('ar-QA')
                   : '-'}
               </p>
             </div>

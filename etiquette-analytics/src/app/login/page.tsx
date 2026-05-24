@@ -22,7 +22,7 @@ export default function LoginPage() {
       setError('بيانات الدخول غير صحيحة')
       setLoading(false)
     } else {
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     }
   }
 

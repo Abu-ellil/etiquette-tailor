@@ -115,7 +115,7 @@ export default function ExpensesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">المبلغ (ر.س)</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">المبلغ (ر.ق)</label>
               <input type="number" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} className="w-full px-3 py-2 min-h-[44px] border border-border-primary rounded-lg bg-bg-input text-text-primary" required min={0} step={0.01} />
             </div>
             <div>
@@ -150,12 +150,12 @@ export default function ExpensesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="kpi-card">
           <p className="kpi-title">إجمالي المصروفات</p>
-          <p className="kpi-value text-accent-danger">{totalAmount.toLocaleString('ar-SA')} ر.س</p>
+          <p className="kpi-value text-accent-danger">{totalAmount.toLocaleString('ar-QA')} ر.ق</p>
         </div>
         {byCategory.slice(0, 3).map(cat => (
           <div key={cat.value} className="kpi-card">
             <p className="kpi-title">{cat.label}</p>
-            <p className="kpi-value">{cat.total.toLocaleString('ar-SA')} ر.س</p>
+            <p className="kpi-value">{cat.total.toLocaleString('ar-QA')} ر.ق</p>
           </div>
         ))}
       </div>
@@ -195,7 +195,7 @@ export default function ExpensesPage() {
               <tbody>
                 {filteredExpenses.map((expense) => (
                   <tr key={expense.id} className="data-row hover:bg-bg-card-hover">
-                    <td className="py-3 px-4 text-text-secondary">{new Date(expense.expense_date).toLocaleDateString('ar-SA')}</td>
+                    <td className="py-3 px-4 text-text-secondary">{new Date(expense.expense_date).toLocaleDateString('ar-QA')}</td>
                     <td className="py-3 px-4">
                       <span className="status-badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
                         {expense.category_name || expense.category}
@@ -208,7 +208,7 @@ export default function ExpensesPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-center text-text-secondary">{expense.branch_id === 1 ? 'الميرة' : 'الشارع التجاري'}</td>
-                    <td className="py-3 px-4 font-bold text-accent-danger">{expense.amount.toLocaleString('ar-SA')} ر.س</td>
+                    <td className="py-3 px-4 font-bold text-accent-danger">{expense.amount.toLocaleString('ar-QA')} ر.ق</td>
                   </tr>
                 ))}
               </tbody>

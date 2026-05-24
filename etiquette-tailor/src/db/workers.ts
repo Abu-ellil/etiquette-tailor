@@ -1,5 +1,6 @@
 import db from './connection';
 import { logChange } from './supabaseSync';
+import { recordOperation } from './undoRedo';
 
 export interface Worker {
   id?: number;
@@ -42,7 +43,7 @@ export function getWorker(id: number): Worker | undefined {
   return stmt.get(id) as Worker | undefined;
 }
 
-export function createWorker(worker: Omit<Worker, 'id'>): number {
+export function createWorker(worker: Omit<Worker, 'id'>, userId?: number): number {
   const stmt = db.prepare(`
     INSERT INTO users (name, username, password_hash, role, worker_type, branch_id, base_salary)
     VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -58,22 +59,35 @@ export function createWorker(worker: Omit<Worker, 'id'>): number {
   );
   const id = result.lastInsertRowid as number;
   logChange('users', id, 'INSERT', { id, name: worker.name, role: 'worker', branch_id: worker.branch_id });
+  if (userId) {
+    const after = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as Record<string, any>;
+    recordOperation('users', id, 'INSERT', null, after, userId);
+  }
   return id;
 }
 
-export function updateWorker(id: number, worker: Partial<Worker>): void {
+export function updateWorker(id: number, worker: Partial<Worker>, userId?: number): void {
+  const before = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as Record<string, any> | undefined;
   const stmt = db.prepare(`
     UPDATE users SET name = ?, worker_type = ?, branch_id = ?, base_salary = ?
     WHERE id = ?
   `);
   stmt.run(worker.name, worker.worker_type || null, worker.branch_id, worker.base_salary || 0, id);
   logChange('users', id, 'UPDATE', worker);
+  if (userId && before) {
+    const after = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as Record<string, any>;
+    recordOperation('users', id, 'UPDATE', before, after, userId);
+  }
 }
 
-export function deactivateWorker(id: number): void {
+export function deactivateWorker(id: number, userId?: number): void {
+  const before = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as Record<string, any> | undefined;
   const stmt = db.prepare('UPDATE users SET active = 0 WHERE id = ?');
   stmt.run(id);
   logChange('users', id, 'DELETE', { id, active: 0 });
+  if (userId && before) {
+    recordOperation('users', id, 'DELETE', before, null, userId);
+  }
 }
 
 export function getWorkerRates(userId: number): WorkerRate[] {

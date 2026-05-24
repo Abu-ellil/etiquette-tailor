@@ -67,8 +67,8 @@ export default function DashboardPage() {
     }
   }
 
-  const fmt = (amount: number) => new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR', maximumFractionDigits: 0 }).format(amount)
-  const fmtN = (n: number) => n.toLocaleString('ar-SA')
+  const fmt = (amount: number) => new Intl.NumberFormat('ar-QA', { style: 'currency', currency: 'QAR', maximumFractionDigits: 0 }).format(amount)
+  const fmtN = (n: number) => n.toLocaleString('ar-QA')
 
   if (loading) {
     return (
@@ -116,7 +116,7 @@ export default function DashboardPage() {
   }))
 
   const monthlyData = monthlyRevenue.map(m => ({
-    month: new Date(m.month + '-01').toLocaleDateString('ar-SA', { month: 'short' }),
+    month: new Date(m.month + '-01').toLocaleDateString('ar-QA', { month: 'short' }),
     revenue: m.revenue,
   }))
 
@@ -395,7 +395,7 @@ export default function DashboardPage() {
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
-                      {new Date(order.created_at).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })}
+                      {new Date(order.created_at).toLocaleDateString('ar-QA', { month: 'short', day: 'numeric' })}
                     </td>
                   </tr>
                 )

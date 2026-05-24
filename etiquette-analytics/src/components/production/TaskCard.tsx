@@ -152,7 +152,7 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
           <span className="text-xs text-text-tertiary">
             {task.wage_type === 'percentage'
               ? `${task.wage_rate}%`
-              : `${task.wage_amount} ر.س`}
+              : `${task.wage_amount} ر.ق`}
           </span>
         </div>
 
@@ -186,7 +186,7 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
         {task.started_at && (
           <div className="flex items-center gap-1 text-xs text-text-tertiary">
             <Clock className="w-3 h-3" />
-            بدء: {new Date(task.started_at).toLocaleDateString('ar-SA')}
+            بدء: {new Date(task.started_at).toLocaleDateString('ar-QA')}
           </div>
         )}
       </div>

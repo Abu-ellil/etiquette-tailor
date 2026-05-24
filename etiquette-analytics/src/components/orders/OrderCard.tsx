@@ -50,14 +50,14 @@ export function OrderCard({ order }: OrderCardProps) {
         {/* المبالغ */}
         <div className="text-left">
           <div className="text-lg font-semibold text-text-primary">
-            {order.price.toLocaleString('ar-SA')} ر.س
+            {order.price.toLocaleString('ar-QA')} ر.ق
           </div>
           <div className="text-sm text-text-tertiary">
-            مدفوع: {order.paid.toLocaleString('ar-SA')}
+            مدفوع: {order.paid.toLocaleString('ar-QA')}
           </div>
           {balance > 0 && (
             <div className="text-sm text-orange-600">
-              متبقي: {balance.toLocaleString('ar-SA')}
+              متبقي: {balance.toLocaleString('ar-QA')}
             </div>
           )}
         </div>
@@ -69,13 +69,13 @@ export function OrderCard({ order }: OrderCardProps) {
           <Clock className="w-3 h-3" />
           <span>
             {order.receive_date
-              ? new Date(order.receive_date).toLocaleDateString('ar-SA')
-              : new Date(order.created_at || '').toLocaleDateString('ar-SA')}
+              ? new Date(order.receive_date).toLocaleDateString('ar-QA')
+              : new Date(order.created_at || '').toLocaleDateString('ar-QA')}
           </span>
         </div>
         {order.delivery_date && (
           <span>
-            التسليم: {new Date(order.delivery_date).toLocaleDateString('ar-SA')}
+            التسليم: {new Date(order.delivery_date).toLocaleDateString('ar-QA')}
           </span>
         )}
       </div>

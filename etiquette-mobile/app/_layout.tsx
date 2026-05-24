@@ -7,7 +7,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="webview" />
+        <Stack.Screen name="webview" options={{ gestureEnabled: false }} />
       </Stack>
     </SafeAreaProvider>
   )

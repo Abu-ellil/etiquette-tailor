@@ -48,15 +48,15 @@ export default function PaymentsPage() {
       <div className="kpi-grid gap-mb-mobile">
         <div className="kpi-card">
           <p className="kpi-title">إجمالي المدفوعات</p>
-          <p className="kpi-value">{totalAmount.toLocaleString('ar-SA')} ر.س</p>
+          <p className="kpi-value">{totalAmount.toLocaleString('ar-QA')} ر.ق</p>
         </div>
         <div className="kpi-card">
           <p className="kpi-title">نقداً</p>
-          <p className="kpi-value text-accent-success">{cashTotal.toLocaleString('ar-SA')} ر.س</p>
+          <p className="kpi-value text-accent-success">{cashTotal.toLocaleString('ar-QA')} ر.ق</p>
         </div>
         <div className="kpi-card">
           <p className="kpi-title">بطاقة</p>
-          <p className="kpi-value text-accent-primary">{cardTotal.toLocaleString('ar-SA')} ر.س</p>
+          <p className="kpi-value text-accent-primary">{cardTotal.toLocaleString('ar-QA')} ر.ق</p>
         </div>
       </div>
 
@@ -110,7 +110,7 @@ export default function PaymentsPage() {
                       #{payment.order?.order_number || '-'}
                     </td>
                     <td className="py-3 px-4 text-text-secondary">
-                      {new Date(payment.created_at).toLocaleDateString('ar-SA')}
+                      {new Date(payment.created_at).toLocaleDateString('ar-QA')}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span className={`status-badge ${
@@ -128,7 +128,7 @@ export default function PaymentsPage() {
                       {payment.note || '-'}
                     </td>
                     <td className="py-3 px-4 font-bold text-text-primary">
-                      {payment.amount.toLocaleString('ar-SA')} ر.س
+                      {payment.amount.toLocaleString('ar-QA')} ر.ق
                     </td>
                   </tr>
                 ))}

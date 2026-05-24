@@ -1,5 +1,6 @@
 import db from './schema';
 import { logChange } from './supabaseSync';
+import { recordOperation } from './undoRedo';
 
 export interface PieceType {
   id: number;
@@ -24,7 +25,7 @@ export function getBasePrice(pieceTypeName: string): number {
   return row?.base_price || 0;
 }
 
-export function createPieceType(data: Omit<PieceType, 'id' | 'active' | 'sort_order'>): number {
+export function createPieceType(data: Omit<PieceType, 'id' | 'active' | 'sort_order'>, userId?: number): number {
   const stmt = db.prepare(`
     INSERT INTO piece_types (name_en, name_ar, category, base_price)
     VALUES (?, ?, ?, ?)
@@ -32,10 +33,15 @@ export function createPieceType(data: Omit<PieceType, 'id' | 'active' | 'sort_or
   const result = stmt.run(data.name_en, data.name_ar, data.category, data.base_price);
   const id = Number(result.lastInsertRowid);
   logChange('piece_types', id, 'INSERT', { id, ...data });
+  if (userId) {
+    const after = db.prepare('SELECT * FROM piece_types WHERE id = ?').get(id) as Record<string, any>;
+    recordOperation('piece_types', id, 'INSERT', null, after, userId);
+  }
   return id;
 }
 
-export function updatePieceType(id: number, data: Partial<Omit<PieceType, 'id'>>): void {
+export function updatePieceType(id: number, data: Partial<Omit<PieceType, 'id'>>, userId?: number): void {
+  const before = db.prepare('SELECT * FROM piece_types WHERE id = ?').get(id) as Record<string, any> | undefined;
   const updates: string[] = [];
   const params: any[] = [];
 
@@ -68,12 +74,20 @@ export function updatePieceType(id: number, data: Partial<Omit<PieceType, 'id'>>
     params.push(id);
     db.prepare(`UPDATE piece_types SET ${updates.join(', ')} WHERE id = ?`).run(...params);
     logChange('piece_types', id, 'UPDATE', data);
+    if (userId && before) {
+      const after = db.prepare('SELECT * FROM piece_types WHERE id = ?').get(id) as Record<string, any>;
+      recordOperation('piece_types', id, 'UPDATE', before, after, userId);
+    }
   }
 }
 
-export function deletePieceType(id: number): void {
+export function deletePieceType(id: number, userId?: number): void {
+  const before = db.prepare('SELECT * FROM piece_types WHERE id = ?').get(id) as Record<string, any> | undefined;
   db.prepare('UPDATE piece_types SET active = 0 WHERE id = ?').run(id);
   logChange('piece_types', id, 'DELETE', { id, active: 0 });
+  if (userId && before) {
+    recordOperation('piece_types', id, 'DELETE', before, null, userId);
+  }
 }
 
 /**

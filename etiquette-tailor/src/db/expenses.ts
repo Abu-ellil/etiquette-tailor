@@ -1,5 +1,6 @@
 import db from './connection';
 import { logChange } from './supabaseSync';
+import { recordOperation } from './undoRedo';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ export interface WorkerProfitSummary {
 
 // ── CRUD ─────────────────────────────────────────────────────────────────
 
-export function createExpense(data: Omit<Expense, 'id' | 'is_deleted' | 'created_at'>): number {
+export function createExpense(data: Omit<Expense, 'id' | 'is_deleted' | 'created_at'>, userId?: number): number {
   const stmt = db.prepare(`
     INSERT INTO expenses (category, description, amount, expense_date, branch_id, created_by, note)
     VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -65,6 +66,10 @@ export function createExpense(data: Omit<Expense, 'id' | 'is_deleted' | 'created
   );
   const id = result.lastInsertRowid as number;
   logChange('expenses', id, 'INSERT', { id, ...data });
+  if (userId) {
+    const after = db.prepare('SELECT * FROM expenses WHERE id = ?').get(id) as Record<string, any>;
+    recordOperation('expenses', id, 'INSERT', null, after, userId);
+  }
   return id;
 }
 
@@ -101,9 +106,13 @@ export function getExpenses(filters?: {
   return stmt.all(...params) as (Expense & { branch_name?: string | null })[];
 }
 
-export function deleteExpense(id: number): void {
+export function deleteExpense(id: number, userId?: number): void {
+  const before = db.prepare('SELECT * FROM expenses WHERE id = ?').get(id) as Record<string, any> | undefined;
   db.prepare('UPDATE expenses SET is_deleted = 1 WHERE id = ?').run(id);
   logChange('expenses', id, 'DELETE');
+  if (userId && before) {
+    recordOperation('expenses', id, 'DELETE', before, null, userId);
+  }
 }
 
 // ── Totals ───────────────────────────────────────────────────────────────

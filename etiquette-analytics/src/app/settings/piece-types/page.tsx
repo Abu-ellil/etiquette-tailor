@@ -182,7 +182,7 @@ export default function PieceTypesSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">السعر الأساسي (ر.س)</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1">السعر الأساسي (ر.ق)</label>
                 <input
                   type="number"
                   value={formData.base_price}
@@ -276,7 +276,7 @@ export default function PieceTypesSettingsPage() {
                       <p className="text-sm text-text-tertiary mb-2" dir="ltr">{piece.name_en}</p>
                       <div className="flex items-center justify-between">
                         <span className="text-lg font-bold text-accent-primary">
-                          {piece.base_price.toLocaleString('ar-SA')} ر.س
+                          {piece.base_price.toLocaleString('ar-QA')} ر.ق
                         </span>
                         <button
                           onClick={() => router.push(`/settings/piece-types/${piece.id}/edit`)}

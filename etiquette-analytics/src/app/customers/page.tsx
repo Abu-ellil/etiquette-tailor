@@ -120,7 +120,7 @@ export default function CustomersPage() {
               )}
 
               <div className="mt-3 pt-3 border-t border-border-primary text-xs text-text-muted">
-                منذ {new Date(customer.created_at).toLocaleDateString('ar-SA')}
+                منذ {new Date(customer.created_at).toLocaleDateString('ar-QA')}
               </div>
             </div>
           ))}

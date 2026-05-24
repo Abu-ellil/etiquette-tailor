@@ -8,7 +8,14 @@
       "Bash(git push *)",
       "Bash(npm run *)",
       "mcp__supabase__apply_migration",
-      "mcp__supabase__execute_sql"
+      "mcp__supabase__execute_sql",
+      "Bash(git tag *)",
+      "Bash(npx tsc *)",
+      "Bash(xargs sed -i \"s/ar-SA/ar-QA/g; s/'SAR'/'QAR'/g; s/ر\\\\.س/ر.ق/g\")",
+      "Bash(node *)",
+      "Bash(grep -rn \"ر\\\\.س\" src/ --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.js\")",
+      "Bash(grep -rn \"'SAR'\" src/ --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(grep -rn \"ar-SA\" src/ --include=\"*.ts\" --include=\"*.tsx\")"
     ]
   }
 }

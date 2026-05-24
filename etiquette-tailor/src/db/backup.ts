@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { app, dialog, BrowserWindow } from 'electron';
-import db from './schema';
+import db, { getDbPath, closeDb } from './connection';
 
-const dbPath = path.join(app.getPath('userData'), 'app.db');
+const dbPath = getDbPath();
 const historyPath = path.join(app.getPath('userData'), 'backup-history.json');
 
 export interface BackupInfo {
@@ -92,8 +92,23 @@ export async function restoreBackup(parentWindow?: BrowserWindow): Promise<{ suc
       return { success: false, error: 'Not a valid SQLite database file' };
     }
 
+    // Validate the backup file can be opened and passes integrity check
+    const testDb = new (require('better-sqlite3'))(backupFile, { readonly: true });
+    const integrityResult = testDb.pragma('integrity_check') as Array<{ integrity_check: string }>;
+    testDb.close();
+    const failures = integrityResult.filter(r => r.integrity_check !== 'ok');
+    if (failures.length > 0) {
+      return { success: false, error: 'Backup file is corrupted: ' + failures.map(r => r.integrity_check).join('; ') };
+    }
+
     // Close current DB connection
-    db.close();
+    closeDb();
+
+    // Remove old WAL and SHM files to avoid corruption
+    const walPath = dbPath + '-wal';
+    const shmPath = dbPath + '-shm';
+    try { fs.unlinkSync(walPath); } catch { /* ignore */ }
+    try { fs.unlinkSync(shmPath); } catch { /* ignore */ }
 
     // Replace the DB file
     fs.copyFileSync(backupFile, dbPath);

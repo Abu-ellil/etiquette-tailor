@@ -85,7 +85,7 @@ export default function CustomerDetailPage() {
             </button>
             <div>
               <h1 className="page-title">{customer.name}</h1>
-              <p className="page-subtitle">عميل منذ {new Date(customer.created_at).toLocaleDateString('ar-SA')}</p>
+              <p className="page-subtitle">عميل منذ {new Date(customer.created_at).toLocaleDateString('ar-QA')}</p>
             </div>
           </div>
 
@@ -151,7 +151,7 @@ export default function CustomerDetailPage() {
               <div>
                 <p className="text-sm text-text-tertiary">الرصيد المتبقي</p>
                 <p className={`text-2xl font-bold ${totalBalance > 0 ? 'text-accent-warning' : 'text-accent-success'}`}>
-                  {totalBalance.toLocaleString('ar-SA')} ر.س
+                  {totalBalance.toLocaleString('ar-QA')} ر.ق
                 </p>
               </div>
             </div>
@@ -217,17 +217,17 @@ export default function CustomerDetailPage() {
                       >
                         <td className="py-3 font-medium text-text-primary">#{order.order_number}</td>
                         <td className="py-3 text-text-secondary">
-                          {new Date(order.created_at).toLocaleDateString('ar-SA')}
+                          {new Date(order.created_at).toLocaleDateString('ar-QA')}
                         </td>
                         <td className="py-3 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS]}`}>
                             {ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS]}
                           </span>
                         </td>
-                        <td className="py-3 text-text-primary">{order.price} ر.س</td>
-                        <td className="py-3 text-accent-success">{order.paid} ر.س</td>
+                        <td className="py-3 text-text-primary">{order.price} ر.ق</td>
+                        <td className="py-3 text-accent-success">{order.paid} ر.ق</td>
                         <td className={`py-3 ${balance > 0 ? 'text-accent-warning' : 'text-text-primary'}`}>
-                          {balance} ر.س
+                          {balance} ر.ق
                         </td>
                       </tr>
                     )

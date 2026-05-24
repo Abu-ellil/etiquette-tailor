@@ -5,6 +5,7 @@ import os from 'node:os';
 import started from 'electron-squirrel-startup';
 import nodemailer from 'nodemailer';
 import { initializeSchema } from '../db/schema';
+import db, { isDbReady, getInitError, checkIntegrity, getDbPath } from '../db/connection';
 import {
   authenticateUser,
   getAllUsers,
@@ -70,7 +71,10 @@ import {
 } from '../db/notifications';
 import { createBackup, restoreBackup, listLocalBackups, getLastBackupDate, getDbFileSize } from '../db/backup';
 import { syncAllOrderPayments } from '../db/orders';
-import { performSync, getSyncStatus as getSupabaseSyncStatus, enableSync, disableSync, setSyncInterval, backfillExistingData } from '../db/supabaseSync';
+import { performSync, getSyncStatus as getSupabaseSyncStatus, enableSync, disableSync, setSyncInterval, backfillExistingData, setOnlineState } from '../db/supabaseSync';
+import { subscribeToRemoteChanges, unsubscribeFromRemoteChanges } from '../db/realtimeSync';
+import { performUndo, performRedo, getUndoRedoState } from '../db/undoRedo';
+import { isOnline, startConnectivityCheck, stopConnectivityCheck, onConnectivityChange } from './connectivity';
 import {
   getPieceTypes,
   updateBasePrice,
@@ -80,7 +84,6 @@ import {
   deletePieceType,
   restoreDefaultPieceTypes,
 } from '../db/pieceTypes';
-import db from '../db/schema';
 
 function saveSession(session: any) {
   db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('saved_session', ?)").run(JSON.stringify(session));
@@ -726,6 +729,13 @@ function registerIpcHandlers() {
   });
 
   // Backup & Restore
+  ipcMain.handle('db:health', async () => {
+    if (!isDbReady()) {
+      return { ok: false, error: getInitError() };
+    }
+    return checkIntegrity();
+  });
+
   ipcMain.handle('backup:create', async () => {
     return createBackup(mainWindow ?? undefined);
   });
@@ -792,6 +802,25 @@ function registerIpcHandlers() {
     setSyncInterval(minutes);
     restartSupabaseSyncLoop();
     return { success: true };
+  });
+
+  // Undo/Redo
+  ipcMain.handle('undo:perform', async () => {
+    const userId = currentSession?.userId ?? 0;
+    const result = performUndo(userId);
+    mainWindow?.webContents.send('undo:stateChanged', getUndoRedoState(userId));
+    return result;
+  });
+
+  ipcMain.handle('redo:perform', async () => {
+    const userId = currentSession?.userId ?? 0;
+    const result = performRedo(userId);
+    mainWindow?.webContents.send('undo:stateChanged', getUndoRedoState(userId));
+    return result;
+  });
+
+  ipcMain.handle('undo:getState', async () => {
+    return getUndoRedoState(currentSession?.userId ?? 0);
   });
 
   ipcMain.handle('updater:check', async () => {
@@ -890,7 +919,54 @@ function registerIpcHandlers() {
   });
 }
 
-app.on('ready', () => {
+app.on('ready', async () => {
+  // Check database health before proceeding
+  if (!isDbReady()) {
+    const errMsg = getInitError();
+    const choice = dialog.showMessageBoxSync({
+      type: 'error',
+      title: 'Database Error',
+      message: 'The database file could not be opened.',
+      detail: `${errMsg}\n\nYou can restore from a recent backup or close the application.\n\nDatabase location: ${getDbPath()}`,
+      buttons: ['Restore from Backup...', 'Close App'],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (choice === 0) {
+      const result = await restoreBackup();
+      if (!result.success) {
+        dialog.showErrorBox('Restore Failed', result.error || 'Unknown error');
+        app.quit();
+      }
+      return; // restoreBackup calls app.relaunch() + app.exit(0)
+    }
+    app.quit();
+    return;
+  }
+
+  const integrity = checkIntegrity();
+  if (!integrity.ok) {
+    const choice = dialog.showMessageBoxSync({
+      type: 'error',
+      title: 'Database Corruption Detected',
+      message: 'The database file is corrupted.',
+      detail: `${integrity.error}\n\nYou can restore from a recent backup to recover your data.\n\nDatabase location: ${getDbPath()}`,
+      buttons: ['Restore from Backup...', 'Close App'],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (choice === 0) {
+      const result = await restoreBackup();
+      if (!result.success) {
+        dialog.showErrorBox('Restore Failed', result.error || 'Unknown error');
+        app.quit();
+      }
+      return;
+    }
+    app.quit();
+    return;
+  }
+
   initializeSchema();
   syncAllOrderPayments(); // ensure orders.paid matches actual payment records
   registerIpcHandlers();
@@ -936,6 +1012,30 @@ app.on('ready', () => {
   if (getSetting('supabase_sync_enabled') === '1') {
     startSupabaseSyncLoop();
   }
+
+  // Start connectivity check and realtime subscription
+  startConnectivityCheck();
+  if (getSetting('supabase_sync_enabled') === '1') {
+    subscribeToRemoteChanges((table, op) => {
+      mainWindow?.webContents.send('sync:remoteChange', { table, op });
+    });
+  }
+
+  onConnectivityChange((online) => {
+    setOnlineState(online);
+    if (online) {
+      safeLog('[connectivity] back online -- flushing queue + resubscribing');
+      performSync();
+      if (getSetting('supabase_sync_enabled') === '1') {
+        subscribeToRemoteChanges((table, op) => {
+          mainWindow?.webContents.send('sync:remoteChange', { table, op });
+        });
+      }
+    } else {
+      safeLog('[connectivity] offline -- pausing realtime');
+      unsubscribeFromRemoteChanges();
+    }
+  });
 });
 
 app.on('window-all-closed', () => {
@@ -948,6 +1048,8 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   isShuttingDown = true;
   stopSupabaseSyncLoop();
+  unsubscribeFromRemoteChanges();
+  stopConnectivityCheck();
 });
 
 app.on('activate', () => {

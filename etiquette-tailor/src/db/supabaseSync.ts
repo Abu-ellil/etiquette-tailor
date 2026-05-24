@@ -1,6 +1,7 @@
 import db from './connection';
 import { supabase, type SyncLogEntry } from './supabase';
 import { getSetting, setSetting } from './settings';
+import { getIsApplyingRemote } from './realtimeSync';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -22,14 +23,27 @@ interface SyncStatus {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Online state (set by connectivity module)                          */
+/* ------------------------------------------------------------------ */
+let _isOnline = true;
+
+export function setOnlineState(online: boolean): void {
+  _isOnline = online;
+}
+
+export function isSyncOnline(): boolean {
+  return _isOnline;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-function getSyncSource(): string {
+export function getSyncSource(): string {
   const branchId = getSetting('active_branch_id') || '1';
   return `branch_${branchId}`;
 }
 
-function getBranchId(): number {
+export function getBranchId(): number {
   return parseInt(getSetting('active_branch_id') || '1', 10);
 }
 
@@ -42,7 +56,17 @@ export function logChange(tableName: string, recordId: number, action: 'INSERT' 
       INSERT INTO sync_log (table_name, record_id, action, data, branch_id, synced)
       VALUES (?, ?, ?, ?, ?, 0)
     `);
-    stmt.run(tableName, recordId, action, data ? JSON.stringify(data) : null, getBranchId());
+    const result = stmt.run(tableName, recordId, action, data ? JSON.stringify(data) : null, getBranchId());
+    const syncLogId = result.lastInsertRowid as number;
+
+    // Instant push if online and not applying a remote change
+    if (_isOnline && !getIsApplyingRemote()) {
+      setImmediate(() => {
+        flushLatestChange(syncLogId).catch(err => {
+          console.error('[sync] instant push failed, will retry on next poll:', err);
+        });
+      });
+    }
   } catch (err) {
     console.error('[sync] Failed to log change:', err);
   }
@@ -52,59 +76,56 @@ export function logChange(tableName: string, recordId: number, action: 'INSERT' 
 /*  Push local changes to Supabase                                    */
 /* ------------------------------------------------------------------ */
 async function pushChanges(): Promise<number> {
-  const syncSource = getSyncSource();
-  const branchId = getBranchId();
+  let totalPushed = 0;
 
-  // Get unsynced changes
-  const unsynced = db.prepare(`
-    SELECT * FROM sync_log WHERE synced = 0 ORDER BY created_at ASC LIMIT 100
-  `).all() as SyncLogEntry[];
+  // Keep pushing batches until all synced
+  while (true) {
+    const unsynced = db.prepare(`
+      SELECT * FROM sync_log WHERE synced = 0 ORDER BY created_at ASC LIMIT 200
+    `).all() as SyncLogEntry[];
 
-  if (unsynced.length === 0) return 0;
+    if (unsynced.length === 0) break;
 
-  let pushed = 0;
-  const errors: string[] = [];
+    for (const entry of unsynced) {
+      try {
+        const data = entry.data ? JSON.parse(entry.data) : {};
 
-  for (const entry of unsynced) {
-    try {
-      const data = entry.data ? JSON.parse(entry.data) : {};
+        switch (entry.table_name) {
+          case 'customers':
+            await pushCustomer(entry, data);
+            break;
+          case 'orders':
+            await pushOrder(entry, data);
+            break;
+          case 'order_items':
+            await pushOrderItem(entry, data);
+            break;
+          case 'order_payments':
+            await pushOrderPayment(entry, data);
+            break;
+          case 'order_measurements':
+            await pushOrderMeasurement(entry, data);
+            break;
+          case 'order_tasks':
+            await pushOrderTask(entry, data);
+            break;
+          case 'expenses':
+            await pushExpense(entry, data);
+            break;
+          case 'users':
+            await pushUser(entry, data);
+            break;
+          case 'piece_types':
+            await pushPieceType(entry, data);
+            break;
+        }
 
-      switch (entry.table_name) {
-        case 'customers':
-          await pushCustomer(entry, data, syncSource, branchId);
-          break;
-        case 'orders':
-          await pushOrder(entry, data, syncSource, branchId);
-          break;
-        case 'order_items':
-          await pushOrderItem(entry, data, syncSource);
-          break;
-        case 'order_payments':
-          await pushOrderPayment(entry, data, syncSource);
-          break;
-        case 'order_measurements':
-          await pushOrderMeasurement(entry, data, syncSource);
-          break;
-        case 'order_tasks':
-          await pushOrderTask(entry, data, syncSource);
-          break;
-        case 'expenses':
-          await pushExpense(entry, data, syncSource, branchId);
-          break;
-        case 'users':
-          await pushUser(entry, data, syncSource);
-          break;
-        case 'piece_types':
-          await pushPieceType(entry, data, syncSource);
-          break;
+        // Mark as synced
+        db.prepare('UPDATE sync_log SET synced = 1 WHERE id = ?').run(entry.id);
+        totalPushed++;
+      } catch (err: any) {
+        console.error('[sync] Failed to push entry:', entry.table_name, entry.record_id, err.message);
       }
-
-      // Mark as synced
-      db.prepare('UPDATE sync_log SET synced = 1 WHERE id = ?').run(entry.id);
-      pushed++;
-    } catch (err: any) {
-      errors.push(`${entry.table_name}:${entry.record_id} - ${err.message}`);
-      console.error('[sync] Failed to push entry:', entry, err);
     }
   }
 
@@ -112,240 +133,292 @@ async function pushChanges(): Promise<number> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   db.prepare('DELETE FROM sync_log WHERE synced = 1 AND created_at < ?').run(weekAgo);
 
-  return pushed;
+  return totalPushed;
 }
 
-async function pushCustomer(entry: SyncLogEntry, data: any, syncSource: string, branchId: number): Promise<void> {
+/* ------------------------------------------------------------------ */
+/*  Instant push - flush a single sync_log entry immediately          */
+/* ------------------------------------------------------------------ */
+async function flushLatestChange(syncLogId: number): Promise<void> {
+  const entry = db.prepare('SELECT * FROM sync_log WHERE id = ?').get(syncLogId) as SyncLogEntry | undefined;
+  if (!entry || entry.synced === 1) return;
+
+  const data = entry.data ? JSON.parse(entry.data) : {};
+
+  try {
+    switch (entry.table_name) {
+      case 'customers': await pushCustomer(entry, data); break;
+      case 'orders': await pushOrder(entry, data); break;
+      case 'order_items': await pushOrderItem(entry, data); break;
+      case 'order_payments': await pushOrderPayment(entry, data); break;
+      case 'order_measurements': await pushOrderMeasurement(entry, data); break;
+      case 'order_tasks': await pushOrderTask(entry, data); break;
+      case 'expenses': await pushExpense(entry, data); break;
+      case 'users': await pushUser(entry, data); break;
+      case 'piece_types': await pushPieceType(entry, data); break;
+    }
+    db.prepare('UPDATE sync_log SET synced = 1 WHERE id = ?').run(syncLogId);
+  } catch (err) {
+    console.error('[sync] flush failed for', syncLogId, err);
+  }
+}
+
+async function pushCustomer(entry: SyncLogEntry, data: any): Promise<void> {
   const local = db.prepare('SELECT * FROM customers WHERE id = ?').get(entry.record_id) as any;
+  if (!local) return;
+  const recordBranch = local.branch_id || 1;
+  const recordSource = `branch_${recordBranch}`;
 
   if (entry.action === 'DELETE') {
-    await supabase.from('customers').delete().eq('local_id', entry.record_id).eq('sync_source', syncSource);
+    await supabase.from('customers').delete().eq('local_id', entry.record_id).eq('sync_source', recordSource);
   } else {
     await supabase.from('customers').upsert({
       local_id: entry.record_id,
-      name: local?.name,
-      phone: local?.phone,
-      notes: local?.notes,
-      branch_id: branchId,
-      sync_source: syncSource,
+      name: local.name,
+      phone: local.phone,
+      notes: local.notes,
+      branch_id: recordBranch,
+      sync_source: recordSource,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'local_id,sync_source' });
   }
 }
 
-async function pushOrder(entry: SyncLogEntry, data: any, syncSource: string, branchId: number): Promise<void> {
+async function pushOrder(entry: SyncLogEntry, data: any): Promise<void> {
   const local = db.prepare('SELECT * FROM orders WHERE id = ?').get(entry.record_id) as any;
+  if (!local) return;
+  const recordBranch = local.branch_id || 1;
+  const recordSource = `branch_${recordBranch}`;
 
   if (entry.action === 'DELETE') {
-    await supabase.from('orders').delete().eq('local_id', entry.record_id).eq('sync_source', syncSource);
+    await supabase.from('orders').delete().eq('local_id', entry.record_id).eq('sync_source', recordSource);
   } else {
-    // Get remote customer ID
     const { data: cust } = await supabase
       .from('customers')
       .select('id')
       .eq('local_id', local.customer_id)
-      .eq('sync_source', syncSource)
+      .eq('sync_source', recordSource)
       .single();
 
     await supabase.from('orders').upsert({
       local_id: entry.record_id,
-      order_number: local?.order_number,
-      branch_id: branchId,
+      order_number: local.order_number,
+      branch_id: recordBranch,
       customer_id: cust?.id || local.customer_id,
-      piece_type: local?.piece_type,
-      details: local?.details,
-      price: local?.price,
-      paid: local?.paid,
-      payment_method: local?.payment_method,
-      status: local?.status,
-      receive_date: local?.receive_date,
-      delivery_date: local?.delivery_date,
-      created_by: local?.created_by,
-      fabric_source: local?.fabric_source,
-      sync_source: syncSource,
+      piece_type: local.piece_type,
+      details: local.details,
+      price: local.price,
+      paid: local.paid,
+      payment_method: local.payment_method,
+      status: local.status,
+      receive_date: local.receive_date,
+      delivery_date: local.delivery_date,
+      created_by: local.created_by,
+      fabric_source: local.fabric_source,
+      sync_source: recordSource,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'local_id,sync_source' });
   }
 }
 
-async function pushOrderItem(entry: SyncLogEntry, data: any, syncSource: string): Promise<void> {
+async function getOrderBranch(orderId: number): { branchId: number; source: string } {
+  const order = db.prepare('SELECT branch_id FROM orders WHERE id = ?').get(orderId) as { branch_id: number } | undefined;
+  const branchId = order?.branch_id || 1;
+  return { branchId, source: `branch_${branchId}` };
+}
+
+async function pushOrderItem(entry: SyncLogEntry, data: any): Promise<void> {
   const local = db.prepare('SELECT * FROM order_items WHERE id = ?').get(entry.record_id) as any;
+  if (!local) return;
+  const { source: recordSource } = await getOrderBranch(local.order_id);
 
   if (entry.action === 'DELETE') {
-    await supabase.from('order_items').delete().eq('local_id', entry.record_id).eq('sync_source', syncSource);
+    await supabase.from('order_items').delete().eq('local_id', entry.record_id).eq('sync_source', recordSource);
   } else {
-    // Get remote order ID
     const { data: ord } = await supabase
       .from('orders')
       .select('id')
       .eq('local_id', local.order_id)
-      .eq('sync_source', syncSource)
+      .eq('sync_source', recordSource)
       .single();
 
     await supabase.from('order_items').upsert({
       local_id: entry.record_id,
       order_id: ord?.id || local.order_id,
-      piece_type: local?.piece_type,
-      quantity: local?.quantity,
-      unit_price: local?.unit_price,
-      total_price: local?.total_price,
-      fabric_source: local?.fabric_source,
-      fabric_price: local?.fabric_price,
-      details: local?.details,
-      sort_order: local?.sort_order,
-      sync_source: syncSource,
+      piece_type: local.piece_type,
+      quantity: local.quantity,
+      unit_price: local.unit_price,
+      total_price: local.total_price,
+      fabric_source: local.fabric_source,
+      fabric_price: local.fabric_price,
+      details: local.details,
+      sort_order: local.sort_order,
+      sync_source: recordSource,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'local_id,sync_source' });
   }
 }
 
-async function pushOrderPayment(entry: SyncLogEntry, data: any, syncSource: string): Promise<void> {
+async function pushOrderPayment(entry: SyncLogEntry, data: any): Promise<void> {
   const local = db.prepare('SELECT * FROM order_payments WHERE id = ?').get(entry.record_id) as any;
+  if (!local) return;
+  const { source: recordSource } = await getOrderBranch(local.order_id);
 
   if (entry.action === 'DELETE') {
-    await supabase.from('order_payments').delete().eq('local_id', entry.record_id).eq('sync_source', syncSource);
+    await supabase.from('order_payments').delete().eq('local_id', entry.record_id).eq('sync_source', recordSource);
   } else {
     const { data: ord } = await supabase
       .from('orders')
       .select('id')
       .eq('local_id', local.order_id)
-      .eq('sync_source', syncSource)
+      .eq('sync_source', recordSource)
       .single();
 
     await supabase.from('order_payments').upsert({
       local_id: entry.record_id,
       order_id: ord?.id || local.order_id,
-      amount: local?.amount,
-      method: local?.method,
-      note: local?.note,
-      created_by: local?.created_by,
-      created_at: local?.created_at,
-      sync_source: syncSource,
+      amount: local.amount,
+      method: local.method,
+      note: local.note,
+      created_by: local.created_by,
+      created_at: local.created_at,
+      sync_source: recordSource,
     }, { onConflict: 'local_id,sync_source' });
   }
 }
 
-async function pushOrderMeasurement(entry: SyncLogEntry, data: any, syncSource: string): Promise<void> {
+async function pushOrderMeasurement(entry: SyncLogEntry, data: any): Promise<void> {
   const local = db.prepare('SELECT * FROM order_measurements WHERE id = ?').get(entry.record_id) as any;
+  if (!local) return;
+  const { source: recordSource } = await getOrderBranch(local.order_id);
 
   if (entry.action === 'DELETE') {
-    await supabase.from('order_measurements').delete().eq('local_id', entry.record_id).eq('sync_source', syncSource);
+    await supabase.from('order_measurements').delete().eq('local_id', entry.record_id).eq('sync_source', recordSource);
   } else {
     const { data: ord } = await supabase
       .from('orders')
       .select('id')
       .eq('local_id', local.order_id)
-      .eq('sync_source', syncSource)
+      .eq('sync_source', recordSource)
       .single();
 
     await supabase.from('order_measurements').upsert({
       local_id: entry.record_id,
       order_id: ord?.id || local.order_id,
-      chest: local?.chest,
-      waist: local?.waist,
-      hips: local?.hips,
-      length: local?.length,
-      sleeve: local?.sleeve,
-      shoulder: local?.shoulder,
-      notes: local?.notes,
-      taken_by: local?.taken_by,
-      created_at: local?.created_at,
-      sync_source: syncSource,
+      chest: local.chest,
+      waist: local.waist,
+      hips: local.hips,
+      length: local.length,
+      sleeve: local.sleeve,
+      shoulder: local.shoulder,
+      notes: local.notes,
+      taken_by: local.taken_by,
+      created_at: local.created_at,
+      sync_source: recordSource,
     }, { onConflict: 'local_id,sync_source' });
   }
 }
 
-async function pushOrderTask(entry: SyncLogEntry, data: any, syncSource: string): Promise<void> {
+async function pushOrderTask(entry: SyncLogEntry, data: any): Promise<void> {
   const local = db.prepare('SELECT * FROM order_tasks WHERE id = ?').get(entry.record_id) as any;
+  if (!local) return;
+  const { source: recordSource } = await getOrderBranch(local.order_id);
 
   if (entry.action === 'DELETE') {
-    await supabase.from('order_tasks').delete().eq('local_id', entry.record_id).eq('sync_source', syncSource);
+    await supabase.from('order_tasks').delete().eq('local_id', entry.record_id).eq('sync_source', recordSource);
   } else {
     const { data: ord } = await supabase
       .from('orders')
       .select('id')
       .eq('local_id', local.order_id)
-      .eq('sync_source', syncSource)
+      .eq('sync_source', recordSource)
       .single();
 
     await supabase.from('order_tasks').upsert({
       local_id: entry.record_id,
       order_id: ord?.id || local.order_id,
-      order_item_id: local?.order_item_id,
-      task_type: local?.task_type,
-      assigned_to: local?.assigned_to,
-      wage_type: local?.wage_type,
-      wage_rate: local?.wage_rate,
-      wage_amount: local?.wage_amount,
-      task_quantity: local?.task_quantity,
-      status: local?.status,
-      started_at: local?.started_at,
-      completed_at: local?.completed_at,
-      notes: local?.notes,
-      sync_source: syncSource,
+      order_item_id: local.order_item_id,
+      task_type: local.task_type,
+      assigned_to: local.assigned_to,
+      wage_type: local.wage_type,
+      wage_rate: local.wage_rate,
+      wage_amount: local.wage_amount,
+      task_quantity: local.task_quantity,
+      status: local.status,
+      started_at: local.started_at,
+      completed_at: local.completed_at,
+      notes: local.notes,
+      sync_source: recordSource,
     }, { onConflict: 'local_id,sync_source' });
   }
 }
 
-async function pushExpense(entry: SyncLogEntry, data: any, syncSource: string, branchId: number): Promise<void> {
+async function pushExpense(entry: SyncLogEntry, data: any): Promise<void> {
   const local = db.prepare('SELECT * FROM expenses WHERE id = ?').get(entry.record_id) as any;
+  if (!local) return;
+  const recordBranch = local.branch_id || 1;
+  const recordSource = `branch_${recordBranch}`;
 
   if (entry.action === 'DELETE') {
-    await supabase.from('expenses').delete().eq('local_id', entry.record_id).eq('sync_source', syncSource);
+    await supabase.from('expenses').delete().eq('local_id', entry.record_id).eq('sync_source', recordSource);
   } else {
     await supabase.from('expenses').upsert({
       local_id: entry.record_id,
-      category: local?.category,
-      description: local?.description,
-      amount: local?.amount,
-      expense_date: local?.expense_date,
-      branch_id: branchId,
-      created_by: local?.created_by,
-      note: local?.note,
-      is_deleted: local?.is_deleted || 0,
-      sync_source: syncSource,
+      category: local.category,
+      description: local.description,
+      amount: local.amount,
+      expense_date: local.expense_date,
+      branch_id: recordBranch,
+      created_by: local.created_by,
+      note: local.note,
+      is_deleted: local.is_deleted || 0,
+      sync_source: recordSource,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'local_id,sync_source' });
   }
 }
 
-async function pushUser(entry: SyncLogEntry, data: any, syncSource: string): Promise<void> {
+async function pushUser(entry: SyncLogEntry, data: any): Promise<void> {
   const local = db.prepare('SELECT * FROM users WHERE id = ?').get(entry.record_id) as any;
+  if (!local) return;
+  const recordBranch = local.branch_id || 1;
+  const recordSource = `branch_${recordBranch}`;
 
   if (entry.action === 'DELETE') {
-    await supabase.from('users').delete().eq('local_id', entry.record_id).eq('sync_source', syncSource);
+    await supabase.from('users').delete().eq('local_id', entry.record_id).eq('sync_source', recordSource);
   } else {
     await supabase.from('users').upsert({
       local_id: entry.record_id,
-      name: local?.name,
-      username: local?.username,
-      role: local?.role,
-      worker_type: local?.worker_type,
-      branch_id: local?.branch_id,
-      base_salary: local?.base_salary || 0,
-      default_rate: local?.default_rate || 0,
-      active: local?.active ?? 1,
-      sync_source: syncSource,
+      name: local.name,
+      username: local.username,
+      role: local.role,
+      worker_type: local.worker_type,
+      branch_id: recordBranch,
+      base_salary: local.base_salary || 0,
+      default_rate: local.default_rate || 0,
+      active: local.active ?? 1,
+      sync_source: recordSource,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'local_id,sync_source' });
   }
 }
 
-async function pushPieceType(entry: SyncLogEntry, data: any, syncSource: string): Promise<void> {
+async function pushPieceType(entry: SyncLogEntry, data: any): Promise<void> {
   const local = db.prepare('SELECT * FROM piece_types WHERE id = ?').get(entry.record_id) as any;
+  if (!local) return;
 
   if (entry.action === 'DELETE') {
-    await supabase.from('piece_types').delete().eq('local_id', entry.record_id).eq('sync_source', syncSource);
+    await supabase.from('piece_types').delete().eq('local_id', entry.record_id);
   } else {
     await supabase.from('piece_types').upsert({
       local_id: entry.record_id,
-      name_en: local?.name_en,
-      name_ar: local?.name_ar,
-      category: local?.category,
-      active: local?.active ?? 1,
-      sort_order: local?.sort_order || 0,
-      base_price: local?.base_price || 0,
-      sync_source: syncSource,
+      name_en: local.name_en,
+      name_ar: local.name_ar,
+      category: local.category,
+      active: local.active ?? 1,
+      sort_order: local.sort_order || 0,
+      base_price: local.base_price || 0,
+      sync_source: 'shared',
       updated_at: new Date().toISOString(),
     }, { onConflict: 'local_id,sync_source' });
   }

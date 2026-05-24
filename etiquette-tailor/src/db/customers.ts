@@ -1,5 +1,6 @@
 import db from './connection';
 import { logChange } from './supabaseSync';
+import { recordOperation } from './undoRedo';
 
 export interface Customer {
   id?: number;
@@ -38,29 +39,42 @@ export function searchCustomers(query: string, branchId?: number): Customer[] {
   return stmt.all(searchTerm, searchTerm) as Customer[];
 }
 
-export function createCustomer(customer: Omit<Customer, 'id'>): number {
+export function createCustomer(customer: Omit<Customer, 'id'>, userId?: number): number {
   const stmt = db.prepare(
     'INSERT INTO customers (name, phone, notes, branch_id) VALUES (?, ?, ?, ?)'
   );
   const result = stmt.run(customer.name, customer.phone || null, customer.notes || null, customer.branch_id);
   const id = result.lastInsertRowid as number;
   logChange('customers', id, 'INSERT', { id, ...customer });
+  if (userId) {
+    const after = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as Record<string, any>;
+    recordOperation('customers', id, 'INSERT', null, after, userId);
+  }
   return id;
 }
 
-export function updateCustomer(id: number, customer: Partial<Customer>): void {
+export function updateCustomer(id: number, customer: Partial<Customer>, userId?: number): void {
+  const before = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as Record<string, any> | undefined;
   const stmt = db.prepare(`
     UPDATE customers SET name = ?, phone = ?, notes = ? WHERE id = ?
   `);
   stmt.run(customer.name, customer.phone || null, customer.notes || null, id);
   logChange('customers', id, 'UPDATE', { id, ...customer });
+  if (userId && before) {
+    const after = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as Record<string, any>;
+    recordOperation('customers', id, 'UPDATE', before, after, userId);
+  }
 }
 
-export function deleteCustomer(id: number): void {
+export function deleteCustomer(id: number, userId?: number): void {
+  const before = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as Record<string, any> | undefined;
   // Use soft delete to prevent foreign key issues with existing orders
   const stmt = db.prepare('UPDATE customers SET is_deleted = 1 WHERE id = ?');
   stmt.run(id);
   logChange('customers', id, 'DELETE');
+  if (userId && before) {
+    recordOperation('customers', id, 'DELETE', before, null, userId);
+  }
 }
 
 export function getCustomerOrders(customerId: number): any[] {

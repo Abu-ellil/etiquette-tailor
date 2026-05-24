@@ -83,8 +83,8 @@ export default function ReportsPage() {
     }
   }
 
-  const fmt = (amount: number) => new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR', maximumFractionDigits: 0 }).format(amount)
-  const fmtN = (n: number) => n.toLocaleString('ar-SA')
+  const fmt = (amount: number) => new Intl.NumberFormat('ar-QA', { style: 'currency', currency: 'QAR', maximumFractionDigits: 0 }).format(amount)
+  const fmtN = (n: number) => n.toLocaleString('ar-QA')
 
   if (loading || !analyticsData) {
     return (
@@ -119,7 +119,7 @@ export default function ReportsPage() {
       .filter((e: any) => new Date(e.expense_date).toISOString().startsWith(m.month))
       .reduce((s: number, e: any) => s + (e.amount || 0), 0)
     return {
-      month: new Date(m.month + '-01').toLocaleDateString('ar-SA', { month: 'short' }),
+      month: new Date(m.month + '-01').toLocaleDateString('ar-QA', { month: 'short' }),
       الإيرادات: m.revenue,
       المصروفات: monthExpenses,
       'صافي الربح': m.revenue - monthExpenses,
@@ -153,7 +153,7 @@ export default function ReportsPage() {
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-30)
     .map(([date, v]) => ({
-      date: new Date(date).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }),
+      date: new Date(date).toLocaleDateString('ar-QA', { month: 'short', day: 'numeric' }),
       'الإيرادات': v.inflow,
       'المصروفات': v.outflow,
       'صافي': v.inflow - v.outflow,
@@ -439,7 +439,7 @@ export default function ReportsPage() {
                 {expensesData.slice(0, 20).map((expense: any) => (
                   <tr key={expense.id} className="data-row">
                     <td style={{ padding: '10px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                      {new Date(expense.expense_date).toLocaleDateString('ar-SA')}
+                      {new Date(expense.expense_date).toLocaleDateString('ar-QA')}
                     </td>
                     <td style={{ padding: '10px 16px' }}>
                       <span className="status-badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
