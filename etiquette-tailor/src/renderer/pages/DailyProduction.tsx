@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 interface ProductionEntry {
   worker_id: number;
@@ -30,6 +31,7 @@ interface WorkerRate {
 
 export default function DailyProductionPage() {
   const { t, currency } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [workers, setWorkers] = useState<any[]>([]);
   const [pieceTypes, setPieceTypes] = useState<any[]>([]);
@@ -45,7 +47,7 @@ export default function DailyProductionPage() {
     window.electronAPI.auth.getSession().then((s: any) => setSession(s));
     loadWorkers();
     loadPieceTypes();
-  }, []);
+  }, [activeBranchId]);
 
   // Load existing records when date changes
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function DailyProductionPage() {
 
   const loadWorkers = async () => {
     try {
-      const data = await window.electronAPI.workers.getAll();
+      const data = await window.electronAPI.workers.getAll(activeBranchId);
       setWorkers(data.filter((w: any) => w.active === 1));
     } catch (err) {
       console.error('Failed to load workers:', err);

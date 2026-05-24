@@ -1,247 +1,463 @@
-// صفحة التقارير المالية
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingDown, TrendingUp, DollarSign, Calendar } from 'lucide-react'
-import { Navbar } from '@/components/layout/Navbar'
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts'
+import { useChartColors, ChartTooltip, ChartContainer } from '@/components/charts/ChartProvider'
+import { AppShell } from '@/components/layout/AppShell'
+import {
+  TrendingUp, TrendingDown, DollarSign, Calendar,
+  Loader2, Filter, Activity,
+} from 'lucide-react'
+
+const CATEGORY_LABELS: Record<string, string> = {
+  rent: 'إيجار', utilities: 'مرافق', materials: 'مواد', fabric: 'أقمشة',
+  supplies: 'مستلزمات', salaries: 'رواتب', other: 'أخرى',
+}
+
+const PIE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899']
+
+const PERIOD_LABELS: Record<string, string> = {
+  week: 'أسبوع', month: 'شهر', quarter: 'ربع سنة', year: 'سنة', all: 'الكل',
+}
+
+type Period = 'week' | 'month' | 'quarter' | 'year' | 'all'
 
 export default function ReportsPage() {
-  const [data, setData] = useState({
-    totalRevenue: 0,
-    totalPaid: 0,
-    totalBalance: 0,
-    totalExpenses: 0,
-    netProfit: 0,
-    ordersCount: 0,
-  })
+  const chartColors = useChartColors()
+  const [analyticsData, setAnalyticsData] = useState<any>(null)
+  const [expensesData, setExpensesData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [period, setPeriod] = useState<Period>('month')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
   useEffect(() => {
-    // تعيين التواريخ الافتراضية (هذا الشهر)
     const now = new Date()
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-
-    setStartDate(firstDay.toISOString().split('T')[0])
-    setEndDate(lastDay.toISOString().split('T')[0])
-  }, [])
+    let start: Date
+    switch (period) {
+      case 'week': start = new Date(now.getTime() - 7 * 86400000); break
+      case 'month': start = new Date(now.getFullYear(), now.getMonth(), 1); break
+      case 'quarter': start = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); break
+      case 'year': start = new Date(now.getFullYear(), 0, 1); break
+      case 'all': start = new Date(2020, 0, 1); break
+    }
+    setStartDate(start.toISOString().split('T')[0])
+    setEndDate(now.toISOString().split('T')[0])
+  }, [period])
 
   useEffect(() => {
-    if (startDate && endDate) {
-      fetchReport()
-    }
+    if (startDate && endDate) fetchData()
   }, [startDate, endDate])
 
-  const fetchReport = async () => {
+  const fetchData = async () => {
     setLoading(true)
     try {
-      // جلب بيانات الطلبات
-      const ordersRes = await fetch(`/api/analytics`)
-      const ordersJson = await ordersRes.json()
-
-      // جلب بيانات المصروفات
-      const expensesRes = await fetch(`/api/expenses?start_date=${startDate}&end_date=${endDate}`)
+      const [analyticsRes, expensesRes] = await Promise.all([
+        fetch('/api/analytics'),
+        fetch(`/api/expenses?start_date=${startDate}&end_date=${endDate}`),
+      ])
+      const analytics = await analyticsRes.json()
       const expensesJson = await expensesRes.json()
-
-      const totalRevenue = ordersJson.summary?.totalRevenue || 0
-      const totalPaid = ordersJson.summary?.totalPaid || 0
-      const totalBalance = ordersJson.summary?.totalBalance || 0
-      const totalExpenses = (expensesJson.expenses || []).reduce((sum: number, e: any) => sum + e.amount, 0)
-
-      setData({
-        totalRevenue,
-        totalPaid,
-        totalBalance,
-        totalExpenses,
-        netProfit: totalRevenue - totalExpenses,
-        ordersCount: ordersJson.summary?.totalOrders || 0,
-      })
-    } catch (error) {
-      console.error('Error fetching report:', error)
+      setAnalyticsData(analytics)
+      setExpensesData(expensesJson.expenses || [])
+    } catch (e) {
+      console.error('Error fetching reports:', e)
     } finally {
       setLoading(false)
     }
   }
 
+  const fmt = (amount: number) => new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR', maximumFractionDigits: 0 }).format(amount)
+  const fmtN = (n: number) => n.toLocaleString('ar-SA')
+
+  if (loading || !analyticsData) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-10 h-10 animate-spin text-accent-primary" />
+        </div>
+      </AppShell>
+    )
+  }
+
+  const summary = analyticsData.summary || {}
+  const branches = analyticsData.branches || {}
+  const monthlyRevenue = analyticsData.monthlyRevenue || []
+
+  const totalExpenses = expensesData.reduce((s, e) => s + (e.amount || 0), 0)
+  const totalRevenue = summary.totalRevenue || 0
+  const netProfit = totalRevenue - totalExpenses
+  const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0
+
+  const expenseByCategory = expensesData.reduce((acc: Record<string, number>, e: any) => {
+    acc[e.category] = (acc[e.category] || 0) + (e.amount || 0)
+    return acc
+  }, {})
+  const expenseChartData = Object.entries(expenseByCategory).map(([cat, amount]) => ({
+    name: CATEGORY_LABELS[cat] || cat,
+    value: amount,
+  }))
+
+  const revenueVsExpense = monthlyRevenue.map((m: { month: string; revenue: number }) => {
+    const monthExpenses = expensesData
+      .filter((e: any) => new Date(e.expense_date).toISOString().startsWith(m.month))
+      .reduce((s: number, e: any) => s + (e.amount || 0), 0)
+    return {
+      month: new Date(m.month + '-01').toLocaleDateString('ar-SA', { month: 'short' }),
+      الإيرادات: m.revenue,
+      المصروفات: monthExpenses,
+      'صافي الربح': m.revenue - monthExpenses,
+    }
+  })
+
+  const branchPL = Object.entries(branches).map(([id, b]: [string, any]) => {
+    const bExpenses = expensesData.filter(e => e.branch_id === parseInt(id)).reduce((s, e) => s + (e.amount || 0), 0)
+    return {
+      name: b.name,
+      revenue: b.totalRevenue,
+      expenses: bExpenses,
+      profit: b.totalRevenue - bExpenses,
+      orders: b.orderCount,
+      margin: b.totalRevenue > 0 ? ((b.totalRevenue - bExpenses) / b.totalRevenue * 100) : 0,
+    }
+  })
+
+  const dailyMap: Record<string, { inflow: number; outflow: number }> = {}
+  expensesData.forEach(e => {
+    const d = e.expense_date
+    if (!dailyMap[d]) dailyMap[d] = { inflow: 0, outflow: 0 }
+    dailyMap[d].outflow += e.amount || 0
+  })
+  const dailyRevenue: { date: string; revenue: number }[] = analyticsData.dailyRevenue || []
+  dailyRevenue.forEach(d => {
+    if (!dailyMap[d.date]) dailyMap[d.date] = { inflow: 0, outflow: 0 }
+    dailyMap[d.date].inflow += d.revenue
+  })
+  const cashFlowData = Object.entries(dailyMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-30)
+    .map(([date, v]) => ({
+      date: new Date(date).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }),
+      'الإيرادات': v.inflow,
+      'المصروفات': v.outflow,
+      'صافي': v.inflow - v.outflow,
+    }))
+
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">التقارير المالية</h1>
-        </div>
-
-        {/* فلترة التاريخ */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-          <div className="flex flex-col md:flex-row items-end gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">من تاريخ</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">إلى تاريخ</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* بطاقات الملخص */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <MetricCard
-            title="إجمالي الإيرادات"
-            value={`${data.totalRevenue.toLocaleString('ar-SA')} ر.س`}
-            icon={<DollarSign className="w-5 h-5" />}
-            trend={data.totalRevenue > 0 ? 'up' : 'neutral'}
-            color="blue"
-          />
-
-          <MetricCard
-            title="المصروفات"
-            value={`${data.totalExpenses.toLocaleString('ar-SA')} ر.س`}
-            icon={<TrendingDown className="w-5 h-5" />}
-            trend={data.totalExpenses > 0 ? 'down' : 'neutral'}
-            color="red"
-          />
-
-          <MetricCard
-            title="صافي الربح"
-            value={`${data.netProfit.toLocaleString('ar-SA')} ر.س`}
-            icon={<TrendingUp className="w-5 h-5" />}
-            trend={data.netProfit > 0 ? 'up' : data.netProfit < 0 ? 'down' : 'neutral'}
-            color={data.netProfit >= 0 ? 'green' : 'red'}
-          />
-
-          <MetricCard
-            title="الديون المتبقية"
-            value={`${data.totalBalance.toLocaleString('ar-SA')} ر.س`}
-            icon={<Calendar className="w-5 h-5" />}
-            trend={data.totalBalance > 0 ? 'neutral' : 'up'}
-            color="orange"
-          />
-        </div>
-
-        {/* تفاصيل إضافية */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* ملخص الإيرادات */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">ملخص الإيرادات</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-gray-600">إجمالي الطلبات</span>
-                <span className="font-bold">{data.ordersCount}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-gray-600">إجمالي المبيعات</span>
-                <span className="font-bold">{data.totalRevenue.toLocaleString('ar-SA')} ر.س</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-gray-600">المدفوع</span>
-                <span className="font-bold text-green-600">{data.totalPaid.toLocaleString('ar-SA')} ر.س</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-600">المتبقي</span>
-                <span className="font-bold text-orange-600">{data.totalBalance.toLocaleString('ar-SA')} ر.س</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ملخص المصروفات */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">ملخص المصروفات</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-600">إجمالي المصروفات</span>
-                <span className="font-bold text-red-600">{data.totalExpenses.toLocaleString('ar-SA')} ر.س</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-600">صافي الربح</span>
-                <span className={`font-bold ${data.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {data.netProfit.toLocaleString('ar-SA')} ر.س
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-600">نسبة الربح</span>
-                <span className={`font-bold ${data.totalRevenue > 0 && (data.netProfit / data.totalRevenue * 100) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {data.totalRevenue > 0 ? ((data.netProfit / data.totalRevenue) * 100).toFixed(1) : 0}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* أزرار التنقل */}
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={() => window.open('/payments', '_blank')}
-            className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            عرض المدفوعات
-          </button>
-          <button
-            onClick={() => window.open('/expenses', '_blank')}
-            className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            عرض المصروفات
-          </button>
+    <AppShell>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6 md:mb-7">
+        <div>
+          <h1 className="page-title">التقارير المالية</h1>
+          <p className="page-subtitle">تحليل شامل للإيرادات والمصروفات والأرباح</p>
         </div>
       </div>
-    </div>
+
+      {/* Period Filter */}
+      <div className="filter-bar">
+        <Filter size={18} style={{ color: 'var(--text-muted)' }} />
+        {(['week', 'month', 'quarter', 'year', 'all'] as Period[]).map(p => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`filter-btn ${period === p ? 'active' : ''}`}
+          >
+            {PERIOD_LABELS[p]}
+          </button>
+        ))}
+        <div className="flex items-center gap-2 mr-3">
+          <input
+            type="date"
+            value={startDate}
+            onChange={e => { setStartDate(e.target.value); setPeriod('all' as Period) }}
+            className="date-input"
+          />
+          <span className="text-text-muted">—</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={e => { setEndDate(e.target.value); setPeriod('all' as Period) }}
+            className="date-input"
+          />
+        </div>
+      </div>
+
+      {/* P&L Summary Cards */}
+      <div className="kpi-grid gap-mb-mobile">
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">إجمالي الإيرادات</p>
+            <div className="kpi-icon" style={{ background: 'var(--accent-primary-light)' }}>
+              <TrendingUp style={{ width: 16, height: 16, color: 'var(--accent-primary)' }} />
+            </div>
+          </div>
+          <p className="kpi-value">{fmt(totalRevenue)}</p>
+        </div>
+
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">إجمالي المصروفات</p>
+            <div className="kpi-icon" style={{ background: 'var(--accent-danger-light)' }}>
+              <TrendingDown style={{ width: 16, height: 16, color: 'var(--accent-danger)' }} />
+            </div>
+          </div>
+          <p className="kpi-value">{fmt(totalExpenses)}</p>
+        </div>
+
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">صافي الربح</p>
+            <div className="kpi-icon" style={{ background: netProfit >= 0 ? 'var(--accent-success-light)' : 'var(--accent-danger-light)' }}>
+              <DollarSign style={{ width: 16, height: 16, color: netProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }} />
+            </div>
+          </div>
+          <p className="kpi-value">{fmt(netProfit)}</p>
+          <p style={{ fontSize: 12, color: netProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', marginTop: 4, fontWeight: 600 }}>
+            {netProfit >= 0 ? 'ربح' : 'خسارة'}
+          </p>
+        </div>
+
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">هامش الربح</p>
+            <div className="kpi-icon" style={{
+              background: profitMargin >= 20 ? 'var(--accent-success-light)' : profitMargin >= 0 ? 'var(--accent-warning-light)' : 'var(--accent-danger-light)',
+            }}>
+              <Activity style={{ width: 16, height: 16, color: profitMargin >= 20 ? 'var(--accent-success)' : profitMargin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)' }} />
+            </div>
+          </div>
+          <p className="kpi-value">{profitMargin.toFixed(1)}%</p>
+          <p style={{ fontSize: 12, color: profitMargin >= 20 ? 'var(--accent-success)' : profitMargin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)', marginTop: 4, fontWeight: 600 }}>
+            {profitMargin >= 20 ? 'ممتاز' : profitMargin >= 10 ? 'جيد' : profitMargin >= 0 ? 'مقبول' : 'خسارة'}
+          </p>
+        </div>
+
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">الديون المتبقية</p>
+            <div className="kpi-icon" style={{ background: 'var(--accent-warning-light)' }}>
+              <Calendar style={{ width: 16, height: 16, color: 'var(--accent-warning)' }} />
+            </div>
+          </div>
+          <p className="kpi-value">{fmt(summary.totalBalance || 0)}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>من العملاء</p>
+        </div>
+      </div>
+
+      {/* Revenue vs Expenses Trend + Expense Pie */}
+      <div className="chart-row-2 gap-mb-mobile">
+        <ChartContainer title="الإيرادات مقابل المصروفات" subtitle="الشهرية">
+          <BarChart data={revenueVsExpense} barGap={6}>
+            <defs>
+              <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={chartColors.colors[1]} stopOpacity={0.6} />
+                <stop offset="95%" stopColor={chartColors.colors[1]} stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+            <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 12 }} />
+            <YAxis tick={{ fill: chartColors.text, fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
+            <Legend iconType="circle" iconSize={8} formatter={(v: string) => <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{v}</span>} />
+            <Bar dataKey="الإيرادات" fill={chartColors.colors[0]} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="المصروفات" fill={chartColors.colors[3]} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartContainer>
+
+        <ChartContainer title="توزيع المصروفات" subtitle={fmt(totalExpenses)}>
+          {expenseChartData.length > 0 ? (
+            <PieChart>
+              <Pie data={expenseChartData} cx="50%" cy="50%" outerRadius={95} innerRadius={50} paddingAngle={3} dataKey="value" nameKey="name">
+                {expenseChartData.map((_, i) => (
+                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="transparent" />
+                ))}
+              </Pie>
+              <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
+              <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(v: string) => <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{v}</span>} />
+            </PieChart>
+          ) : (
+            <div className="flex items-center justify-center h-full text-text-muted">
+              لا توجد مصروفات في هذه الفترة
+            </div>
+          )}
+        </ChartContainer>
+      </div>
+
+      {/* Cash Flow + Branch P&L */}
+      <div className="equal-row gap-mb-mobile">
+        <ChartContainer title="التدفق النقدي اليومي" subtitle="آخر 30 يوم">
+          <AreaChart data={cashFlowData}>
+            <defs>
+              <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={chartColors.colors[1]} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={chartColors.colors[1]} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="outflowGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={chartColors.colors[3]} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={chartColors.colors[3]} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+            <XAxis dataKey="date" tick={{ fill: chartColors.text, fontSize: 11 }} interval={4} />
+            <YAxis tick={{ fill: chartColors.text, fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
+            <Area type="monotone" dataKey="الإيرادات" stroke={chartColors.colors[1]} strokeWidth={2} fill="url(#inflowGrad)" />
+            <Area type="monotone" dataKey="المصروفات" stroke={chartColors.colors[3]} strokeWidth={2} fill="url(#outflowGrad)" />
+          </AreaChart>
+        </ChartContainer>
+
+        <div className="card">
+          <h3 className="section-title mb-5">الأرباح والخسائر حسب الفرع</h3>
+          {branchPL.map((branch, i) => (
+            <div key={i} className="branch-card-inner" style={{ marginBottom: i < branchPL.length - 1 ? 12 : 0 }}>
+              <div className="flex justify-between items-center mb-3">
+                <div>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{branch.name}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{branch.orders} طلب</p>
+                </div>
+                <div className="text-left">
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: branch.profit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                    {fmt(branch.profit)}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 600, color: branch.margin >= 20 ? 'var(--accent-success)' : branch.margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)' }}>
+                    هامش {branch.margin.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+              <div className="profit-bar-track">
+                <div style={{
+                  height: '100%',
+                  width: `${Math.min(Math.max(Math.abs(branch.margin), 0), 100)}%`,
+                  borderRadius: 3,
+                  background: branch.margin >= 20 ? 'var(--accent-success)' : branch.margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)',
+                  transition: 'width 0.5s ease',
+                }} />
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <div>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>الإيرادات</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--accent-primary)' }}>{fmt(branch.revenue)}</p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>المصروفات</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--accent-danger)' }}>{fmt(branch.expenses)}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Revenue Breakdown Table */}
+      <div className="card gap-mb-mobile">
+        <h3 className="section-title mb-5">ملخص الأداء المالي</h3>
+        <div className="summary-cols">
+          <div>
+            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 12px' }}>ملخص الإيرادات</h4>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                <DataRow label="إجمالي الطلبات" value={fmtN(summary.totalOrders || 0)} />
+                <DataRow label="إجمالي المبيعات" value={fmt(totalRevenue)} bold />
+                <DataRow label="المدفوع" value={fmt(summary.totalPaid || 0)} color="var(--accent-success)" />
+                <DataRow label="المتبقي" value={fmt(summary.totalBalance || 0)} color="var(--accent-warning)" />
+                <DataRow label="متوسط قيمة الطلب" value={fmt(summary.totalOrders > 0 ? totalRevenue / summary.totalOrders : 0)} />
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 12px' }}>ملخص المصروفات</h4>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {Object.entries(expenseByCategory)
+                  .sort(([, a], [, b]) => (b as number) - (a as number))
+                  .map(([cat, amount]) => (
+                    <DataRow key={cat} label={CATEGORY_LABELS[cat] || cat} value={fmt(amount as number)} color="var(--accent-danger)" />
+                  ))
+                }
+                <DataRow label="الإجمالي" value={fmt(totalExpenses)} bold color="var(--accent-danger)" />
+                <DataRow label="صافي الربح" value={fmt(netProfit)} bold color={netProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'} />
+                <DataRow label="هامش الربح" value={`${profitMargin.toFixed(1)}%`} bold color={profitMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'} />
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Expense Detail List */}
+      {expensesData.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="section-header">
+            <h3 className="section-title">تفاصيل المصروفات ({expensesData.length})</h3>
+          </div>
+          <div className="table-scroll">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-tertiary)' }}>
+                  {['التاريخ', 'الفئة', 'الوصف', 'الفرع', 'المبلغ'].map(h => (
+                    <th key={h} style={{
+                      padding: '12px 16px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: 'var(--text-muted)',
+                      textAlign: 'right',
+                    }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {expensesData.slice(0, 20).map((expense: any) => (
+                  <tr key={expense.id} className="data-row">
+                    <td style={{ padding: '10px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                      {new Date(expense.expense_date).toLocaleDateString('ar-SA')}
+                    </td>
+                    <td style={{ padding: '10px 16px' }}>
+                      <span className="status-badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+                        {expense.category_name || CATEGORY_LABELS[expense.category] || expense.category}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 16px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+                      {expense.description}
+                    </td>
+                    <td style={{ padding: '10px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                      {expense.branch_id === 1 ? 'الميرة' : 'الشارع التجاري'}
+                    </td>
+                    <td style={{ padding: '10px 16px', fontSize: 14, fontWeight: 700, color: 'var(--accent-danger)' }}>
+                      {fmt(expense.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </AppShell>
   )
 }
 
-function MetricCard({
-  title,
-  value,
-  icon,
-  trend,
-  color,
-}: {
-  title: string
+function DataRow({ label, value, bold, color }: {
+  label: string
   value: string
-  icon?: React.ReactNode
-  trend?: 'up' | 'down' | 'neutral'
-  color?: 'blue' | 'green' | 'red' | 'orange'
+  bold?: boolean
+  color?: string
 }) {
-  const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-700',
-    green: 'bg-green-50 text-green-700',
-    red: 'bg-red-50 text-red-700',
-    orange: 'bg-orange-50 text-orange-700',
-  }
-
-  const trendColors: Record<string, string> = {
-    up: 'text-green-500',
-    down: 'text-red-500',
-    neutral: 'text-gray-400',
-  }
-
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm text-gray-500">{title}</p>
-        {icon && <span className={colorClasses[color || 'blue']}>{icon}</span>}
-      </div>
-      <p className="text-2xl font-bold text-gray-900 mb-1">{value}</p>
-      {trend && trend !== 'neutral' && (
-        <div className={`flex items-center text-sm ${trendColors[trend]}`}>
-          {trend === 'up' && <TrendingUp className="w-4 h-4 ml-1" />}
-          {trend === 'down' && <TrendingDown className="w-4 h-4 ml-1" />}
-        </div>
-      )}
-    </div>
+    <tr className="data-row">
+      <td style={{ padding: '10px 0', fontSize: 13, color: 'var(--text-secondary)' }}>{label}</td>
+      <td style={{
+        padding: '10px 0',
+        fontSize: bold ? 15 : 13,
+        fontWeight: bold ? 700 : 500,
+        color: color || 'var(--text-primary)',
+        textAlign: 'left',
+      }}>
+        {value}
+      </td>
+    </tr>
   )
 }

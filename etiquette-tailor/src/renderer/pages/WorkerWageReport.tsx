@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 interface Worker {
   id: number;
@@ -12,6 +13,7 @@ interface Worker {
 
 export default function WorkerWageReportPage() {
   const { t, currency } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<number | null>(null);
   const [periodMode, setPeriodMode] = useState<'this_month' | 'last_month' | 'custom' | 'all'>('this_month');
@@ -53,7 +55,7 @@ export default function WorkerWageReportPage() {
   }, [periodMode, customStart, customEnd]);
 
   useEffect(() => {
-    window.electronAPI.workers.getAll().then((data: Worker[]) => {
+    window.electronAPI.workers.getAll(activeBranchId).then((data: Worker[]) => {
       setWorkers(data || []);
       setLoading(false);
     }).catch(() => setLoading(false));

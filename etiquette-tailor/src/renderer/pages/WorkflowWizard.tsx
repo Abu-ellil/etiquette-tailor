@@ -207,10 +207,10 @@ export default function WorkflowWizard() {
   // ─── Customer search ───
   const doSearch = useCallback(async (q: string) => {
     if (q.length === 0) {
-      const res = await window.electronAPI.customers.getAll();
+      const res = await window.electronAPI.customers.getAll(activeBranchId);
       setCustomers(res);
     } else {
-      const res = await window.electronAPI.customers.search(q);
+      const res = await window.electronAPI.customers.search(q, activeBranchId);
       setCustomers(res);
     }
     setShowCustomerResults(true);

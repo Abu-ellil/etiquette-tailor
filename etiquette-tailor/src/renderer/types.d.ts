@@ -34,7 +34,7 @@ export interface ElectronAPI {
   };
 
   workers: {
-    getAll: () => Promise<any[]>;
+    getAll: (branchId?: number) => Promise<any[]>;
     getRates: (workerId: number) => Promise<any[]>;
     setRate: (data: any) => Promise<any>;
     getActiveRate: (workerId: number, pieceType: string) => Promise<any>;
@@ -53,8 +53,8 @@ export interface ElectronAPI {
   };
 
   customers: {
-    getAll: () => Promise<any[]>;
-    search: (query: string) => Promise<any[]>;
+    getAll: (branchId?: number) => Promise<any[]>;
+    search: (query: string, branchId?: number) => Promise<any[]>;
     create: (data: any) => Promise<any>;
     update: (id: number, data: any) => Promise<any>;
     delete: (id: number) => Promise<void>;
@@ -65,7 +65,7 @@ export interface ElectronAPI {
   orders: {
     getAll: (branchId?: number, status?: string) => Promise<any[]>;
     get: (id: number) => Promise<any>;
-    search: (query: string) => Promise<any[]>;
+    search: (query: string, branchId?: number) => Promise<any[]>;
     create: (data: any) => Promise<any>;
     createWithTasks: (payload: any) => Promise<{ orderId: number; orderNumber: string }>;
     update: (id: number, data: any) => Promise<any>;

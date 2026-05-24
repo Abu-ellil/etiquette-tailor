@@ -1,9 +1,8 @@
-// صفحة الإنتاج والمهام
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Filter, Plus, User, Clock } from 'lucide-react'
-import { Navbar } from '@/components/layout/Navbar'
+import { Search } from 'lucide-react'
+import { AppShell } from '@/components/layout/AppShell'
 import { TaskBoard } from '@/components/production/TaskBoard'
 
 type TaskStatus = 'pending' | 'in_progress' | 'done'
@@ -22,30 +21,17 @@ interface Task {
   started_at: string | null
   completed_at: string | null
   notes: string | null
-  order?: {
-    order_number: string
-    customer?: { name: string }
-    piece_type: string
-  }
+  order?: { order_number: string; customer?: { name: string }; piece_type: string }
   worker?: { name: string }
-}
-
-const TASK_TYPE_LABELS: Record<string, string> = {
-  cutting: 'قص',
-  sewing: 'خياطة',
-  design: 'تصميم',
 }
 
 export default function ProductionPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [branchFilter, setBranchFilter] = useState<string>('all')
   const [taskTypeFilter, setTaskTypeFilter] = useState<string>('all')
 
-  useEffect(() => {
-    fetchTasks()
-  }, [])
+  useEffect(() => { fetchTasks() }, [])
 
   const fetchTasks = async () => {
     setLoading(true)
@@ -84,9 +70,7 @@ export default function ProductionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
-      if (res.ok) {
-        fetchTasks()
-      }
+      if (res.ok) fetchTasks()
     } catch (error) {
       console.error('Error updating task:', error)
     }
@@ -99,9 +83,7 @@ export default function ProductionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assigned_to: workerId }),
       })
-      if (res.ok) {
-        fetchTasks()
-      }
+      if (res.ok) fetchTasks()
     } catch (error) {
       console.error('Error assigning worker:', error)
     }
@@ -109,82 +91,66 @@ export default function ProductionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50" dir="rtl">
-        <Navbar />
-        <div className="max-w-7xl mx-auto px-4 py-12 text-center">
-          <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <AppShell>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="inline-block w-8 h-8 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
         </div>
-      </div>
+      </AppShell>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">الإنتاج والمهام</h1>
-            <p className="text-sm text-gray-500 mt-1">تتبع مهام القص والخياطة</p>
-          </div>
+    <AppShell>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="page-title">الإنتاج والمهام</h1>
+          <p className="page-subtitle">تتبع مهام القص والخياطة</p>
         </div>
-
-        {/* إحصائيات */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <p className="text-sm text-gray-500 mb-1">إجمالي المهام</p>
-            <p className="text-2xl font-bold text-gray-900">{filteredTasks.length}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <p className="text-sm text-gray-500 mb-1">قيد الانتظار</p>
-            <p className="text-2xl font-bold text-orange-600">{tasksByStatus.pending.length}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <p className="text-sm text-gray-500 mb-1">قيد التنفيذ</p>
-            <p className="text-2xl font-bold text-blue-600">{tasksByStatus.in_progress.length}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <p className="text-sm text-gray-500 mb-1">مكتملة</p>
-            <p className="text-2xl font-bold text-green-600">{tasksByStatus.done.length}</p>
-          </div>
-        </div>
-
-        {/* الفلاتر */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="بحث برقم الطلب أو العميل أو العامل..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <select
-              value={taskTypeFilter}
-              onChange={e => setTaskTypeFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">جميع أنواع المهام</option>
-              <option value="cutting">قص</option>
-              <option value="sewing">خياطة</option>
-              <option value="design">تصميم</option>
-            </select>
-          </div>
-        </div>
-
-        {/* لوحة كانبان */}
-        <TaskBoard
-          tasks={tasksByStatus}
-          onStatusChange={updateTaskStatus}
-          onAssignWorker={assignWorker}
-        />
       </div>
-    </div>
+
+      <div className="kpi-grid gap-mb-mobile">
+        <div className="kpi-card">
+          <p className="kpi-title">إجمالي المهام</p>
+          <p className="kpi-value">{filteredTasks.length}</p>
+        </div>
+        <div className="kpi-card">
+          <p className="kpi-title">قيد الانتظار</p>
+          <p className="kpi-value text-accent-warning">{tasksByStatus.pending.length}</p>
+        </div>
+        <div className="kpi-card">
+          <p className="kpi-title">قيد التنفيذ</p>
+          <p className="kpi-value text-accent-primary">{tasksByStatus.in_progress.length}</p>
+        </div>
+        <div className="kpi-card">
+          <p className="kpi-title">مكتملة</p>
+          <p className="kpi-value text-accent-success">{tasksByStatus.done.length}</p>
+        </div>
+      </div>
+
+      <div className="filter-bar">
+        <div className="flex-1 relative">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+          <input
+            type="text"
+            placeholder="بحث برقم الطلب أو العميل أو العامل..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pr-10 pl-4 py-2 min-h-[44px] border border-border-primary rounded-lg bg-bg-input text-text-primary focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
+          />
+        </div>
+        <select
+          value={taskTypeFilter}
+          onChange={e => setTaskTypeFilter(e.target.value)}
+          className="px-4 py-2 min-h-[44px] border border-border-primary rounded-lg bg-bg-input text-text-primary focus:ring-2 focus:ring-accent-primary"
+        >
+          <option value="all">جميع أنواع المهام</option>
+          <option value="cutting">قص</option>
+          <option value="sewing">خياطة</option>
+          <option value="design">تصميم</option>
+        </select>
+      </div>
+
+      <TaskBoard tasks={tasksByStatus} onStatusChange={updateTaskStatus} onAssignWorker={assignWorker} />
+    </AppShell>
   )
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../contexts/I18nContext';
+import { useActiveBranch } from '../contexts/BranchContext';
 
 interface Task {
   task_id: number;
@@ -43,6 +44,7 @@ interface RecommendedWorker {
 
 export default function TaskManagementPage() {
   const { t, currency } = useTranslation();
+  const { activeBranchId } = useActiveBranch();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workloads, setWorkloads] = useState<Workload[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
@@ -66,14 +68,14 @@ export default function TaskManagementPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const filters: any = {};
+      const filters: any = { branchId: activeBranchId };
       if (filterBranch) filters.branchId = filterBranch;
       if (filterWorker) filters.workerId = filterWorker;
       if (filterType) filters.taskType = filterType;
 
       const [tasksData, workloadsData, branchesData] = await Promise.all([
         window.electronAPI.orders.getAllTasks(Object.keys(filters).length > 0 ? filters : undefined),
-        window.electronAPI.workers.getWorkloads(filterBranch || undefined),
+        window.electronAPI.workers.getWorkloads(filterBranch || activeBranchId),
         window.electronAPI.branches.getAll(),
       ]);
       setTasks((tasksData || []) as Task[]);
@@ -84,7 +86,7 @@ export default function TaskManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterBranch, filterWorker, filterType]);
+  }, [filterBranch, filterWorker, filterType, activeBranchId]);
 
   useEffect(() => {
     loadData();

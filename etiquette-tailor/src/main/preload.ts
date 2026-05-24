@@ -27,7 +27,7 @@ export interface ElectronAPI {
   };
 
   workers: {
-    getAll: () => Promise<any[]>;
+    getAll: (branchId?: number) => Promise<any[]>;
     getRates: (workerId: number) => Promise<any[]>;
     setRate: (data: any) => Promise<any>;
     getActiveRate: (workerId: number, pieceType: string) => Promise<any>;
@@ -46,8 +46,8 @@ export interface ElectronAPI {
   };
 
   customers: {
-    getAll: () => Promise<any[]>;
-    search: (query: string) => Promise<any[]>;
+    getAll: (branchId?: number) => Promise<any[]>;
+    search: (query: string, branchId?: number) => Promise<any[]>;
     create: (data: any) => Promise<any>;
     update: (id: number, data: any) => Promise<any>;
     delete: (id: number) => Promise<void>;
@@ -58,7 +58,7 @@ export interface ElectronAPI {
   orders: {
     getAll: (branchId?: number, status?: string) => Promise<any[]>;
     get: (id: number) => Promise<any>;
-    search: (query: string) => Promise<any[]>;
+    search: (query: string, branchId?: number) => Promise<any[]>;
     create: (data: any) => Promise<any>;
     createWithTasks: (payload: any) => Promise<{ orderId: number; orderNumber: string }>;
     update: (id: number, data: any) => Promise<any>;
@@ -207,7 +207,7 @@ const api: ElectronAPI = {
   },
 
   workers: {
-    getAll: () => ipcRenderer.invoke('workers:getAll'),
+    getAll: (branchId?) => ipcRenderer.invoke('workers:getAll', branchId),
     getRates: (workerId) => ipcRenderer.invoke('workers:getRates', workerId),
     setRate: (data) => ipcRenderer.invoke('workers:setRate', data),
     getActiveRate: (workerId, pieceType) => ipcRenderer.invoke('workers:getActiveRate', workerId, pieceType),
@@ -226,8 +226,8 @@ const api: ElectronAPI = {
   },
 
   customers: {
-    getAll: () => ipcRenderer.invoke('customers:getAll'),
-    search: (query) => ipcRenderer.invoke('customers:search', query),
+    getAll: (branchId?) => ipcRenderer.invoke('customers:getAll', branchId),
+    search: (query, branchId?) => ipcRenderer.invoke('customers:search', query, branchId),
     create: (data) => ipcRenderer.invoke('customers:create', data),
     update: (id, data) => ipcRenderer.invoke('customers:update', id, data),
     delete: (id) => ipcRenderer.invoke('customers:delete', id),
@@ -238,7 +238,7 @@ const api: ElectronAPI = {
   orders: {
     getAll: (branchId?: number, status?: string) => ipcRenderer.invoke('orders:getAll', branchId, status),
     get: (id) => ipcRenderer.invoke('orders:get', id),
-    search: (query) => ipcRenderer.invoke('orders:search', query),
+    search: (query, branchId?) => ipcRenderer.invoke('orders:search', query, branchId),
     create: (data, measurements?, items?) => ipcRenderer.invoke('orders:create', data, measurements, items),
     createWithTasks: (payload: any) => ipcRenderer.invoke('orders:createWithTasks', payload),
     update: (id, data) => ipcRenderer.invoke('orders:update', id, data),

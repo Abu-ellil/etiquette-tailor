@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
-import { Navbar } from '@/components/layout/Navbar'
+import { AppShell } from '@/components/layout/AppShell'
 
 export default function NewCustomerPage() {
   const router = useRouter()
@@ -39,34 +39,32 @@ export default function NewCustomerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <Navbar />
-
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AppShell>
+      <div className="max-w-2xl mx-auto py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => router.back()}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-bg-tertiary rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
-            <ArrowRight className="w-5 h-5 text-gray-600" />
+            <ArrowRight className="w-5 h-5 text-text-secondary" />
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">عميل جديد</h1>
+          <h1 className="page-title">عميل جديد</h1>
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-bg-card rounded-xl shadow-sm border border-border-primary p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* الاسم */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 اسم العميل *
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 bg-bg-input border border-border-primary rounded-lg focus:ring-2 focus:ring-accent-primary focus:border-accent-primary text-text-primary min-h-[44px]"
                 required
                 autoFocus
               />
@@ -74,14 +72,14 @@ export default function NewCustomerPage() {
 
             {/* رقم الهاتف */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 رقم الهاتف *
               </label>
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 bg-bg-input border border-border-primary rounded-lg focus:ring-2 focus:ring-accent-primary focus:border-accent-primary text-text-primary min-h-[44px]"
                 required
                 dir="ltr"
               />
@@ -89,13 +87,13 @@ export default function NewCustomerPage() {
 
             {/* الفرع */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 الفرع
               </label>
               <select
                 value={formData.branch_id}
                 onChange={e => setFormData({ ...formData, branch_id: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 bg-bg-input border border-border-primary rounded-lg focus:ring-2 focus:ring-accent-primary focus:border-accent-primary text-text-primary min-h-[44px]"
               >
                 <option value={1}>الميرة — أم قرن</option>
                 <option value={2}>الشارع التجاري — أم قرن</option>
@@ -104,14 +102,14 @@ export default function NewCustomerPage() {
 
             {/* الملاحظات */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 ملاحظات
               </label>
               <textarea
                 value={formData.notes}
                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 bg-bg-input border border-border-primary rounded-lg focus:ring-2 focus:ring-accent-primary focus:border-accent-primary text-text-primary"
                 placeholder="أي ملاحظات عن العميل..."
               />
             </div>
@@ -121,14 +119,14 @@ export default function NewCustomerPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-text-secondary hover:bg-bg-tertiary rounded-lg min-h-[44px]"
               >
                 إلغاء
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2 bg-accent-primary text-text-inverse rounded-lg hover:bg-accent-primary-hover disabled:opacity-50 min-h-[44px]"
               >
                 {saving ? 'جاري الحفظ...' : 'حفظ العميل'}
               </button>
@@ -136,6 +134,6 @@ export default function NewCustomerPage() {
           </form>
         </div>
       </div>
-    </div>
+    </AppShell>
   )
 }

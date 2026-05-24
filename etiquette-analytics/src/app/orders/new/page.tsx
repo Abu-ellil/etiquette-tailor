@@ -3,9 +3,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-import { Navbar } from '@/components/layout/Navbar'
+import { AppShell } from '@/components/layout/AppShell'
 import { OrderForm } from '@/components/orders/OrderForm'
 
 function NewOrderContent() {
@@ -28,7 +26,7 @@ function NewOrderContent() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-bg-card rounded-xl shadow-sm border border-border-primary p-6">
         <OrderForm
           initialCustomerId={prefilledCustomerId}
           onSuccess={() => {
@@ -45,15 +43,14 @@ function NewOrderContent() {
 
 export default function NewOrderPage() {
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <Navbar />
+    <AppShell>
       <Suspense fallback={
         <div className="min-h-screen flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
         </div>
       }>
         <NewOrderContent />
       </Suspense>
-    </div>
+    </AppShell>
   )
 }

@@ -133,7 +133,7 @@ export default function NewOrderPage() {
     if (value.trim().length >= 3) {
       phoneSearchTimer.current = setTimeout(async () => {
         try {
-          const results = await window.electronAPI.customers.search(value.trim());
+          const results = await window.electronAPI.customers.search(value.trim(), branchId);
           setCustomerSuggestions(results || []);
           setShowSuggestions((results || []).length > 0);
         } catch (err) {
@@ -200,7 +200,7 @@ export default function NewOrderPage() {
       if (!customerId) {
         const fullName = formData.customerFullName.trim();
         if (fullName) {
-          const searchResults = await window.electronAPI.customers.search(fullName);
+          const searchResults = await window.electronAPI.customers.search(fullName, branchId);
           const existing = searchResults.find(
             (c: any) => c.phone === formData.phoneNumber.trim()
           );

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { Search, Filter } from 'lucide-react'
-import { Navbar } from '@/components/layout/Navbar'
+import { AppShell } from '@/components/layout/AppShell'
 import { OrderCard } from '@/components/orders/OrderCard'
 import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types/order'
 
@@ -49,32 +49,30 @@ export default function OrdersPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <Navbar />
-
+    <AppShell>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* الفلاتر والبحث */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+        <div className="bg-bg-card rounded-xl shadow-sm border border-border-primary p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             {/* البحث */}
             <div className="flex-1 relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
               <input
                 type="text"
                 placeholder="بحث برقم الطلب، اسم العميل، أو الهاتف..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full min-h-[44px] pr-10 pl-4 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
               />
             </div>
 
             {/* فلتر الحالة */}
             <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-gray-400" />
+              <Filter className="w-5 h-5 text-text-muted" />
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="min-h-[44px] px-4 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
               >
                 <option value="all">جميع الحالات</option>
                 {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => (
@@ -89,7 +87,7 @@ export default function OrdersPage() {
             <select
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="min-h-[44px] px-4 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
             >
               <option value="all">جميع الفروع</option>
               <option value="1">الميرة</option>
@@ -101,11 +99,11 @@ export default function OrdersPage() {
         {/* قائمة الطلبات */}
         {loading ? (
           <div className="text-center py-12">
-            <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="inline-block w-8 h-8 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl">
-            <p className="text-gray-500">لا توجد طلبات</p>
+          <div className="text-center py-12 bg-bg-card rounded-xl">
+            <p className="text-text-tertiary">لا توجد طلبات</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -118,24 +116,24 @@ export default function OrdersPage() {
         {/* إحصائيات سريعة */}
         {!loading && filteredOrders.length > 0 && (
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-              <p className="text-sm text-gray-500">إجمالي الطلبات</p>
-              <p className="text-2xl font-bold text-gray-900">{filteredOrders.length}</p>
+            <div className="bg-bg-card rounded-lg p-4 shadow-sm border border-border-primary">
+              <p className="text-sm text-text-tertiary">إجمالي الطلبات</p>
+              <p className="text-2xl font-bold text-text-primary">{filteredOrders.length}</p>
             </div>
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-              <p className="text-sm text-gray-500">إجمالي القيمة</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="bg-bg-card rounded-lg p-4 shadow-sm border border-border-primary">
+              <p className="text-sm text-text-tertiary">إجمالي القيمة</p>
+              <p className="text-2xl font-bold text-text-primary">
                 {filteredOrders.reduce((sum, o) => sum + o.price, 0).toLocaleString('ar-SA')} ر.س
               </p>
             </div>
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-              <p className="text-sm text-gray-500">المدفوع</p>
+            <div className="bg-bg-card rounded-lg p-4 shadow-sm border border-border-primary">
+              <p className="text-sm text-text-tertiary">المدفوع</p>
               <p className="text-2xl font-bold text-green-600">
                 {filteredOrders.reduce((sum, o) => sum + o.paid, 0).toLocaleString('ar-SA')} ر.س
               </p>
             </div>
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-              <p className="text-sm text-gray-500">المتبقي</p>
+            <div className="bg-bg-card rounded-lg p-4 shadow-sm border border-border-primary">
+              <p className="text-sm text-text-tertiary">المتبقي</p>
               <p className="text-2xl font-bold text-orange-600">
                 {filteredOrders.reduce((sum, o) => sum + (o.price - o.paid), 0).toLocaleString('ar-SA')} ر.س
               </p>
@@ -143,6 +141,6 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
-    </div>
+    </AppShell>
   )
 }

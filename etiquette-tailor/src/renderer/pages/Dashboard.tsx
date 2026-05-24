@@ -149,7 +149,7 @@ export default function DashboardPage() {
             await window.electronAPI.notifications.generateOverdue();
           } catch { /* non-critical */ }
 
-          const branchFilter = isManager ? activeBranchId : undefined;
+          const branchFilter = activeBranchId;
           const [statsData, ordersData] = await Promise.all([
             window.electronAPI.orders.getStats(branchFilter),
             window.electronAPI.orders.getAll(branchFilter),
@@ -172,7 +172,7 @@ export default function DashboardPage() {
           );
           setOrderItemsMap(itemsMap);
 
-          const tasks = await window.electronAPI.orders.getAllTasks(isManager ? { branchId: activeBranchId } : {});
+          const tasks = await window.electronAPI.orders.getAllTasks(activeBranchId ? { branchId: activeBranchId } : {});
           setAllTasks(tasks || []);
 
           try {
@@ -194,7 +194,7 @@ export default function DashboardPage() {
     }
 
     fetchData();
-  }, [isWorker, isTailor, isCutter, session.userId]);
+  }, [isWorker, isTailor, isCutter, session.userId, activeBranchId]);
 
   if (loading) {
     return (

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { Building2, MapPin, Phone, Edit2 } from 'lucide-react'
-import { Navbar } from '@/components/layout/Navbar'
+import { AppShell } from '@/components/layout/AppShell'
 import { useRouter } from 'next/navigation'
 
 interface Branch {
@@ -34,25 +34,23 @@ export default function BranchesSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <Navbar />
-
+    <AppShell>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">الفروع</h1>
-          <p className="text-sm text-gray-500 mt-1">إدارة فروع المحل</p>
+          <h1 className="text-2xl font-bold text-text-primary">الفروع</h1>
+          <p className="text-sm text-text-tertiary mt-1">إدارة فروع المحل</p>
         </div>
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="inline-block w-8 h-8 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {branches.map((branch) => (
               <div
                 key={branch.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+                className="bg-bg-card rounded-xl shadow-sm border border-border-primary p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -60,19 +58,19 @@ export default function BranchesSettingsPage() {
                       <Building2 className="w-6 h-6" />
                     </span>
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{branch.name}</h3>
-                      <p className="text-sm text-gray-500">بادئة الطلب: {branch.prefix}</p>
+                      <h3 className="text-lg font-semibold text-text-primary">{branch.name}</h3>
+                      <p className="text-sm text-text-tertiary">بادئة الطلب: {branch.prefix}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => router.push(`/settings/branches/${branch.id}/edit`)}
-                    className="p-2 hover:bg-gray-100 rounded"
+                    className="min-h-[44px] p-2 hover:bg-bg-tertiary rounded"
                   >
-                    <Edit2 className="w-4 h-4 text-gray-400" />
+                    <Edit2 className="w-4 h-4 text-text-muted" />
                   </button>
                 </div>
 
-                <div className="space-y-2 text-sm text-gray-600">
+                <div className="space-y-2 text-sm text-text-secondary">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
                     <span>تفاصيل الموقع...</span>
@@ -85,14 +83,14 @@ export default function BranchesSettingsPage() {
               </div>
             ))}
 
-            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center text-center">
-              <Building2 className="w-12 h-12 text-gray-300 mb-3" />
-              <p className="text-gray-500 mb-1">إضافة فرع جديد</p>
-              <p className="text-xs text-gray-400">ميزة قادمة</p>
+            <div className="bg-bg-secondary border-2 border-dashed border-border-primary rounded-xl p-6 flex flex-col items-center justify-center text-center min-h-[44px]">
+              <Building2 className="w-12 h-12 text-text-muted mb-3" />
+              <p className="text-text-tertiary mb-1">إضافة فرع جديد</p>
+              <p className="text-xs text-text-muted">ميزة قادمة</p>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </AppShell>
   )
 }

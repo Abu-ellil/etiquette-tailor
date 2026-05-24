@@ -46,7 +46,7 @@ export default function CustomerPicker({ branchId, t, onSelect, selectedCustomer
 
   const doSearch = useCallback(async (q: string) => {
     if (q.length < 2) { setResults([]); return; }
-    const res = await window.electronAPI.customers.search(q);
+    const res = await window.electronAPI.customers.search(q, branchId);
     setResults(res);
   }, []);
 
