@@ -12,11 +12,20 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  const { searchParams } = new URL(request.url)
+  const branchId = searchParams.get('branch_id')
+
   // Fetch orders
-  const { data: orders, error: ordersError } = await supabase
+  let ordersQuery = supabase
     .from('orders')
     .select('id, branch_id, price, paid, created_at, status, created_by, customer_id')
     .order('created_at', { ascending: false })
+
+  if (branchId) {
+    ordersQuery = ordersQuery.eq('branch_id', parseInt(branchId))
+  }
+
+  const { data: orders, error: ordersError } = await ordersQuery
 
   if (ordersError) {
     if (ordersError.code === '42P01') {
@@ -29,10 +38,16 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch expenses
-  const { data: expenses } = await supabase
+  let expensesQuery = supabase
     .from('expenses')
     .select('amount, category, expense_date, branch_id')
     .eq('is_deleted', 0)
+
+  if (branchId) {
+    expensesQuery = expensesQuery.eq('branch_id', parseInt(branchId))
+  }
+
+  const { data: expenses } = await expensesQuery
 
   // Fetch customers count
   const { count: customersCount } = await supabase

@@ -33,6 +33,8 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('month')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [branchId, setBranchId] = useState<string>('')
+  const [branches, setBranches] = useState<{ id: number; name: string }[]>([])
 
   useEffect(() => {
     const now = new Date()
@@ -50,18 +52,29 @@ export default function ReportsPage() {
 
   useEffect(() => {
     if (startDate && endDate) fetchData()
-  }, [startDate, endDate])
+  }, [startDate, endDate, branchId])
 
   const fetchData = async () => {
     setLoading(true)
     try {
+      const branchParam = branchId ? `&branch_id=${branchId}` : ''
       const [analyticsRes, expensesRes] = await Promise.all([
-        fetch('/api/analytics'),
-        fetch(`/api/expenses?start_date=${startDate}&end_date=${endDate}`),
+        fetch(`/api/analytics${branchId ? `?branch_id=${branchId}` : ''}`),
+        fetch(`/api/expenses?start_date=${startDate}&end_date=${endDate}${branchParam}`),
       ])
       const analytics = await analyticsRes.json()
       const expensesJson = await expensesRes.json()
       setAnalyticsData(analytics)
+
+      // Populate branches list from analytics data
+      if (analytics.branches) {
+        const branchList = Object.entries(analytics.branches).map(([id, b]: [string, any]) => ({
+          id: parseInt(id),
+          name: b.name,
+        }))
+        if (branchList.length > 0 && branches.length === 0) setBranches(branchList)
+      }
+
       setExpensesData(expensesJson.expenses || [])
     } catch (e) {
       console.error('Error fetching reports:', e)
@@ -159,6 +172,17 @@ export default function ReportsPage() {
       {/* Period Filter */}
       <div className="filter-bar">
         <Filter size={18} style={{ color: 'var(--text-muted)' }} />
+        <select
+          value={branchId}
+          onChange={e => setBranchId(e.target.value)}
+          className="date-input"
+          style={{ minWidth: 130, cursor: 'pointer' }}
+        >
+          <option value="">جميع الفروع</option>
+          {branches.map(b => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </select>
         {(['week', 'month', 'quarter', 'year', 'all'] as Period[]).map(p => (
           <button
             key={p}
@@ -309,6 +333,7 @@ export default function ReportsPage() {
           </AreaChart>
         </ChartContainer>
 
+        {!branchId && (
         <div className="card">
           <h3 className="section-title mb-5">الأرباح والخسائر حسب الفرع</h3>
           {branchPL.map((branch, i) => (
@@ -349,6 +374,7 @@ export default function ReportsPage() {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       {/* Revenue Breakdown Table */}
