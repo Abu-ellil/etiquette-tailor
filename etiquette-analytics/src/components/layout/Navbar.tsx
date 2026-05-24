@@ -16,6 +16,7 @@ import {
   LogOut,
   Plus
 } from 'lucide-react'
+import { LanguageSwitcher } from '@/components/language/LanguageSwitcher'
 
 export function Navbar() {
   const pathname = usePathname()
@@ -75,14 +76,17 @@ export function Navbar() {
             })}
           </div>
 
-          {/* Sign Out */}
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg text-sm font-medium"
-          >
-            <LogOut className="w-4 h-4" />
-            تسجيل الخروج
-          </button>
+          {/* Sign Out & Language */}
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg text-sm font-medium"
+            >
+              <LogOut className="w-4 h-4" />
+              تسجيل الخروج
+            </button>
+          </div>
         </div>
       </div>
     </nav>
