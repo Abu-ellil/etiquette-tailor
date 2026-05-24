@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowRight, Pencil, Trash2, ShoppingCart, Phone, FileText } from 'lucide-react'
-import { Navbar } from '@/components/layout/Navbar'
+import { AppShell } from '@/components/layout/AppShell'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
 
 export default function CustomerDetailPage() {
@@ -48,17 +48,21 @@ export default function CustomerDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <AppShell>
+        <div className="flex items-center justify-center py-24">
+          <div className="w-8 h-8 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AppShell>
     )
   }
 
   if (!customer) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">العميل غير موجود</p>
-      </div>
+      <AppShell>
+        <div className="flex items-center justify-center py-24">
+          <p className="text-text-tertiary">العميل غير موجود</p>
+        </div>
+      </AppShell>
     )
   }
 
@@ -68,43 +72,41 @@ export default function CustomerDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <AppShell>
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-bg-tertiary rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
-              <ArrowRight className="w-5 h-5 text-gray-600" />
+              <ArrowRight className="w-5 h-5 text-text-secondary" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{customer.name}</h1>
-              <p className="text-sm text-gray-500">عميل منذ {new Date(customer.created_at).toLocaleDateString('ar-SA')}</p>
+              <h1 className="page-title">{customer.name}</h1>
+              <p className="page-subtitle">عميل منذ {new Date(customer.created_at).toLocaleDateString('ar-SA')}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => router.push(`/orders/new?customer_id=${customer.id}`)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center gap-2 px-4 py-2 bg-accent-primary text-text-inverse rounded-lg hover:bg-accent-primary-hover min-h-[44px]"
             >
               <ShoppingCart className="w-4 h-4" />
               طلب جديد
             </button>
             <button
               onClick={() => router.push(`/customers/${customer.id}/edit`)}
-              className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-bg-tertiary rounded-lg min-h-[44px]"
             >
               <Pencil className="w-4 h-4" />
               تعديل
             </button>
             <button
               onClick={deleteCustomer}
-              className="flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+              className="flex items-center gap-2 px-3 py-2 text-accent-danger hover:bg-accent-danger-light rounded-lg min-h-[44px]"
             >
               <Trash2 className="w-4 h-4" />
               حذف
@@ -113,42 +115,42 @@ export default function CustomerDetailPage() {
         </div>
 
         {/* معلومات العميل */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* بطاقة المعلومات */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">معلومات الاتصال</h2>
+          <div className="bg-bg-card rounded-xl shadow-sm border border-border-primary p-6">
+            <h2 className="text-lg font-semibold text-text-primary mb-4">معلومات الاتصال</h2>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-gray-400" />
+                <Phone className="w-5 h-5 text-text-muted" />
                 <div>
-                  <p className="text-xs text-gray-500">رقم الهاتف</p>
-                  <p className="font-medium" dir="ltr">{customer.phone}</p>
+                  <p className="text-xs text-text-tertiary">رقم الهاتف</p>
+                  <p className="font-medium text-text-primary" dir="ltr">{customer.phone}</p>
                 </div>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-1">الفرع</p>
-                <p className="font-medium text-gray-900">{branchNames[customer.branch_id] || customer.branch_id}</p>
+                <p className="text-xs text-text-tertiary mb-1">الفرع</p>
+                <p className="font-medium text-text-primary">{branchNames[customer.branch_id] || customer.branch_id}</p>
               </div>
               {customer.notes && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">ملاحظات</p>
-                  <p className="text-sm text-gray-700">{customer.notes}</p>
+                  <p className="text-xs text-text-tertiary mb-1">ملاحظات</p>
+                  <p className="text-sm text-text-secondary">{customer.notes}</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* بطاقة الملخص المالي */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">الملخص المالي</h2>
+          <div className="bg-bg-card rounded-xl shadow-sm border border-border-primary p-6">
+            <h2 className="text-lg font-semibold text-text-primary mb-4">الملخص المالي</h2>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">إجمالي الطلبات</p>
-                <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+                <p className="text-sm text-text-tertiary">إجمالي الطلبات</p>
+                <p className="text-2xl font-bold text-text-primary">{orders.length}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">الرصيد المتبقي</p>
-                <p className={`text-2xl font-bold ${totalBalance > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                <p className="text-sm text-text-tertiary">الرصيد المتبقي</p>
+                <p className={`text-2xl font-bold ${totalBalance > 0 ? 'text-accent-warning' : 'text-accent-success'}`}>
                   {totalBalance.toLocaleString('ar-SA')} ر.س
                 </p>
               </div>
@@ -156,52 +158,52 @@ export default function CustomerDetailPage() {
           </div>
 
           {/* بطاقة إحصائيات سريعة */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">حالة الطلبات</h2>
+          <div className="bg-bg-card rounded-xl shadow-sm border border-border-primary p-6">
+            <h2 className="text-lg font-semibold text-text-primary mb-4">حالة الطلبات</h2>
             <div className="space-y-2">
               {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => {
                 const count = orders.filter((o: any) => o.status === key).length
                 if (count === 0) return null
                 return (
                   <div key={key} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">{label}</span>
-                    <span className="font-medium">{count}</span>
+                    <span className="text-sm text-text-secondary">{label}</span>
+                    <span className="font-medium text-text-primary">{count}</span>
                   </div>
                 )
               })}
               {orders.length === 0 && (
-                <p className="text-sm text-gray-500">لا توجد طلبات</p>
+                <p className="text-sm text-text-tertiary">لا توجد طلبات</p>
               )}
             </div>
           </div>
         </div>
 
         {/* سجل الطلبات */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">سجل الطلبات</h2>
+        <div className="bg-bg-card rounded-xl shadow-sm border border-border-primary p-6">
+          <h2 className="text-lg font-semibold text-text-primary mb-4">سجل الطلبات</h2>
 
           {orders.length === 0 ? (
             <div className="text-center py-8">
-              <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">لا توجد طلبات لهذا العميل</p>
+              <FileText className="w-12 h-12 text-text-muted mx-auto mb-3" />
+              <p className="text-text-tertiary">لا توجد طلبات لهذا العميل</p>
               <button
                 onClick={() => router.push(`/orders/new?customer_id=${customer.id}`)}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="mt-4 px-4 py-2 bg-accent-primary text-text-inverse rounded-lg hover:bg-accent-primary-hover min-h-[44px]"
               >
                 إنشاء طلب جديد
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="table-scroll">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-right py-3 text-sm font-medium text-gray-500">رقم الطلب</th>
-                    <th className="text-right py-3 text-sm font-medium text-gray-500">التاريخ</th>
-                    <th className="text-center py-3 text-sm font-medium text-gray-500">الحالة</th>
-                    <th className="text-left py-3 text-sm font-medium text-gray-500">السعر</th>
-                    <th className="text-left py-3 text-sm font-medium text-gray-500">المدفوع</th>
-                    <th className="text-left py-3 text-sm font-medium text-gray-500">المتبقي</th>
+                  <tr className="border-b border-border-primary">
+                    <th className="text-right py-3 text-sm font-medium text-text-tertiary">رقم الطلب</th>
+                    <th className="text-right py-3 text-sm font-medium text-text-tertiary">التاريخ</th>
+                    <th className="text-center py-3 text-sm font-medium text-text-tertiary">الحالة</th>
+                    <th className="text-left py-3 text-sm font-medium text-text-tertiary">السعر</th>
+                    <th className="text-left py-3 text-sm font-medium text-text-tertiary">المدفوع</th>
+                    <th className="text-left py-3 text-sm font-medium text-text-tertiary">المتبقي</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -211,10 +213,10 @@ export default function CustomerDetailPage() {
                       <tr
                         key={order.id}
                         onClick={() => router.push(`/orders/${order.id}`)}
-                        className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                        className="border-b border-border-primary hover:bg-bg-card-hover cursor-pointer"
                       >
-                        <td className="py-3 font-medium">#{order.order_number}</td>
-                        <td className="py-3 text-gray-600">
+                        <td className="py-3 font-medium text-text-primary">#{order.order_number}</td>
+                        <td className="py-3 text-text-secondary">
                           {new Date(order.created_at).toLocaleDateString('ar-SA')}
                         </td>
                         <td className="py-3 text-center">
@@ -222,9 +224,9 @@ export default function CustomerDetailPage() {
                             {ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS]}
                           </span>
                         </td>
-                        <td className="py-3">{order.price} ر.س</td>
-                        <td className="py-3 text-green-600">{order.paid} ر.س</td>
-                        <td className={`py-3 ${balance > 0 ? 'text-orange-600' : ''}`}>
+                        <td className="py-3 text-text-primary">{order.price} ر.س</td>
+                        <td className="py-3 text-accent-success">{order.paid} ر.س</td>
+                        <td className={`py-3 ${balance > 0 ? 'text-accent-warning' : 'text-text-primary'}`}>
                           {balance} ر.س
                         </td>
                       </tr>
@@ -236,6 +238,6 @@ export default function CustomerDetailPage() {
           )}
         </div>
       </div>
-    </div>
+    </AppShell>
   )
 }

@@ -109,26 +109,26 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
       {/* معلومات أساسية */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             رقم الطلب
           </label>
           <input
             type="text"
             value={formData.order_number}
             onChange={e => setFormData({ ...formData, order_number: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full min-h-[44px] px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             الفرع
           </label>
           <select
             value={formData.branch_id}
             onChange={e => setFormData({ ...formData, branch_id: parseInt(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full min-h-[44px] px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
           >
             <option value={1}>الميرة — أم قرن</option>
             <option value={2}>الشارع التجاري — أم قرن</option>
@@ -136,13 +136,13 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             العميل
           </label>
           <select
             value={formData.customer_id}
             onChange={e => setFormData({ ...formData, customer_id: parseInt(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full min-h-[44px] px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
             required
           >
             <option value={0}>اختر العميل</option>
@@ -158,11 +158,11 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
       {/* القطع */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-gray-700">القطع</h3>
+          <h3 className="text-sm font-medium text-text-secondary">القطع</h3>
           <button
             type="button"
             onClick={addItem}
-            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+            className="flex items-center gap-1 min-h-[44px] text-sm text-accent-primary hover:text-accent-primary-hover"
           >
             <Plus className="w-4 h-4" />
             إضافة قطعة
@@ -171,12 +171,12 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
 
         <div className="space-y-3">
           {formData.items?.map((item, index) => (
-            <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-              <div className="flex-1 grid grid-cols-4 gap-2">
+            <div key={index} className="flex items-start gap-3 p-3 bg-bg-secondary rounded-lg">
+              <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-2">
                 <select
                   value={item.piece_type}
                   onChange={e => updateItem(index, 'piece_type', e.target.value)}
-                  className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  className="min-h-[44px] px-2 py-1.5 border border-border-primary rounded text-sm bg-bg-card text-text-primary"
                 >
                   <option value="">نوع القطعة</option>
                   {pieceTypes.map((p: any) => (
@@ -191,7 +191,7 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
                   placeholder="الكمية"
                   value={item.quantity}
                   onChange={e => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                  className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  className="min-h-[44px] px-2 py-1.5 border border-border-primary rounded text-sm bg-bg-card text-text-primary"
                   min={1}
                 />
 
@@ -200,12 +200,12 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
                   placeholder="السعر"
                   value={item.unit_price}
                   onChange={e => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                  className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  className="min-h-[44px] px-2 py-1.5 border border-border-primary rounded text-sm bg-bg-card text-text-primary"
                   min={0}
                   step={0.01}
                 />
 
-                <div className="text-sm font-medium text-gray-700 py-1.5">
+                <div className="text-sm font-medium text-text-secondary py-1.5">
                   {item.total_price} ر.س
                 </div>
               </div>
@@ -213,7 +213,7 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
               <button
                 type="button"
                 onClick={() => removeItem(index)}
-                className="p-1 text-red-500 hover:text-red-700"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center p-1 text-accent-danger hover:text-red-700"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -224,8 +224,8 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
 
       {/* القياسات */}
       <div>
-        <h3 className="text-sm font-medium text-gray-700 mb-2">القياسات</h3>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+        <h3 className="text-sm font-medium text-text-secondary mb-2">القياسات</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
             { key: 'chest', label: 'الصدر' },
             { key: 'waist', label: 'الخصر' },
@@ -235,7 +235,7 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
             { key: 'shoulder', label: 'الكتف' },
           ].map(field => (
             <div key={field.key}>
-              <label className="block text-xs text-gray-600 mb-1">{field.label}</label>
+              <label className="block text-xs text-text-secondary mb-1">{field.label}</label>
               <input
                 type="number"
                 value={(formData.measurements as any)?.[field.key] || ''}
@@ -248,7 +248,7 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
                     },
                   })
                 }
-                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                className="w-full min-h-[44px] px-2 py-1.5 border border-border-primary rounded text-sm bg-bg-card text-text-primary"
                 step={0.5}
               />
             </div>
@@ -259,41 +259,41 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
       {/* المعلومات المالية */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             السعر الإجمالي
           </label>
           <input
             type="number"
             value={formData.price}
             onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full min-h-[44px] px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary"
             min={0}
             step={0.01}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             المبلغ المدفوع
           </label>
           <input
             type="number"
             value={formData.paid}
             onChange={e => setFormData({ ...formData, paid: parseFloat(e.target.value) || 0 })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full min-h-[44px] px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary"
             min={0}
             step={0.01}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             طريقة الدفع
           </label>
           <select
             value={formData.payment_method}
             onChange={e => setFormData({ ...formData, payment_method: e.target.value as any })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full min-h-[44px] px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary"
           >
             <option value="cash">نقداً</option>
             <option value="card">بطاقة</option>
@@ -301,13 +301,13 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             الحالة
           </label>
           <select
             value={formData.status}
             onChange={e => setFormData({ ...formData, status: e.target.value as OrderStatus })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full min-h-[44px] px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary"
           >
             {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => (
               <option key={key} value={key}>
@@ -321,40 +321,40 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
       {/* التواريخ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             تاريخ الاستلام
           </label>
           <input
             type="date"
             value={formData.receive_date}
             onChange={e => setFormData({ ...formData, receive_date: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full min-h-[44px] px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             تاريخ التسليم المحدد
           </label>
           <input
             type="date"
             value={formData.delivery_date}
             onChange={e => setFormData({ ...formData, delivery_date: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full min-h-[44px] px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary"
           />
         </div>
       </div>
 
       {/* ملاحظات */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-text-secondary mb-1">
           ملاحظات
         </label>
         <textarea
           value={formData.details}
           onChange={e => setFormData({ ...formData, details: e.target.value })}
           rows={2}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+          className="w-full px-3 py-2 border border-border-primary rounded-lg bg-bg-card text-text-primary"
           placeholder="أي تفاصيل إضافية..."
         />
       </div>
@@ -365,7 +365,7 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            className="min-h-[44px] px-4 py-2 text-text-secondary hover:bg-bg-tertiary rounded-lg"
           >
             إلغاء
           </button>
@@ -373,7 +373,7 @@ export function OrderForm({ order, initialCustomerId, onSuccess, onCancel }: Ord
         <button
           type="submit"
           disabled={saving}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="min-h-[44px] px-6 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary-hover disabled:opacity-50"
         >
           {saving ? 'جاري الحفظ...' : order ? 'تحديث الطلب' : 'إنشاء الطلب'}
         </button>

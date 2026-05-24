@@ -30,7 +30,8 @@
       "Bash(gh.exe auth *)",
       "Bash(\"/c/Users/MAS/AppData/Local/GitHubDesktop/bin/github\" auth *)",
       "Bash(winget install *)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "mcp__supabase__get_advisors"
     ]
   }
 }

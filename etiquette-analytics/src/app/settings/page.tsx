@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Users, Package, Building2, Bell, Globe, Shield } from 'lucide-react'
-import { Navbar } from '@/components/layout/Navbar'
+import { AppShell } from '@/components/layout/AppShell'
 
 const SETTINGS_SECTIONS = [
   {
@@ -69,32 +69,30 @@ export default function SettingsPage() {
   const router = useRouter()
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <Navbar />
-
+    <AppShell>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">الإعدادات</h1>
+        <h1 className="text-2xl font-bold text-text-primary mb-6">الإعدادات</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {SETTINGS_SECTIONS.map(section => (
             <button
               key={section.id}
               onClick={() => router.push(section.href)}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-right hover:shadow-md transition-shadow"
+              className="min-h-[44px] bg-bg-card rounded-xl shadow-sm border border-border-primary p-6 text-right hover:shadow-md transition-shadow"
             >
               <div className="flex items-start gap-4">
                 <span className={`p-3 rounded-lg ${COLOR_CLASSES[section.color]}`}>
                   {section.icon}
                 </span>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{section.description}</p>
+                  <h3 className="text-lg font-semibold text-text-primary">{section.title}</h3>
+                  <p className="text-sm text-text-tertiary mt-1">{section.description}</p>
                 </div>
               </div>
             </button>
           ))}
         </div>
       </div>
-    </div>
+    </AppShell>
   )
 }

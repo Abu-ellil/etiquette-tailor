@@ -30,26 +30,26 @@ export function LanguageSwitcher() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg"
+        className="flex items-center gap-2 px-3 py-2 hover:bg-bg-tertiary rounded-lg min-h-[44px]"
       >
-        <Globe className="w-5 h-5 text-gray-600" />
+        <Globe className="w-5 h-5 text-text-secondary" />
         <span className="text-sm font-medium">{LOCALES.find(l => l.code === locale)?.flag}</span>
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[150px]">
+        <div className="absolute left-0 top-full mt-1 bg-bg-card border border-border-primary rounded-lg shadow-lg py-1 z-50 min-w-[150px]">
           {LOCALES.map((loc) => (
             <button
               key={loc.code}
               onClick={() => handleSelect(loc.code)}
-              className={`w-full px-4 py-2 text-right hover:bg-gray-50 flex items-center gap-3 ${
-                locale === loc.code ? 'bg-blue-50' : ''
+              className={`w-full px-4 py-2 text-right hover:bg-bg-card-hover flex items-center gap-3 min-h-[44px] ${
+                locale === loc.code ? 'bg-accent-info-light' : ''
               }`}
             >
               <span className="text-xl">{loc.flag}</span>
               <span className="font-medium">{loc.name}</span>
               {locale === loc.code && (
-                <span className="mr-auto text-blue-600">✓</span>
+                <span className="mr-auto text-accent-primary">✓</span>
               )}
             </button>
           ))}

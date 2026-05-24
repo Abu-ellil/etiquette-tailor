@@ -3,10 +3,6 @@
 import { useTheme } from '@/contexts/ThemeContext'
 import {
   ResponsiveContainer,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
 } from 'recharts'
 import type { ReactNode } from 'react'
 
@@ -34,20 +30,17 @@ interface ChartTooltipProps {
 }
 
 export function ChartTooltip({ active, payload, label, formatter }: ChartTooltipProps) {
-  const { theme } = useTheme()
   if (!active || !payload?.length) return null
   return (
     <div style={{
-      background: theme === 'dark' ? '#1a1c2e' : '#ffffff',
-      border: `1px solid ${theme === 'dark' ? '#2a2d3e' : '#e5e7eb'}`,
+      background: 'var(--bg-card)',
+      border: '1px solid var(--border-primary)',
       borderRadius: 10,
       padding: '10px 14px',
-      boxShadow: theme === 'dark'
-        ? '0 8px 24px rgba(0,0,0,0.5)'
-        : '0 4px 12px rgba(0,0,0,0.1)',
+      boxShadow: 'var(--shadow-lg)',
       direction: 'rtl',
     }}>
-      {label && <p style={{ color: theme === 'dark' ? '#94a3b8' : '#6b7280', fontSize: 12, marginBottom: 4 }}>{label}</p>}
+      {label && <p style={{ color: 'var(--text-tertiary)', fontSize: 12, marginBottom: 4 }}>{label}</p>}
       {payload.map((entry, i) => (
         <p key={i} style={{ color: entry.color as string, fontSize: 13, fontWeight: 600 }}>
           {entry.name}: {formatter ? formatter(entry.value as number) : (entry.value as number)?.toLocaleString('ar-SA')}
@@ -57,38 +50,38 @@ export function ChartTooltip({ active, payload, label, formatter }: ChartTooltip
   )
 }
 
+type ResponsiveHeight = number | { mobile: number; desktop: number }
+
+function useResponsiveHeight(height: ResponsiveHeight): number {
+  if (typeof height === 'number') return height
+  if (typeof window === 'undefined') return height.desktop
+  return window.innerWidth < 768 ? height.mobile : height.desktop
+}
+
 interface ChartContainerProps {
   children: ReactNode
-  height?: number
+  height?: ResponsiveHeight
   title?: string
   subtitle?: string
   action?: ReactNode
+  className?: string
   style?: React.CSSProperties
 }
 
-export function ChartContainer({ children, height = 320, title, subtitle, action, style }: ChartContainerProps) {
-  const { theme } = useTheme()
+export function ChartContainer({ children, height = { mobile: 220, desktop: 320 }, title, subtitle, action, className, style }: ChartContainerProps) {
+  const resolvedHeight = useResponsiveHeight(height)
   return (
-    <div style={{
-      background: theme === 'dark' ? '#1a1c2e' : '#ffffff',
-      border: `1px solid ${theme === 'dark' ? '#2a2d3e' : '#e5e7eb'}`,
-      borderRadius: 14,
-      boxShadow: theme === 'dark'
-        ? '0 4px 12px rgba(0,0,0,0.3)'
-        : '0 1px 3px rgba(0,0,0,0.05)',
-      padding: 24,
-      ...style,
-    }}>
+    <div className={`chart-card ${className || ''}`} style={style}>
       {(title || action) && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
-            {title && <h3 style={{ fontSize: 16, fontWeight: 700, color: theme === 'dark' ? '#f1f5f9' : '#111827', margin: 0 }}>{title}</h3>}
-            {subtitle && <p style={{ fontSize: 13, color: theme === 'dark' ? '#94a3b8' : '#6b7280', marginTop: 2 }}>{subtitle}</p>}
+            {title && <h3 className="section-title">{title}</h3>}
+            {subtitle && <p className="page-subtitle" style={{ marginTop: 2 }}>{subtitle}</p>}
           </div>
           {action}
         </div>
       )}
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={resolvedHeight}>
         {children as React.ReactElement}
       </ResponsiveContainer>
     </div>

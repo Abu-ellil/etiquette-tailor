@@ -39,10 +39,10 @@ interface TaskBoardProps {
   onAssignWorker: (taskId: number, workerId: number | null) => void
 }
 
-const COLUMNS: Array<{ key: TaskStatus; label: string; color: string; bgColor: string }> = [
-  { key: 'pending', label: 'قيد الانتظار', color: 'orange', bgColor: 'bg-orange-50' },
-  { key: 'in_progress', label: 'قيد التنفيذ', color: 'blue', bgColor: 'bg-blue-50' },
-  { key: 'done', label: 'مكتمل', color: 'green', bgColor: 'bg-green-50' },
+const COLUMNS: Array<{ key: TaskStatus; label: string; accentClass: string; bgColor: string }> = [
+  { key: 'pending', label: 'قيد الانتظار', accentClass: 'text-accent-warning', bgColor: 'bg-accent-warning-light' },
+  { key: 'in_progress', label: 'قيد التنفيذ', accentClass: 'text-accent-primary', bgColor: 'bg-accent-info-light' },
+  { key: 'done', label: 'مكتمل', accentClass: 'text-accent-success', bgColor: 'bg-accent-success-light' },
 ]
 
 export function TaskBoard({ tasks, onStatusChange, onAssignWorker }: TaskBoardProps) {
@@ -64,17 +64,17 @@ export function TaskBoard({ tasks, onStatusChange, onAssignWorker }: TaskBoardPr
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {COLUMNS.map(column => (
-        <div key={column.key} className="bg-gray-100 rounded-xl p-4">
+        <div key={column.key} className="bg-bg-tertiary rounded-xl p-4">
           <div className={`${column.bgColor} rounded-lg px-4 py-3 mb-4 flex items-center justify-between`}>
-            <h3 className="font-semibold text-gray-800">{column.label}</h3>
-            <span className={`bg-white px-2 py-1 rounded-full text-sm font-bold text-${column.color}-600`}>
+            <h3 className="font-semibold text-text-primary">{column.label}</h3>
+            <span className={`bg-bg-card px-2 py-1 rounded-full text-sm font-bold ${column.accentClass}`}>
               {tasks[column.key].length}
             </span>
           </div>
 
           <div className="space-y-3 min-h-[400px]">
             {tasks[column.key].length === 0 ? (
-              <div className="bg-white rounded-lg p-6 text-center text-gray-400 text-sm">
+              <div className="bg-bg-card rounded-lg p-6 text-center text-text-muted text-sm">
                 لا توجد مهام
               </div>
             ) : (

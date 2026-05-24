@@ -76,10 +76,10 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+    <div className="bg-bg-card rounded-lg shadow-sm border border-border-primary p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium flex items-center gap-1">
+          <span className="px-2 py-1 bg-bg-tertiary text-text-secondary rounded-full text-xs font-medium flex items-center gap-1">
             {TASK_TYPE_ICONS[task.task_type]}
             {TASK_TYPE_LABELS[task.task_type]}
           </span>
@@ -87,17 +87,17 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-bg-tertiary rounded min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
-            <MoreVertical className="w-4 h-4 text-gray-400" />
+            <MoreVertical className="w-4 h-4 text-text-muted" />
           </button>
 
           {showMenu && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10 min-w-[140px]">
+            <div className="absolute left-0 top-full mt-1 bg-bg-card border border-border-primary rounded-lg shadow-lg py-1 z-10 min-w-[140px]">
               {currentStatus !== 'pending' && (
                 <button
                   onClick={() => handleStatusChange('pending')}
-                  className="w-full px-3 py-2 text-right text-sm hover:bg-gray-50"
+                  className="w-full px-3 py-2 text-right text-sm hover:bg-bg-card-hover min-h-[44px]"
                 >
                   إلغاء البدء
                 </button>
@@ -105,7 +105,7 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
               {currentStatus === 'pending' && (
                 <button
                   onClick={() => handleStatusChange('in_progress')}
-                  className="w-full px-3 py-2 text-right text-sm hover:bg-gray-50 text-blue-600"
+                  className="w-full px-3 py-2 text-right text-sm hover:bg-bg-card-hover text-accent-primary min-h-[44px]"
                 >
                   بدء المهمة
                 </button>
@@ -113,7 +113,7 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
               {currentStatus === 'in_progress' && (
                 <button
                   onClick={() => handleStatusChange('done')}
-                  className="w-full px-3 py-2 text-right text-sm hover:bg-gray-50 text-green-600"
+                  className="w-full px-3 py-2 text-right text-sm hover:bg-bg-card-hover text-accent-success min-h-[44px]"
                 >
                   إكمال المهمة
                 </button>
@@ -125,23 +125,23 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-900">
+          <span className="text-sm font-medium text-text-primary">
             #{task.order?.order_number || '-'}
           </span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-text-tertiary">
             {task.order?.piece_type || '-'}
           </span>
         </div>
 
         {task.order?.customer?.name && (
-          <p className="text-sm text-gray-600">{task.order.customer.name}</p>
+          <p className="text-sm text-text-secondary">{task.order.customer.name}</p>
         )}
 
-        <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center gap-2 pt-2 border-t border-border-primary">
           <button
             onClick={() => setShowWorkers(!showWorkers)}
-            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-              task.worker ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'
+            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full min-h-[44px] ${
+              task.worker ? 'bg-accent-info-light text-accent-info' : 'bg-bg-tertiary text-text-secondary'
             }`}
           >
             <User className="w-3 h-3" />
@@ -149,7 +149,7 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
             <ChevronLeft className="w-3 h-3" />
           </button>
 
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-text-tertiary">
             {task.wage_type === 'percentage'
               ? `${task.wage_rate}%`
               : `${task.wage_amount} ر.س`}
@@ -157,12 +157,12 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
         </div>
 
         {showWorkers && (
-          <div className="mt-2 pt-2 border-t border-gray-100">
-            <p className="text-xs text-gray-500 mb-1">اختر العامل:</p>
+          <div className="mt-2 pt-2 border-t border-border-primary">
+            <p className="text-xs text-text-tertiary mb-1">اختر العامل:</p>
             <div className="flex flex-wrap gap-1">
               <button
                 onClick={() => handleAssignWorker(null)}
-                className="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200"
+                className="px-2 py-1 text-xs bg-bg-tertiary rounded hover:bg-bg-card-hover min-h-[44px]"
               >
                 إلغاء التعيين
               </button>
@@ -170,10 +170,10 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
                 <button
                   key={worker.id}
                   onClick={() => handleAssignWorker(worker.id)}
-                  className={`px-2 py-1 text-xs rounded ${
+                  className={`px-2 py-1 text-xs rounded min-h-[44px] ${
                     task.assigned_to === worker.id
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 hover:bg-gray-200'
+                      ? 'bg-accent-primary text-white'
+                      : 'bg-bg-tertiary hover:bg-bg-card-hover'
                   }`}
                 >
                   {worker.name}
@@ -184,7 +184,7 @@ export function TaskCard({ task, workers, onStatusChange, onAssignWorker, curren
         )}
 
         {task.started_at && (
-          <div className="flex items-center gap-1 text-xs text-gray-500">
+          <div className="flex items-center gap-1 text-xs text-text-tertiary">
             <Clock className="w-3 h-3" />
             بدء: {new Date(task.started_at).toLocaleDateString('ar-SA')}
           </div>

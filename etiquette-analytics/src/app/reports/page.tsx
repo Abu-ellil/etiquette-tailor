@@ -3,33 +3,29 @@
 import { useState, useEffect } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
-import { useTheme } from '@/contexts/ThemeContext'
 import { useChartColors, ChartTooltip, ChartContainer } from '@/components/charts/ChartProvider'
-import { Navbar } from '@/components/layout/Navbar'
+import { AppShell } from '@/components/layout/AppShell'
 import {
   TrendingUp, TrendingDown, DollarSign, Calendar,
-  ArrowUpRight, ArrowDownRight, Loader2, Download,
-  Filter, PieChart as PieIcon, BarChart3, Activity,
+  Loader2, Filter, Activity,
 } from 'lucide-react'
 
 const CATEGORY_LABELS: Record<string, string> = {
-  rent: 'إيجار',
-  utilities: 'مرافق',
-  materials: 'مواد',
-  fabric: 'أقمشة',
-  supplies: 'مستلزمات',
-  salaries: 'رواتب',
-  other: 'أخرى',
+  rent: 'إيجار', utilities: 'مرافق', materials: 'مواد', fabric: 'أقمشة',
+  supplies: 'مستلزمات', salaries: 'رواتب', other: 'أخرى',
 }
 
 const PIE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899']
 
+const PERIOD_LABELS: Record<string, string> = {
+  week: 'أسبوع', month: 'شهر', quarter: 'ربع سنة', year: 'سنة', all: 'الكل',
+}
+
 type Period = 'week' | 'month' | 'quarter' | 'year' | 'all'
 
 export default function ReportsPage() {
-  const { theme } = useTheme()
   const chartColors = useChartColors()
   const [analyticsData, setAnalyticsData] = useState<any>(null)
   const [expensesData, setExpensesData] = useState<any[]>([])
@@ -37,23 +33,16 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('month')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [selectedBranch, setSelectedBranch] = useState<string>('all')
 
   useEffect(() => {
     const now = new Date()
     let start: Date
     switch (period) {
-      case 'week':
-        start = new Date(now.getTime() - 7 * 86400000); break
-      case 'month':
-        start = new Date(now.getFullYear(), now.getMonth(), 1); break
-      case 'quarter':
-        const qMonth = Math.floor(now.getMonth() / 3) * 3
-        start = new Date(now.getFullYear(), qMonth, 1); break
-      case 'year':
-        start = new Date(now.getFullYear(), 0, 1); break
-      case 'all':
-        start = new Date(2020, 0, 1); break
+      case 'week': start = new Date(now.getTime() - 7 * 86400000); break
+      case 'month': start = new Date(now.getFullYear(), now.getMonth(), 1); break
+      case 'quarter': start = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); break
+      case 'year': start = new Date(now.getFullYear(), 0, 1); break
+      case 'all': start = new Date(2020, 0, 1); break
     }
     setStartDate(start.toISOString().split('T')[0])
     setEndDate(now.toISOString().split('T')[0])
@@ -84,14 +73,13 @@ export default function ReportsPage() {
   const fmt = (amount: number) => new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR', maximumFractionDigits: 0 }).format(amount)
   const fmtN = (n: number) => n.toLocaleString('ar-SA')
 
-  const cardBg = theme === 'dark' ? '#1a1c2e' : '#ffffff'
-  const cardBorder = theme === 'dark' ? '#2a2d3e' : '#e5e7eb'
-
   if (loading || !analyticsData) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)' }}>
-        <Loader2 style={{ width: 40, height: 40, animation: 'spin 1s linear infinite', color: 'var(--accent-primary)' }} />
-      </div>
+      <AppShell>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-10 h-10 animate-spin text-accent-primary" />
+        </div>
+      </AppShell>
     )
   }
 
@@ -104,7 +92,6 @@ export default function ReportsPage() {
   const netProfit = totalRevenue - totalExpenses
   const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0
 
-  // Expense breakdown by category
   const expenseByCategory = expensesData.reduce((acc: Record<string, number>, e: any) => {
     acc[e.category] = (acc[e.category] || 0) + (e.amount || 0)
     return acc
@@ -114,7 +101,6 @@ export default function ReportsPage() {
     value: amount,
   }))
 
-  // Monthly expenses vs revenue chart
   const revenueVsExpense = monthlyRevenue.map((m: { month: string; revenue: number }) => {
     const monthExpenses = expensesData
       .filter((e: any) => new Date(e.expense_date).toISOString().startsWith(m.month))
@@ -127,7 +113,6 @@ export default function ReportsPage() {
     }
   })
 
-  // Branch-level P&L
   const branchPL = Object.entries(branches).map(([id, b]: [string, any]) => {
     const bExpenses = expensesData.filter(e => e.branch_id === parseInt(id)).reduce((s, e) => s + (e.amount || 0), 0)
     return {
@@ -140,20 +125,17 @@ export default function ReportsPage() {
     }
   })
 
-  // Daily cash flow
   const dailyMap: Record<string, { inflow: number; outflow: number }> = {}
   expensesData.forEach(e => {
     const d = e.expense_date
     if (!dailyMap[d]) dailyMap[d] = { inflow: 0, outflow: 0 }
     dailyMap[d].outflow += e.amount || 0
   })
-
   const dailyRevenue: { date: string; revenue: number }[] = analyticsData.dailyRevenue || []
   dailyRevenue.forEach(d => {
     if (!dailyMap[d.date]) dailyMap[d.date] = { inflow: 0, outflow: 0 }
     dailyMap[d.date].inflow += d.revenue
   })
-
   const cashFlowData = Object.entries(dailyMap)
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-30)
@@ -165,343 +147,255 @@ export default function ReportsPage() {
     }))
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-secondary)' }} dir="rtl">
-      <Navbar />
+    <AppShell>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6 md:mb-7">
+        <div>
+          <h1 className="page-title">التقارير المالية</h1>
+          <p className="page-subtitle">تحليل شامل للإيرادات والمصروفات والأرباح</p>
+        </div>
+      </div>
 
-      <main style={{ maxWidth: 1440, margin: '0 auto', padding: '28px 24px' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-          <div>
-            <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>التقارير المالية</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-tertiary)', marginTop: 4 }}>تحليل شامل للإيرادات والمصروفات والأرباح</p>
+      {/* Period Filter */}
+      <div className="filter-bar">
+        <Filter size={18} style={{ color: 'var(--text-muted)' }} />
+        {(['week', 'month', 'quarter', 'year', 'all'] as Period[]).map(p => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`filter-btn ${period === p ? 'active' : ''}`}
+          >
+            {PERIOD_LABELS[p]}
+          </button>
+        ))}
+        <div className="flex items-center gap-2 mr-3">
+          <input
+            type="date"
+            value={startDate}
+            onChange={e => { setStartDate(e.target.value); setPeriod('all' as Period) }}
+            className="date-input"
+          />
+          <span className="text-text-muted">—</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={e => { setEndDate(e.target.value); setPeriod('all' as Period) }}
+            className="date-input"
+          />
+        </div>
+      </div>
+
+      {/* P&L Summary Cards */}
+      <div className="kpi-grid gap-mb-mobile">
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">إجمالي الإيرادات</p>
+            <div className="kpi-icon" style={{ background: 'var(--accent-primary-light)' }}>
+              <TrendingUp style={{ width: 16, height: 16, color: 'var(--accent-primary)' }} />
+            </div>
           </div>
+          <p className="kpi-value">{fmt(totalRevenue)}</p>
         </div>
 
-        {/* Period Filter */}
-        <div style={{
-          background: cardBg,
-          border: `1px solid ${cardBorder}`,
-          borderRadius: 14,
-          padding: '14px 20px',
-          marginBottom: 24,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}>
-          <Filter size={18} style={{ color: 'var(--text-muted)' }} />
-          {(['week', 'month', 'quarter', 'year', 'all'] as Period[]).map(p => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              style={{
-                padding: '6px 16px',
-                borderRadius: 8,
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 13,
-                fontWeight: 600,
-                transition: 'all 0.15s ease',
-                ...(period === p
-                  ? { background: 'var(--accent-primary)', color: '#fff' }
-                  : { background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }
-                ),
-              }}
-            >
-              {p === 'week' ? 'أسبوع' : p === 'month' ? 'شهر' : p === 'quarter' ? 'ربع سنة' : p === 'year' ? 'سنة' : 'الكل'}
-            </button>
-          ))}
-          <div style={{ marginRight: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="date"
-              value={startDate}
-              onChange={e => { setStartDate(e.target.value); setPeriod('all' as Period) }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 8,
-                border: `1px solid ${cardBorder}`,
-                background: 'var(--bg-input)',
-                color: 'var(--text-primary)',
-                fontSize: 13,
-              }}
-            />
-            <span style={{ color: 'var(--text-muted)' }}>—</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={e => { setEndDate(e.target.value); setPeriod('all' as Period) }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 8,
-                border: `1px solid ${cardBorder}`,
-                background: 'var(--bg-input)',
-                color: 'var(--text-primary)',
-                fontSize: 13,
-              }}
-            />
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">إجمالي المصروفات</p>
+            <div className="kpi-icon" style={{ background: 'var(--accent-danger-light)' }}>
+              <TrendingDown style={{ width: 16, height: 16, color: 'var(--accent-danger)' }} />
+            </div>
           </div>
+          <p className="kpi-value">{fmt(totalExpenses)}</p>
         </div>
 
-        {/* === P&L Summary Cards === */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-          <PLCard
-            title="إجمالي الإيرادات"
-            value={fmt(totalRevenue)}
-            icon={<TrendingUp size={20} />}
-            color="var(--accent-primary)"
-            colorLight="var(--accent-primary-light)"
-          />
-          <PLCard
-            title="إجمالي المصروفات"
-            value={fmt(totalExpenses)}
-            icon={<TrendingDown size={20} />}
-            color="var(--accent-danger)"
-            colorLight="var(--accent-danger-light)"
-          />
-          <PLCard
-            title="صافي الربح"
-            value={fmt(netProfit)}
-            icon={<DollarSign size={20} />}
-            subtitle={netProfit >= 0 ? 'ربح' : 'خسارة'}
-            color={netProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}
-            colorLight={netProfit >= 0 ? 'var(--accent-success-light)' : 'var(--accent-danger-light)'}
-          />
-          <PLCard
-            title="هامش الربح"
-            value={`${profitMargin.toFixed(1)}%`}
-            icon={<Activity size={20} />}
-            subtitle={profitMargin >= 20 ? 'ممتاز' : profitMargin >= 10 ? 'جيد' : profitMargin >= 0 ? 'مقبول' : 'خسارة'}
-            color={profitMargin >= 20 ? 'var(--accent-success)' : profitMargin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)'}
-            colorLight={profitMargin >= 20 ? 'var(--accent-success-light)' : profitMargin >= 0 ? 'var(--accent-warning-light)' : 'var(--accent-danger-light)'}
-          />
-          <PLCard
-            title="الديون المتبقية"
-            value={fmt(summary.totalBalance || 0)}
-            icon={<Calendar size={20} />}
-            subtitle="من العملاء"
-            color="var(--accent-warning)"
-            colorLight="var(--accent-warning-light)"
-          />
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">صافي الربح</p>
+            <div className="kpi-icon" style={{ background: netProfit >= 0 ? 'var(--accent-success-light)' : 'var(--accent-danger-light)' }}>
+              <DollarSign style={{ width: 16, height: 16, color: netProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }} />
+            </div>
+          </div>
+          <p className="kpi-value">{fmt(netProfit)}</p>
+          <p style={{ fontSize: 12, color: netProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', marginTop: 4, fontWeight: 600 }}>
+            {netProfit >= 0 ? 'ربح' : 'خسارة'}
+          </p>
         </div>
 
-        {/* === Revenue vs Expenses Trend === */}
-        <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, marginBottom: 24 }}>
-          <ChartContainer title="الإيرادات مقابل المصروفات" subtitle="الشهرية">
-            <BarChart data={revenueVsExpense} barGap={6}>
-              <defs>
-                <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColors.colors[1]} stopOpacity={0.6} />
-                  <stop offset="95%" stopColor={chartColors.colors[1]} stopOpacity={0.1} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-              <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 12 }} />
-              <YAxis tick={{ fill: chartColors.text, fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">هامش الربح</p>
+            <div className="kpi-icon" style={{
+              background: profitMargin >= 20 ? 'var(--accent-success-light)' : profitMargin >= 0 ? 'var(--accent-warning-light)' : 'var(--accent-danger-light)',
+            }}>
+              <Activity style={{ width: 16, height: 16, color: profitMargin >= 20 ? 'var(--accent-success)' : profitMargin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)' }} />
+            </div>
+          </div>
+          <p className="kpi-value">{profitMargin.toFixed(1)}%</p>
+          <p style={{ fontSize: 12, color: profitMargin >= 20 ? 'var(--accent-success)' : profitMargin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)', marginTop: 4, fontWeight: 600 }}>
+            {profitMargin >= 20 ? 'ممتاز' : profitMargin >= 10 ? 'جيد' : profitMargin >= 0 ? 'مقبول' : 'خسارة'}
+          </p>
+        </div>
+
+        <div className="kpi-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="kpi-title">الديون المتبقية</p>
+            <div className="kpi-icon" style={{ background: 'var(--accent-warning-light)' }}>
+              <Calendar style={{ width: 16, height: 16, color: 'var(--accent-warning)' }} />
+            </div>
+          </div>
+          <p className="kpi-value">{fmt(summary.totalBalance || 0)}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>من العملاء</p>
+        </div>
+      </div>
+
+      {/* Revenue vs Expenses Trend + Expense Pie */}
+      <div className="chart-row-2 gap-mb-mobile">
+        <ChartContainer title="الإيرادات مقابل المصروفات" subtitle="الشهرية">
+          <BarChart data={revenueVsExpense} barGap={6}>
+            <defs>
+              <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={chartColors.colors[1]} stopOpacity={0.6} />
+                <stop offset="95%" stopColor={chartColors.colors[1]} stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+            <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 12 }} />
+            <YAxis tick={{ fill: chartColors.text, fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
+            <Legend iconType="circle" iconSize={8} formatter={(v: string) => <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{v}</span>} />
+            <Bar dataKey="الإيرادات" fill={chartColors.colors[0]} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="المصروفات" fill={chartColors.colors[3]} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartContainer>
+
+        <ChartContainer title="توزيع المصروفات" subtitle={fmt(totalExpenses)}>
+          {expenseChartData.length > 0 ? (
+            <PieChart>
+              <Pie data={expenseChartData} cx="50%" cy="50%" outerRadius={95} innerRadius={50} paddingAngle={3} dataKey="value" nameKey="name">
+                {expenseChartData.map((_, i) => (
+                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="transparent" />
+                ))}
+              </Pie>
               <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
-              <Legend iconType="circle" iconSize={8} formatter={(v: string) => <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{v}</span>} />
-              <Bar dataKey="الإيرادات" fill={chartColors.colors[0]} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="المصروفات" fill={chartColors.colors[3]} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartContainer>
+              <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(v: string) => <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{v}</span>} />
+            </PieChart>
+          ) : (
+            <div className="flex items-center justify-center h-full text-text-muted">
+              لا توجد مصروفات في هذه الفترة
+            </div>
+          )}
+        </ChartContainer>
+      </div>
 
-          {/* Expense Pie Chart */}
-          <ChartContainer title="توزيع المصروفات" subtitle={fmt(totalExpenses)}>
-            {expenseChartData.length > 0 ? (
-              <PieChart>
-                <Pie
-                  data={expenseChartData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={95}
-                  innerRadius={50}
-                  paddingAngle={3}
-                  dataKey="value"
-                  nameKey="name"
-                >
-                  {expenseChartData.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="transparent" />
-                  ))}
-                </Pie>
-                <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
-                <Legend
-                  verticalAlign="bottom"
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(v: string) => <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{v}</span>}
-                />
-              </PieChart>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-                لا توجد مصروفات في هذه الفترة
-              </div>
-            )}
-          </ChartContainer>
-        </div>
+      {/* Cash Flow + Branch P&L */}
+      <div className="equal-row gap-mb-mobile">
+        <ChartContainer title="التدفق النقدي اليومي" subtitle="آخر 30 يوم">
+          <AreaChart data={cashFlowData}>
+            <defs>
+              <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={chartColors.colors[1]} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={chartColors.colors[1]} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="outflowGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={chartColors.colors[3]} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={chartColors.colors[3]} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+            <XAxis dataKey="date" tick={{ fill: chartColors.text, fontSize: 11 }} interval={4} />
+            <YAxis tick={{ fill: chartColors.text, fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
+            <Area type="monotone" dataKey="الإيرادات" stroke={chartColors.colors[1]} strokeWidth={2} fill="url(#inflowGrad)" />
+            <Area type="monotone" dataKey="المصروفات" stroke={chartColors.colors[3]} strokeWidth={2} fill="url(#outflowGrad)" />
+          </AreaChart>
+        </ChartContainer>
 
-        {/* === Cash Flow + Branch P&L === */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-          {/* Daily Cash Flow */}
-          <ChartContainer title="التدفق النقدي اليومي" subtitle="آخر 30 يوم">
-            <AreaChart data={cashFlowData}>
-              <defs>
-                <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColors.colors[1]} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={chartColors.colors[1]} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="outflowGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColors.colors[3]} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={chartColors.colors[3]} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-              <XAxis dataKey="date" tick={{ fill: chartColors.text, fontSize: 11 }} interval={4} />
-              <YAxis tick={{ fill: chartColors.text, fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip content={<ChartTooltip formatter={(v) => fmt(v ?? 0)} />} />
-              <Area type="monotone" dataKey="الإيرادات" stroke={chartColors.colors[1]} strokeWidth={2} fill="url(#inflowGrad)" />
-              <Area type="monotone" dataKey="المصروفات" stroke={chartColors.colors[3]} strokeWidth={2} fill="url(#outflowGrad)" />
-            </AreaChart>
-          </ChartContainer>
-
-          {/* Branch P&L */}
-          <div style={{
-            background: cardBg,
-            border: `1px solid ${cardBorder}`,
-            borderRadius: 14,
-            padding: 24,
-          }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 20px 0' }}>
-              الأرباح والخسائر حسب الفرع
-            </h3>
-
-            {branchPL.map((branch, i) => (
-              <div key={i} style={{
-                padding: 16,
-                borderRadius: 12,
-                background: theme === 'dark' ? '#22253a' : '#f8f9fb',
-                marginBottom: i < branchPL.length - 1 ? 12 : 0,
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{branch.name}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{branch.orders} طلب</p>
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    <p style={{
-                      margin: 0,
-                      fontSize: 18,
-                      fontWeight: 800,
-                      color: branch.profit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)',
-                    }}>
-                      {fmt(branch.profit)}
-                    </p>
-                    <p style={{
-                      margin: '2px 0 0',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: branch.margin >= 20 ? 'var(--accent-success)' : branch.margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)',
-                    }}>
-                      هامش {branch.margin.toFixed(1)}%
-                    </p>
-                  </div>
+        <div className="card">
+          <h3 className="section-title mb-5">الأرباح والخسائر حسب الفرع</h3>
+          {branchPL.map((branch, i) => (
+            <div key={i} className="branch-card-inner" style={{ marginBottom: i < branchPL.length - 1 ? 12 : 0 }}>
+              <div className="flex justify-between items-center mb-3">
+                <div>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{branch.name}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{branch.orders} طلب</p>
                 </div>
-                {/* Progress bar showing profit margin */}
+                <div className="text-left">
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: branch.profit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                    {fmt(branch.profit)}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 600, color: branch.margin >= 20 ? 'var(--accent-success)' : branch.margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)' }}>
+                    هامش {branch.margin.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+              <div className="profit-bar-track">
                 <div style={{
-                  width: '100%',
-                  height: 6,
+                  height: '100%',
+                  width: `${Math.min(Math.max(Math.abs(branch.margin), 0), 100)}%`,
                   borderRadius: 3,
-                  background: theme === 'dark' ? '#1a1c2e' : '#e5e7eb',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${Math.min(Math.max(Math.abs(branch.margin), 0), 100)}%`,
-                    borderRadius: 3,
-                    background: branch.margin >= 20 ? 'var(--accent-success)' : branch.margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)',
-                    transition: 'width 0.5s ease',
-                  }} />
+                  background: branch.margin >= 20 ? 'var(--accent-success)' : branch.margin >= 0 ? 'var(--accent-warning)' : 'var(--accent-danger)',
+                  transition: 'width 0.5s ease',
+                }} />
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <div>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>الإيرادات</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--accent-primary)' }}>{fmt(branch.revenue)}</p>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>الإيرادات</p>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--accent-primary)' }}>{fmt(branch.revenue)}</p>
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>المصروفات</p>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--accent-danger)' }}>{fmt(branch.expenses)}</p>
-                  </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>المصروفات</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--accent-danger)' }}>{fmt(branch.expenses)}</p>
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Revenue Breakdown Table */}
+      <div className="card gap-mb-mobile">
+        <h3 className="section-title mb-5">ملخص الأداء المالي</h3>
+        <div className="summary-cols">
+          <div>
+            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 12px' }}>ملخص الإيرادات</h4>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                <DataRow label="إجمالي الطلبات" value={fmtN(summary.totalOrders || 0)} />
+                <DataRow label="إجمالي المبيعات" value={fmt(totalRevenue)} bold />
+                <DataRow label="المدفوع" value={fmt(summary.totalPaid || 0)} color="var(--accent-success)" />
+                <DataRow label="المتبقي" value={fmt(summary.totalBalance || 0)} color="var(--accent-warning)" />
+                <DataRow label="متوسط قيمة الطلب" value={fmt(summary.totalOrders > 0 ? totalRevenue / summary.totalOrders : 0)} />
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 12px' }}>ملخص المصروفات</h4>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {Object.entries(expenseByCategory)
+                  .sort(([, a], [, b]) => (b as number) - (a as number))
+                  .map(([cat, amount]) => (
+                    <DataRow key={cat} label={CATEGORY_LABELS[cat] || cat} value={fmt(amount as number)} color="var(--accent-danger)" />
+                  ))
+                }
+                <DataRow label="الإجمالي" value={fmt(totalExpenses)} bold color="var(--accent-danger)" />
+                <DataRow label="صافي الربح" value={fmt(netProfit)} bold color={netProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'} />
+                <DataRow label="هامش الربح" value={`${profitMargin.toFixed(1)}%`} bold color={profitMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'} />
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
-        {/* === Revenue Breakdown Table === */}
-        <div style={{
-          background: cardBg,
-          border: `1px solid ${cardBorder}`,
-          borderRadius: 14,
-          padding: 24,
-          marginBottom: 24,
-        }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 20px 0' }}>
-            ملخص الأداء المالي
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-            {/* Revenue Summary */}
-            <div>
-              <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 12px' }}>ملخص الإيرادات</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <tbody>
-                  <TableRow label="إجمالي الطلبات" value={fmtN(summary.totalOrders || 0)} />
-                  <TableRow label="إجمالي المبيعات" value={fmt(totalRevenue)} bold />
-                  <TableRow label="المدفوع" value={fmt(summary.totalPaid || 0)} color="var(--accent-success)" />
-                  <TableRow label="المتبقي" value={fmt(summary.totalBalance || 0)} color="var(--accent-warning)" />
-                  <TableRow label="متوسط قيمة الطلب" value={fmt(summary.totalOrders > 0 ? totalRevenue / summary.totalOrders : 0)} />
-                </tbody>
-              </table>
-            </div>
-
-            {/* Expense Summary */}
-            <div>
-              <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 12px' }}>ملخص المصروفات</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <tbody>
-                  {Object.entries(expenseByCategory)
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([cat, amount]) => (
-                      <TableRow
-                        key={cat}
-                        label={CATEGORY_LABELS[cat] || cat}
-                        value={fmt(amount)}
-                        color="var(--accent-danger)"
-                      />
-                    ))
-                  }
-                  <TableRow label="الإجمالي" value={fmt(totalExpenses)} bold color="var(--accent-danger)" />
-                  <TableRow label="صافي الربح" value={fmt(netProfit)} bold color={netProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'} />
-                  <TableRow label="هامش الربح" value={`${profitMargin.toFixed(1)}%`} bold color={profitMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'} />
-                </tbody>
-              </table>
-            </div>
+      {/* Expense Detail List */}
+      {expensesData.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="section-header">
+            <h3 className="section-title">تفاصيل المصروفات ({expensesData.length})</h3>
           </div>
-        </div>
-
-        {/* === Expense Detail List === */}
-        {expensesData.length > 0 && (
-          <div style={{
-            background: cardBg,
-            border: `1px solid ${cardBorder}`,
-            borderRadius: 14,
-            overflow: 'hidden',
-          }}>
-            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${cardBorder}` }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                تفاصيل المصروفات ({expensesData.length})
-              </h3>
-            </div>
+          <div className="table-scroll">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: theme === 'dark' ? '#161822' : '#f8f9fb' }}>
+                <tr style={{ background: 'var(--bg-tertiary)' }}>
                   {['التاريخ', 'الفئة', 'الوصف', 'الفرع', 'المبلغ'].map(h => (
                     <th key={h} style={{
                       padding: '12px 16px',
@@ -517,20 +411,12 @@ export default function ReportsPage() {
               </thead>
               <tbody>
                 {expensesData.slice(0, 20).map((expense: any) => (
-                  <tr key={expense.id} style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                  <tr key={expense.id} className="data-row">
                     <td style={{ padding: '10px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
                       {new Date(expense.expense_date).toLocaleDateString('ar-SA')}
                     </td>
                     <td style={{ padding: '10px 16px' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        padding: '2px 10px',
-                        borderRadius: 20,
-                        fontSize: 12,
-                        fontWeight: 500,
-                        background: 'var(--bg-tertiary)',
-                        color: 'var(--text-secondary)',
-                      }}>
+                      <span className="status-badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
                         {expense.category_name || CATEGORY_LABELS[expense.category] || expense.category}
                       </span>
                     </td>
@@ -548,60 +434,20 @@ export default function ReportsPage() {
               </tbody>
             </table>
           </div>
-        )}
-      </main>
-    </div>
-  )
-}
-
-function PLCard({ title, value, icon, subtitle, color, colorLight }: {
-  title: string
-  value: string
-  icon: React.ReactNode
-  subtitle?: string
-  color: string
-  colorLight: string
-}) {
-  const { theme } = useTheme()
-  return (
-    <div style={{
-      background: theme === 'dark' ? '#1a1c2e' : '#ffffff',
-      border: `1px solid ${theme === 'dark' ? '#2a2d3e' : '#e5e7eb'}`,
-      borderRadius: 14,
-      padding: 22,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>{title}</p>
-        <div style={{
-          width: 38,
-          height: 38,
-          borderRadius: 10,
-          background: colorLight,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: color,
-        }}>
-          {icon}
         </div>
-      </div>
-      <p style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: -0.5 }}>{value}</p>
-      {subtitle && (
-        <p style={{ fontSize: 12, color, margin: '4px 0 0', fontWeight: 600 }}>{subtitle}</p>
       )}
-    </div>
+    </AppShell>
   )
 }
 
-function TableRow({ label, value, bold, color }: {
+function DataRow({ label, value, bold, color }: {
   label: string
   value: string
   bold?: boolean
   color?: string
 }) {
-  const borderColor = 'var(--border-secondary)'
   return (
-    <tr style={{ borderBottom: `1px solid ${borderColor}` }}>
+    <tr className="data-row">
       <td style={{ padding: '10px 0', fontSize: 13, color: 'var(--text-secondary)' }}>{label}</td>
       <td style={{
         padding: '10px 0',

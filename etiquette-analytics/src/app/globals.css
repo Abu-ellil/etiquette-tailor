@@ -105,6 +105,36 @@
   --color-background: var(--bg-primary);
   --color-foreground: var(--text-primary);
   --font-sans: var(--font-cairo);
+
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-card: var(--bg-card);
+  --color-bg-card-hover: var(--bg-card-hover);
+  --color-bg-nav: var(--bg-nav);
+  --color-bg-input: var(--bg-input);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+
+  --color-border-primary: var(--border-primary);
+  --color-border-secondary: var(--border-secondary);
+  --color-border-focus: var(--border-focus);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-hover: var(--accent-primary-hover);
+  --color-accent-primary-light: var(--accent-primary-light);
+  --color-accent-success: var(--accent-success);
+  --color-accent-success-light: var(--accent-success-light);
+  --color-accent-warning: var(--accent-warning);
+  --color-accent-warning-light: var(--accent-warning-light);
+  --color-accent-danger: var(--accent-danger);
+  --color-accent-danger-light: var(--accent-danger-light);
+  --color-accent-info: var(--accent-info);
+  --color-accent-info-light: var(--accent-info-light);
 }
 
 body {
