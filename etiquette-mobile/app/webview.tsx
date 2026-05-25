@@ -21,8 +21,8 @@ export default function WebViewScreen() {
   }, [canGoBack])
 
   useEffect(() => {
-    BackHandler.addEventListener('hardwareBackPress', handleBackPress)
-    return () => BackHandler.removeEventListener('hardwareBackPress', handleBackPress)
+    const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress)
+    return () => subscription.remove()
   }, [handleBackPress])
 
   const handleLogout = async () => {
