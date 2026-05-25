@@ -21,7 +21,8 @@
       "Bash(sqlite3 -json \"/c/Users/MAS/Desktop/2.db\" \"SELECT id, name, phone, notes, branch_id, created_at FROM customers WHERE is_deleted = 0 OR is_deleted IS NULL;\")",
       "Read(//tmp/**)",
       "Bash(gh release *)",
-      "Bash(npx electron-forge *)"
+      "Bash(npx electron-forge *)",
+      "Bash(npx expo *)"
     ]
   }
 }
