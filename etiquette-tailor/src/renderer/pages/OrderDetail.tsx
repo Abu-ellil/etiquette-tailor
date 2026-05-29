@@ -40,8 +40,18 @@ export default function OrderDetailPage() {
   const loadOrder = React.useCallback(async () => {
     try {
       setLoading(true);
-      const [orderData, taskData, measData, workerData, paymentData, itemsData, ptData] = await Promise.all([
-        window.electronAPI.orders.get(Number(id)),
+
+      // Fetch the order first — if this fails, show real error
+      const orderData = await window.electronAPI.orders.get(Number(id));
+      setOrder(orderData);
+
+      if (!orderData) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch auxiliary data — use allSettled so one failure doesn't block others
+      const [taskRes, measRes, workerRes, paymentRes, itemsRes, ptRes] = await Promise.allSettled([
         window.electronAPI.orders.getTasks(Number(id)),
         window.electronAPI.orders.getMeasurements(Number(id)),
         window.electronAPI.workers.getAll(activeBranchId),
@@ -49,13 +59,21 @@ export default function OrderDetailPage() {
         window.electronAPI.orders.getItems(Number(id)),
         window.electronAPI.pieceTypes.getAll(),
       ]);
-      setOrder(orderData);
-      setTasks(taskData || []);
-      setMeasurements(measData);
-      setWorkers(workerData || []);
-      setPayments(paymentData || []);
-      setOrderItems(itemsData || []);
-      setPieceTypes(ptData || []);
+
+      setTasks(taskRes.status === 'fulfilled' ? (taskRes.value || []) : []);
+      setMeasurements(measRes.status === 'fulfilled' ? measRes.value : null);
+      setWorkers(workerRes.status === 'fulfilled' ? (workerRes.value || []) : []);
+      setPayments(paymentRes.status === 'fulfilled' ? (paymentRes.value || []) : []);
+      setOrderItems(itemsRes.status === 'fulfilled' ? (itemsRes.value || []) : []);
+      setPieceTypes(ptRes.status === 'fulfilled' ? (ptRes.value || []) : []);
+
+      // Log any failures for debugging
+      [taskRes, measRes, workerRes, paymentRes, itemsRes, ptRes].forEach((r, i) => {
+        if (r.status === 'rejected') {
+          const names = ['tasks', 'measurements', 'workers', 'payments', 'items', 'pieceTypes'];
+          console.error(`Failed to load ${names[i]}:`, r.reason);
+        }
+      });
     } catch (err) {
       console.error('Failed to load order:', err);
     } finally {
