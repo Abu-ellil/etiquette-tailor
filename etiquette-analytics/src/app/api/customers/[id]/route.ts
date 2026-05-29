@@ -27,7 +27,7 @@ export async function GET(
     .from('orders')
     .select('*')
     .eq('customer_id', parseInt(id))
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
 
   // حساب إجمالي الرصيد
   const totalBalance = (orders || []).reduce(

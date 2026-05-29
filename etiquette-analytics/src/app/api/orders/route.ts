@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       tasks:order_tasks(*),
       payments:order_payments(*)
     `)
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
 
   if (branchId) {
     query = query.eq('branch_id', parseInt(branchId))

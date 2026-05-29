@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('customers')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
 
   if (branchId) {
     query = query.eq('branch_id', parseInt(branchId))
