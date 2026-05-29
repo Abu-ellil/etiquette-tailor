@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
   // Fetch orders
   let ordersQuery = supabase
     .from('orders')
-    .select('id, branch_id, price, paid, created_at, status, created_by, customer_id')
-    .order('created_at', { ascending: false })
+    .select('id, branch_id, price, paid, updated_at, status, created_by, customer_id')
+    .order('updated_at', { ascending: false })
 
   if (branchId) {
     ordersQuery = ordersQuery.eq('branch_id', parseInt(branchId))
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       daily[key] = 0
     }
     orderList.forEach(o => {
-      const date = new Date(o.created_at).toISOString().split('T')[0]
+      const date = new Date(o.updated_at).toISOString().split('T')[0]
       if (daily[date] !== undefined) daily[date] += (o.price || 0)
     })
     return Object.entries(daily).map(([date, revenue]) => ({ date, revenue }))
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       monthly[key] = 0
     }
     orderList.forEach(o => {
-      const d = new Date(o.created_at)
+      const d = new Date(o.updated_at)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       if (monthly[key] !== undefined) monthly[key] += (o.price || 0)
     })
@@ -194,9 +194,9 @@ export async function GET(request: NextRequest) {
   const lastWeekStart = new Date(thisWeekStart)
   lastWeekStart.setDate(lastWeekStart.getDate() - 7)
 
-  const thisWeekOrders = allOrders.filter(o => new Date(o.created_at) >= thisWeekStart)
+  const thisWeekOrders = allOrders.filter(o => new Date(o.updated_at) >= thisWeekStart)
   const lastWeekOrders = allOrders.filter(o => {
-    const d = new Date(o.created_at)
+    const d = new Date(o.updated_at)
     return d >= lastWeekStart && d < thisWeekStart
   })
 

@@ -22,7 +22,9 @@
       "Read(//tmp/**)",
       "Bash(gh release *)",
       "Bash(npx electron-forge *)",
-      "Bash(npx expo *)"
+      "Bash(npx expo *)",
+      "Bash(python3 *)",
+      "Bash(curl *)"
     ]
   }
 }
