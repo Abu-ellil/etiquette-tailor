@@ -15,7 +15,7 @@ export default function WebViewScreen() {
   const [loading, setLoading] = useState(true)
   const [canGoBack, setCanGoBack] = useState(false)
   const [locale, setLocale] = useState<Locale>('ar')
-  const [theme, setTheme] = useState<Theme>('dark')
+  const [theme, setTheme] = useState<Theme>('light')
 
   const handleBackPress = useCallback(() => {
     if (canGoBack && webViewRef.current) {
@@ -58,18 +58,17 @@ export default function WebViewScreen() {
     const newTheme = theme === 'light' ? 'dark' : 'light'
     setTheme(newTheme)
     webViewRef.current?.injectJavaScript(`
-      localStorage.setItem('etq_theme', '${newTheme}');
-      window.dispatchEvent(new CustomEvent('settingsChanged', { detail: { theme: '${newTheme}' } }));
+      document.documentElement.classList.toggle('dark', ${newTheme === 'dark'});
       true;
     `)
   }
 
-  const headerBg = theme === 'dark' ? '#1e293b' : '#fff'
-  const headerBorderColor = theme === 'dark' ? '#334155' : '#e5e5e5'
-  const titleColor = theme === 'dark' ? '#e2e8f0' : '#1e3a5f'
+  const headerBg = '#fff'
+  const headerBorderColor = '#e5e5e5'
+  const titleColor = '#1e3a5f'
 
   return (
-    <View style={[styles.container, theme === 'dark' && styles.containerDark]}>
+    <View style={styles.container}>
       <View style={[styles.header, { backgroundColor: headerBg, borderBottomColor: headerBorderColor }]}>
         <Text style={[styles.headerTitle, { color: titleColor }]}>Etiquette Tailor</Text>
         <View style={styles.headerActions}>
@@ -128,9 +127,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-  },
-  containerDark: {
-    backgroundColor: '#0f172a',
   },
   header: {
     flexDirection: 'row',
