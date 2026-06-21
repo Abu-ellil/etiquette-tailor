@@ -212,7 +212,8 @@ export default function WorkersPage() {
       username: '',
       password: '',
       worker_type: 'tailor',
-      branch_id: branches.length > 0 ? branches[0].id : 1,
+      // Locked to the session branch (server enforces this regardless)
+      branch_id: activeBranchId,
       base_salary: 0,
       default_rate: 0,
     });

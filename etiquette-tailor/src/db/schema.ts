@@ -212,6 +212,7 @@ export function initializeSchema() {
       task_id INTEGER REFERENCES order_tasks(id),
       target_user_id INTEGER REFERENCES users(id),
       target_role TEXT CHECK(target_role IN ('admin','manager','reception','worker',NULL)),
+      branch_id INTEGER REFERENCES branches(id),
       is_read INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -220,6 +221,7 @@ export function initializeSchema() {
 
   db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(target_user_id, is_read, is_deleted, created_at DESC)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_role ON notifications(target_role, is_read, is_deleted, created_at DESC)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_branch ON notifications(branch_id, is_read, is_deleted, created_at DESC)`);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS expenses (
@@ -303,6 +305,10 @@ export function initializeSchema() {
   // Migrations: add missing columns to existing tables FIRST
   // This must run before any queries that might reference new columns
   migrateColumns();
+
+  // Branch isolation: ensure every branch has at least one active admin account,
+  // since full isolation means a branch-1 admin cannot manage other branches' users.
+  bootstrapBranchAdmins();
 
   // Migration: Fix plain text passwords
   migratePasswords();
@@ -455,7 +461,7 @@ function migrateColumns() {
   }
 
   // Get existing columns for each table
-  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates', 'piece_types', 'order_items', 'branches', 'daily_production']) {
+  for (const table of ['orders', 'users', 'customers', 'order_tasks', 'worker_rates', 'piece_types', 'order_items', 'branches', 'daily_production', 'notifications']) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     tables[table] = cols.map((c) => c.name);
   }
@@ -734,6 +740,64 @@ function migrateColumns() {
     console.log('Migration: daily_production table created');
   } catch (e) {
     console.log('daily_production table creation skipped:', (e as Error).message);
+  }
+
+  // ── Notifications branch_id migration ──
+  // Branch isolation: notifications must carry the branch they belong to so the
+  // main process can scope them to the caller's session branch.
+  if (!tables.notifications?.includes('branch_id')) {
+    console.log('Migrating: adding branch_id to notifications');
+    try {
+      db.exec('ALTER TABLE notifications ADD COLUMN branch_id INTEGER REFERENCES branches(id)');
+      // Backfill from related order's branch where possible
+      db.exec(`
+        UPDATE notifications SET branch_id = (
+          SELECT o.branch_id FROM orders o WHERE o.id = notifications.order_id
+        )
+        WHERE branch_id IS NULL AND order_id IS NOT NULL
+      `);
+      try { db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_branch ON notifications(branch_id, is_read, is_deleted, created_at DESC)`); } catch { /* ignore */ }
+    } catch (e) {
+      console.log('notifications branch_id migration skipped:', (e as Error).message);
+    }
+  }
+}
+
+function bootstrapBranchAdmins() {
+  // Full branch isolation means each branch must have its own admin to be manageable.
+  // For any branch lacking an active admin, create a default one and log the credentials.
+  // Idempotent: only creates admins for branches that don't already have one.
+  const branches = db.prepare('SELECT id, name_en, prefix FROM branches ORDER BY id').all() as { id: number; name_en: string; prefix: string }[];
+  if (branches.length === 0) return;
+
+  const stmt = db.prepare(`
+    INSERT INTO users (name, username, password_hash, role, worker_type, branch_id, base_salary)
+    VALUES (?, ?, ?, 'admin', NULL, ?, 0)
+  `);
+
+  const created: { branch: string; username: string }[] = [];
+
+  for (const b of branches) {
+    const hasAdmin = db.prepare('SELECT 1 FROM users WHERE branch_id = ? AND role = ? AND active = 1 LIMIT 1').get(b.id, 'admin');
+    if (hasAdmin) continue;
+
+    const username = `admin_${b.prefix.toLowerCase()}`;
+    // Skip if the generated username already exists for some reason
+    const taken = db.prepare('SELECT 1 FROM users WHERE username = ? LIMIT 1').get(username);
+    if (taken) continue;
+
+    stmt.run(`Admin (${b.name_en})`, username, hashPassword('changeme123'), b.id);
+    created.push({ branch: `${b.prefix} — ${b.name_en}`, username });
+  }
+
+  if (created.length > 0) {
+    console.warn('============================================================');
+    console.warn('[branch-isolation] Bootstrapped default admin accounts (password: changeme123).');
+    console.warn('Please log in and change these passwords immediately:');
+    for (const c of created) {
+      console.warn(`  - ${c.branch}: username="${c.username}"`);
+    }
+    console.warn('============================================================');
   }
 }
 

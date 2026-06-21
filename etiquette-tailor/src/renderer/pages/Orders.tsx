@@ -306,8 +306,8 @@ export default function OrdersPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Admins see all branches, workers see only their branch
-      const branchId = isAdmin ? undefined : activeBranchId;
+      // Strict branch isolation: ALL users see only their session branch
+      const branchId = activeBranchId;
       const [allOrders, orderStats] = await Promise.all([
         window.electronAPI.orders.getAll(branchId),
         window.electronAPI.orders.getStats(branchId),
@@ -371,7 +371,7 @@ export default function OrdersPage() {
         }
       }, 300);
     },
-    [fetchData],
+    [fetchData, activeBranchId],
   );
 
   /* Filter by tab */

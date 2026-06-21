@@ -168,7 +168,7 @@ export function recalculateOrderTotal(orderId: number): void {
   db.prepare('UPDATE orders SET price = ? WHERE id = ?').run(sum.total, orderId);
 }
 
-export function getAllOrders(branchId?: number, status?: string): Order[] {
+export function getAllOrders(branchId: number, status?: string): Order[] {
   let query = `
     SELECT o.*, c.name as customer_name, c.phone as customer_phone,
       COALESCE(ps.paid_sum, 0) as paid,
@@ -177,14 +177,10 @@ export function getAllOrders(branchId?: number, status?: string): Order[] {
     LEFT JOIN customers c ON o.customer_id = c.id AND c.is_deleted = 0
     LEFT JOIN (SELECT order_id, SUM(amount) as paid_sum FROM order_payments GROUP BY order_id) ps ON ps.order_id = o.id
     LEFT JOIN branches b ON o.branch_id = b.id
-  WHERE o.is_deleted = 0
+  WHERE o.is_deleted = 0 AND o.branch_id = ?
   `;
-  const params: any[] = [];
+  const params: any[] = [branchId];
 
-  if (branchId) {
-    query += ' AND o.branch_id = ?';
-    params.push(branchId);
-  }
   if (status) {
     query += ' AND o.status = ?';
     params.push(status);
@@ -646,23 +642,18 @@ export function reassignTask(taskId: number, newUserId: number, wageType: string
   logChange('order_tasks', taskId, 'UPDATE', { assigned_to: newUserId, wage_type: wageType, wage_rate: wageRate, wage_amount: wageAmount });
 }
 
-export function searchOrders(query: string, branchId?: number): Order[] {
+export function searchOrders(query: string, branchId: number): Order[] {
   const searchTerm = `%${query}%`;
-  let sql = `
+  const sql = `
     SELECT o.*, c.name as customer_name, c.phone as customer_phone,
       b.name_en as branch_name, b.name_ar as branch_name_ar, b.prefix as branch_prefix, b.phone as branch_phone, b.address as branch_address
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id AND c.is_deleted = 0
     LEFT JOIN branches b ON o.branch_id = b.id
-    WHERE o.is_deleted = 0 AND (o.order_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)
+    WHERE o.is_deleted = 0 AND o.branch_id = ? AND (o.order_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)
+    ORDER BY o.created_at DESC
   `;
-  const params: any[] = [searchTerm, searchTerm, searchTerm];
-
-  if (branchId) {
-    sql += ' AND o.branch_id = ?';
-    params.push(branchId);
-  }
-  sql += ' ORDER BY o.created_at DESC';
+  const params: any[] = [branchId, searchTerm, searchTerm, searchTerm];
 
   const stmt = db.prepare(sql);
   return stmt.all(...params) as Order[];
@@ -694,7 +685,7 @@ export interface TaskBoardItem {
   base_price?: number;
 }
 
-export function getAllTasks(filters?: { branchId?: number; workerId?: number; taskType?: string }): TaskBoardItem[] {
+export function getAllTasks(filters: { branchId: number; workerId?: number; taskType?: string }): TaskBoardItem[] {
   let query = `
     SELECT
       ot.id as task_id,
@@ -726,19 +717,15 @@ export function getAllTasks(filters?: { branchId?: number; workerId?: number; ta
     LEFT JOIN piece_types pt ON oi.piece_type = pt.name_en
     LEFT JOIN customers c ON o.customer_id = c.id AND c.is_deleted = 0
     LEFT JOIN users u ON ot.assigned_to = u.id
-    WHERE o.is_deleted = 0
+    WHERE o.is_deleted = 0 AND o.branch_id = ?
   `;
-  const params: any[] = [];
+  const params: any[] = [filters.branchId];
 
-  if (filters?.branchId) {
-    query += ' AND o.branch_id = ?';
-    params.push(filters.branchId);
-  }
-  if (filters?.workerId) {
+  if (filters.workerId) {
     query += ' AND ot.assigned_to = ?';
     params.push(filters.workerId);
   }
-  if (filters?.taskType) {
+  if (filters.taskType) {
     query += ' AND ot.task_type = ?';
     params.push(filters.taskType);
   }
@@ -756,15 +743,7 @@ export function getAllTasks(filters?: { branchId?: number; workerId?: number; ta
   return stmt.all(...params) as TaskBoardItem[];
 }
 
-export function getOrderStats(branchId?: number): { total: number; in_progress: number; ready: number; delivered: number; overdue: number; revenue: number } {
-  let branchFilter = '';
-  const params: any[] = [];
-
-  if (branchId) {
-    branchFilter = ' AND branch_id = ?';
-    params.push(branchId);
-  }
-
+export function getOrderStats(branchId: number): { total: number; in_progress: number; ready: number; delivered: number; overdue: number; revenue: number } {
   const today = new Date().toISOString().split('T')[0];
 
   const stmt = db.prepare(`
@@ -776,9 +755,9 @@ export function getOrderStats(branchId?: number): { total: number; in_progress: 
       COALESCE(SUM(CASE WHEN status != 'delivered' AND delivery_date < ? THEN 1 ELSE 0 END), 0) as overdue,
       COALESCE(SUM(CASE WHEN status != 'delivered' THEN price ELSE 0 END), 0) as revenue
     FROM orders
-    WHERE is_deleted = 0 ${branchFilter}
+    WHERE is_deleted = 0 AND branch_id = ?
   `);
-  return stmt.get(today, ...params) as { total: number; in_progress: number; ready: number; delivered: number; overdue: number; revenue: number };
+  return stmt.get(today, branchId) as { total: number; in_progress: number; ready: number; delivered: number; overdue: number; revenue: number };
 }
 
 export interface ReportStats {
@@ -801,14 +780,8 @@ function getPeriodDateFilter(period?: string): { filter: string; params: any[] }
   return { filter: '', params: [] };
 }
 
-export function getReportStats(branchId?: number, period?: string): ReportStats {
-  let branchFilter = '';
-  const params: any[] = [];
-
-  if (branchId) {
-    branchFilter = ' AND branch_id = ?';
-    params.push(branchId);
-  }
+export function getReportStats(branchId: number, period?: string): ReportStats {
+  const params: any[] = [branchId];
 
   const { filter: dateFilter } = getPeriodDateFilter(period);
 
@@ -817,27 +790,20 @@ export function getReportStats(branchId?: number, period?: string): ReportStats 
       COUNT(*) as totalOrders,
       COALESCE(SUM(price), 0) as revenue
     FROM orders
-    WHERE is_deleted = 0 ${branchFilter}${dateFilter}
+    WHERE is_deleted = 0 AND branch_id = ?${dateFilter}
   `);
   const orderStats = stmt.get(...params) as { totalOrders: number; revenue: number };
 
   // Workers cost = sum of all task wages
-  let costFilter = '';
-  const costParams: any[] = [];
-  if (branchId) {
-    costFilter = ' AND o.branch_id = ?';
-    costParams.push(branchId);
-  }
-
   const costDateFilter = dateFilter.replace(/created_at/g, 'o.created_at');
 
   const costStmt = db.prepare(`
     SELECT COALESCE(SUM(ot.wage_amount), 0) as workersCost
     FROM order_tasks ot
     JOIN orders o ON ot.order_id = o.id
-    WHERE o.is_deleted = 0 ${costFilter}${costDateFilter}
+    WHERE o.is_deleted = 0 AND o.branch_id = ?${costDateFilter}
   `);
-  const costResult = costStmt.get(...costParams) as { workersCost: number };
+  const costResult = costStmt.get(branchId) as { workersCost: number };
 
   return {
     totalOrders: orderStats.totalOrders,
@@ -854,14 +820,8 @@ export interface PaymentSplit {
   cashAmount: number;
 }
 
-export function getPaymentSplit(branchId?: number, period?: string): PaymentSplit {
-  let branchFilter = '';
-  const params: any[] = [];
-
-  if (branchId) {
-    branchFilter = ' AND branch_id = ?';
-    params.push(branchId);
-  }
+export function getPaymentSplit(branchId: number, period?: string): PaymentSplit {
+  const params: any[] = [branchId];
 
   const { filter: dateFilter } = getPeriodDateFilter(period);
 
@@ -871,7 +831,7 @@ export function getPaymentSplit(branchId?: number, period?: string): PaymentSpli
       COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN price ELSE 0 END), 0) as cashAmount,
       COUNT(*) as total
     FROM orders
-    WHERE is_deleted = 0 ${branchFilter}${dateFilter}
+    WHERE is_deleted = 0 AND branch_id = ?${dateFilter}
   `);
   const result = stmt.get(...params) as { cardAmount: number; cashAmount: number; total: number };
 
@@ -889,25 +849,17 @@ export interface MonthlyRevenue {
   value: number;
 }
 
-export function getMonthlyRevenue(months: number = 6, branchId?: number): MonthlyRevenue[] {
-  let branchFilter = '';
-  const params: any[] = [];
-
-  if (branchId) {
-    branchFilter = ' AND branch_id = ?';
-    params.push(branchId);
-  }
-
+export function getMonthlyRevenue(months: number = 6, branchId: number): MonthlyRevenue[] {
   const stmt = db.prepare(`
     SELECT
       strftime('%Y-%m', created_at) as month_key,
       COALESCE(SUM(price), 0) as value
     FROM orders
-    WHERE is_deleted = 0 AND created_at >= date('now', '-${months} months') ${branchFilter}
+    WHERE is_deleted = 0 AND created_at >= date('now', '-${months} months') AND branch_id = ?
     GROUP BY strftime('%Y-%m', created_at)
     ORDER BY month_key ASC
   `);
-  const rows = stmt.all(...params) as { month_key: string; value: number }[];
+  const rows = stmt.all(branchId) as { month_key: string; value: number }[];
 
   return rows.map((r) => {
     const d = new Date(r.month_key + '-01');
@@ -916,14 +868,8 @@ export function getMonthlyRevenue(months: number = 6, branchId?: number): Monthl
   });
 }
 
-export function getRecentOrders(limit: number = 10, branchId?: number, period?: string): any[] {
-  let branchFilter = '';
-  const params: any[] = [];
-
-  if (branchId) {
-    branchFilter = ' AND o.branch_id = ?';
-    params.push(branchId);
-  }
+export function getRecentOrders(limit: number = 10, branchId: number, period?: string): any[] {
+  const params: any[] = [branchId];
 
   const { filter: dateFilter } = getPeriodDateFilter(period);
   const orderDateFilter = dateFilter.replace(/created_at/g, 'o.created_at');
@@ -932,7 +878,7 @@ export function getRecentOrders(limit: number = 10, branchId?: number, period?: 
     SELECT o.*, c.name as customer_name
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.id AND c.is_deleted = 0
-    WHERE o.is_deleted = 0 ${branchFilter}${orderDateFilter}
+    WHERE o.is_deleted = 0 AND o.branch_id = ?${orderDateFilter}
     ORDER BY o.created_at DESC
     LIMIT ?
   `);
@@ -1022,7 +968,7 @@ export function syncAllOrderPayments(): void {
 // ── Advanced Reports ──────────────────────────────────────────────────
 
 export interface AdvancedReportFilter {
-  branchId?: number;
+  branchId: number;
   startDate?: string;
   endDate?: string;
   workerId?: number;
@@ -1047,13 +993,11 @@ export interface AdvancedReportData {
 }
 
 export function getAdvancedReport(filter: AdvancedReportFilter): AdvancedReportData {
-  let where = 'WHERE o.is_deleted = 0';
-  const params: any[] = [];
+  // Branch isolation is mandatory — the IPC layer always supplies branchId.
+  const branchId = filter.branchId!;
+  let where = 'WHERE o.is_deleted = 0 AND o.branch_id = ?';
+  const params: any[] = [branchId];
 
-  if (filter.branchId) {
-    where += ' AND o.branch_id = ?';
-    params.push(filter.branchId);
-  }
   if (filter.startDate) {
     where += ' AND date(o.created_at) >= ?';
     params.push(filter.startDate);
@@ -1077,9 +1021,8 @@ export function getAdvancedReport(filter: AdvancedReportFilter): AdvancedReportD
     ${where}
   `).get(...params) as any;
 
-  let workerWhere = '';
-  const workerParams: any[] = [];
-  if (filter.branchId) { workerWhere += ' AND o.branch_id = ?'; workerParams.push(filter.branchId); }
+  let workerWhere = ' AND o.branch_id = ?';
+  const workerParams: any[] = [branchId];
   if (filter.startDate) { workerWhere += ' AND date(o.created_at) >= ?'; workerParams.push(filter.startDate); }
   if (filter.endDate) { workerWhere += ' AND date(o.created_at) <= ?'; workerParams.push(filter.endDate); }
   if (filter.workerId) { workerWhere += ' AND ot.assigned_to = ?'; workerParams.push(filter.workerId); }
@@ -1131,20 +1074,17 @@ export interface DailyStat {
   revenue: number;
 }
 
-export function getDailyStats(days: number, branchId?: number): DailyStat[] {
-  const branchFilter = branchId ? ' AND branch_id = ?' : '';
-  const params = branchId ? [branchId] : [];
-
+export function getDailyStats(days: number, branchId: number): DailyStat[] {
   const rows = db.prepare(`
     SELECT
       date(created_at) as date,
       COUNT(*) as orders,
       COALESCE(SUM(price), 0) as revenue
     FROM orders
-    WHERE is_deleted = 0 AND date(created_at) >= date('now', '-${days} days')${branchFilter}
+    WHERE is_deleted = 0 AND date(created_at) >= date('now', '-${days} days') AND branch_id = ?
     GROUP BY date(created_at)
     ORDER BY date ASC
-  `).all(...params) as { date: string; orders: number; revenue: number }[];
+  `).all(branchId) as { date: string; orders: number; revenue: number }[];
 
   return rows;
 }
@@ -1155,10 +1095,9 @@ export interface WorkerContribution {
   wage_total: number;
 }
 
-export function getWorkerContribution(branchId?: number, startDate?: string, endDate?: string): WorkerContribution[] {
-  let filter = '';
-  const params: any[] = [];
-  if (branchId) { filter += ' AND o.branch_id = ?'; params.push(branchId); }
+export function getWorkerContribution(branchId: number, startDate?: string, endDate?: string): WorkerContribution[] {
+  let filter = ' AND o.branch_id = ?';
+  const params: any[] = [branchId];
   if (startDate) { filter += ' AND date(o.created_at) >= ?'; params.push(startDate); }
   if (endDate) { filter += ' AND date(o.created_at) <= ?'; params.push(endDate); }
 
@@ -1189,4 +1128,150 @@ export function getReportEmails(): { id: number; email: string; label: string | 
 
 export function deleteReportEmail(id: number): void {
   db.prepare('DELETE FROM report_emails WHERE id = ?').run(id);
+}
+
+// ── Branch Integrity Scan ──────────────────────────────────────────────────
+// Read-only diagnostic. Scans for records whose branch_id is inconsistent with
+// related records (e.g. an order in branch A whose customer is in branch B, or a
+// task whose worker is in a different branch than the order). This does NOT modify
+// any data — it only reports suspicious rows so an admin can re-attribute them.
+
+export interface IntegrityFinding {
+  type: string;            // short category label
+  id: number;              // primary record id
+  detail: string;          // human-readable description
+  order_branch_id?: number | null;
+  related_branch_id?: number | null;
+}
+
+export interface BranchIntegrityReport {
+  scannedAt: string;
+  branchCount: number;
+  findings: IntegrityFinding[];
+  totals: Record<string, number>;
+}
+
+export function getBranchIntegrityReport(): BranchIntegrityReport {
+  const findings: IntegrityFinding[] = [];
+
+  // 1. Orders whose branch_id differs from their customer's branch_id
+  try {
+    const mismatched = db.prepare(`
+      SELECT o.id, o.order_number, o.branch_id AS order_branch_id, c.branch_id AS customer_branch_id,
+             c.name AS customer_name
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.id
+      WHERE o.is_deleted = 0 AND c.is_deleted = 0
+        AND o.branch_id IS NOT NULL AND c.branch_id IS NOT NULL
+        AND o.branch_id != c.branch_id
+      ORDER BY o.id
+    `).all() as { id: number; order_number: string; order_branch_id: number; customer_branch_id: number; customer_name: string }[];
+    for (const r of mismatched) {
+      findings.push({
+        type: 'order_customer_branch_mismatch',
+        id: r.id,
+        detail: `Order ${r.order_number} (customer ${r.customer_name || '?'}) is in branch ${r.order_branch_id} but its customer is in branch ${r.customer_branch_id}.`,
+        order_branch_id: r.order_branch_id,
+        related_branch_id: r.customer_branch_id,
+      });
+    }
+  } catch { /* column may be missing on very old DBs */ }
+
+  // 2. Orders with null branch_id
+  try {
+    const nullBranchOrders = db.prepare(`
+      SELECT id, order_number FROM orders WHERE is_deleted = 0 AND branch_id IS NULL
+      ORDER BY id
+    `).all() as { id: number; order_number: string }[];
+    for (const r of nullBranchOrders) {
+      findings.push({
+        type: 'order_null_branch',
+        id: r.id,
+        detail: `Order ${r.order_number} has no branch assigned.`,
+      });
+    }
+  } catch { /* ignore */ }
+
+  // 3. Customers with null branch_id
+  try {
+    const nullBranchCustomers = db.prepare(`
+      SELECT id, name FROM customers WHERE is_deleted = 0 AND branch_id IS NULL
+      ORDER BY id
+    `).all() as { id: number; name: string | null }[];
+    for (const r of nullBranchCustomers) {
+      findings.push({
+        type: 'customer_null_branch',
+        id: r.id,
+        detail: `Customer ${r.name || '(unnamed)'} [id ${r.id}] has no branch assigned.`,
+      });
+    }
+  } catch { /* ignore */ }
+
+  // 4. Tasks whose assigned worker's branch differs from the order's branch
+  try {
+    const taskMismatches = db.prepare(`
+      SELECT ot.id AS task_id, o.order_number, o.branch_id AS order_branch_id, u.branch_id AS worker_branch_id,
+             u.name AS worker_name
+      FROM order_tasks ot
+      JOIN orders o ON ot.order_id = o.id
+      JOIN users u ON ot.assigned_to = u.id
+      WHERE o.is_deleted = 0
+        AND o.branch_id IS NOT NULL AND u.branch_id IS NOT NULL
+        AND o.branch_id != u.branch_id
+      ORDER BY ot.id
+    `).all() as { task_id: number; order_number: string; order_branch_id: number; worker_branch_id: number; worker_name: string }[];
+    for (const r of taskMismatches) {
+      findings.push({
+        type: 'task_worker_branch_mismatch',
+        id: r.task_id,
+        detail: `Task ${r.task_id} (order ${r.order_number}, worker ${r.worker_name}) — order is in branch ${r.order_branch_id} but worker is in branch ${r.worker_branch_id}.`,
+        order_branch_id: r.order_branch_id,
+        related_branch_id: r.worker_branch_id,
+      });
+    }
+  } catch { /* ignore */ }
+
+  // 5. Users with null branch_id
+  try {
+    const nullBranchUsers = db.prepare(`
+      SELECT id, name, role FROM users WHERE active = 1 AND branch_id IS NULL
+      ORDER BY id
+    `).all() as { id: number; name: string; role: string }[];
+    for (const r of nullBranchUsers) {
+      findings.push({
+        type: 'user_null_branch',
+        id: r.id,
+        detail: `User ${r.name} (${r.role}) [id ${r.id}] has no branch assigned.`,
+      });
+    }
+  } catch { /* ignore */ }
+
+  // 6. Expenses with null branch_id (informational — shared/global expenses)
+  try {
+    const nullBranchExpenses = db.prepare(`
+      SELECT id, description FROM expenses WHERE is_deleted = 0 AND branch_id IS NULL
+      ORDER BY id
+    `).all() as { id: number; description: string }[];
+    for (const r of nullBranchExpenses) {
+      findings.push({
+        type: 'expense_null_branch',
+        id: r.id,
+        detail: `Expense "${r.description}" [id ${r.id}] has no branch assigned (treated as shared).`,
+      });
+    }
+  } catch { /* ignore */ }
+
+  const totals: Record<string, number> = {};
+  for (const f of findings) {
+    totals[f.type] = (totals[f.type] || 0) + 1;
+  }
+
+  const branchCountRow = db.prepare('SELECT COUNT(*) AS c FROM branches').get() as { c: number };
+
+  return {
+    scannedAt: new Date().toISOString(),
+    branchCount: branchCountRow.c,
+    findings,
+    totals,
+  };
 }

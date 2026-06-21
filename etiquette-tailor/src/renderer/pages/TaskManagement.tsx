@@ -50,8 +50,7 @@ export default function TaskManagementPage() {
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
-  const [filterBranch, setFilterBranch] = useState<number | null>(null);
+  // Filters (strict branch isolation - always use active branch)
   const [filterWorker, setFilterWorker] = useState<number | null>(null);
   const [filterType, setFilterType] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -69,13 +68,12 @@ export default function TaskManagementPage() {
     try {
       setLoading(true);
       const filters: any = { branchId: activeBranchId };
-      if (filterBranch) filters.branchId = filterBranch;
       if (filterWorker) filters.workerId = filterWorker;
       if (filterType) filters.taskType = filterType;
 
       const [tasksData, workloadsData, branchesData] = await Promise.all([
         window.electronAPI.orders.getAllTasks(Object.keys(filters).length > 0 ? filters : undefined),
-        window.electronAPI.workers.getWorkloads(filterBranch || activeBranchId),
+        window.electronAPI.workers.getWorkloads(activeBranchId),
         window.electronAPI.branches.getAll(),
       ]);
       setTasks((tasksData || []) as Task[]);
@@ -250,20 +248,6 @@ export default function TaskManagementPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
-        {branches.length > 1 && (
-          <div>
-            <select
-              value={filterBranch || ''}
-              onChange={(e) => setFilterBranch(Number(e.target.value) || null)}
-              className="input-field text-sm py-2 appearance-none pr-8"
-            >
-              <option value="">{t('All Branches')}</option>
-              {branches.map((b: any) => (
-                <option key={b.id} value={b.id}>{b.name_en}</option>
-              ))}
-            </select>
-          </div>
-        )}
         <div>
           <select
             value={filterType}

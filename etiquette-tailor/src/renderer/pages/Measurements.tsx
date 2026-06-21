@@ -122,7 +122,7 @@ export default function MeasurementsPage() {
   // Load customer profile when selected
   const loadCustomerProfile = useCallback(async (customer: Customer) => {
     try {
-      const orders: Order[] = await window.electronAPI.orders.getAll();
+      const orders: Order[] = await window.electronAPI.orders.getAll(activeBranchId);
       const customerOrders = orders.filter((o) => o.customer_id === customer.id);
       const lastOrder = customerOrders.length > 0 ? customerOrders[0] : null;
 
@@ -154,7 +154,7 @@ export default function MeasurementsPage() {
       setCustomerProfile(null);
       reset({ chest: '', waist: '', hips: '', length: '', sleeve: '', shoulder: '', notes: '' });
     }
-  }, [reset]);
+  }, [reset, activeBranchId]);
 
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -172,7 +172,7 @@ export default function MeasurementsPage() {
 
     try {
       // Find the customer's most recent order to save measurements against
-      const orders: Order[] = await window.electronAPI.orders.getAll();
+      const orders: Order[] = await window.electronAPI.orders.getAll(activeBranchId);
       const customerOrders = orders.filter((o) => o.customer_id === selectedCustomer.id);
 
       if (customerOrders.length === 0) {

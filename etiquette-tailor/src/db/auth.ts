@@ -45,13 +45,9 @@ export function authenticateUser(username: string, password: string): Session | 
   };
 }
 
-export function getAllUsers(branchId?: number): User[] {
-  if (branchId) {
-    const stmt = db.prepare('SELECT * FROM users WHERE branch_id = ? AND active = 1 ORDER BY name');
-    return stmt.all(branchId) as User[];
-  }
-  const stmt = db.prepare('SELECT * FROM users WHERE active = 1 ORDER BY name');
-  return stmt.all() as User[];
+export function getAllUsers(branchId: number): User[] {
+  const stmt = db.prepare('SELECT * FROM users WHERE branch_id = ? AND active = 1 ORDER BY name');
+  return stmt.all(branchId) as User[];
 }
 
 export function getUser(id: number): User | undefined {

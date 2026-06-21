@@ -55,6 +55,7 @@ const TABS = [
   { id: 'branches', label: 'Branches', icon: 'store' },
   { id: 'invoice', label: 'Invoice', icon: 'receipt' },
   { id: 'preferences', label: 'Preferences', icon: 'tune' },
+  { id: 'integrity', label: 'Branch Integrity', icon: 'verified_user' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -91,6 +92,54 @@ export default function SettingsPage() {
   const [branchModalOpen, setBranchModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Branch Integrity scan (admin diagnostic)
+  const session = JSON.parse(localStorage.getItem('session') || '{}');
+  const isAdmin = session.role === 'admin';
+  const [integrityReport, setIntegrityReport] = useState<any>(null);
+  const [integrityLoading, setIntegrityLoading] = useState(false);
+  const [integrityError, setIntegrityError] = useState<string | null>(null);
+
+  const runIntegrityScan = useCallback(async () => {
+    setIntegrityLoading(true);
+    setIntegrityError(null);
+    try {
+      const report = await window.electronAPI.reports.getBranchIntegrity();
+      setIntegrityReport(report);
+    } catch (err: any) {
+      setIntegrityError(err?.message || 'Failed to run scan');
+    } finally {
+      setIntegrityLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'integrity' && isAdmin && !integrityReport && !integrityLoading) {
+      runIntegrityScan();
+    }
+  }, [activeTab, isAdmin, integrityReport, integrityLoading, runIntegrityScan]);
+
+  const exportIntegrityReport = () => {
+    if (!integrityReport) return;
+    const lines = [
+      'Branch Integrity Report',
+      `Scanned: ${integrityReport.scannedAt}`,
+      `Branches: ${integrityReport.branchCount}`,
+      '',
+      'Totals:',
+      ...Object.entries(integrityReport.totals || {}).map(([k, v]) => `  ${k}: ${v}`),
+      '',
+      'Findings:',
+      ...integrityReport.findings.map((f: any, i: number) => `${i + 1}. [${f.type}] ${f.detail}`),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `branch-integrity-${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const INVOICE_TOGGLES = [
     { key: 'invoice_show_shop_name', label: 'Shop Name', desc: 'Shop name (Arabic & English)', icon: 'storefront' },
@@ -1445,6 +1494,127 @@ export default function SettingsPage() {
             </div>
           </div>
         </form>
+      )}
+
+      {activeTab === 'integrity' && (
+        <div className="max-w-4xl space-y-6">
+          {!isAdmin ? (
+            <div className="bg-surface-container-lowest rounded-2xl p-8 text-center">
+              <span className="material-symbols-outlined text-4xl text-outline mb-3 block">lock</span>
+              <p className="text-sm text-secondary">
+                {t('Only admins can run the branch integrity scan.')}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-surface-container-lowest rounded-2xl p-8">
+                <div className="flex items-center justify-between gap-4 flex-wrap mb-2">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-primary text-xl">verified_user</span>
+                    <div>
+                      <h3 className="font-headline font-bold text-lg text-on-surface">{t('Branch Integrity Scan')}</h3>
+                      <p className="text-xs text-secondary mt-0.5">
+                        {t('Read-only check for records assigned to the wrong branch. No data is modified.')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={runIntegrityScan}
+                      disabled={integrityLoading}
+                      className="btn-primary px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <span className={`material-symbols-outlined text-base ${integrityLoading ? 'animate-spin' : ''}`}>
+                        {integrityLoading ? 'progress_activity' : 'refresh'}
+                      </span>
+                      {integrityLoading ? t('Scanning...') : t('Re-run Scan')}
+                    </button>
+                    {integrityReport && (
+                      <button
+                        onClick={exportIntegrityReport}
+                        className="px-5 py-2 text-sm flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest rounded-lg transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base">download</span>
+                        {t('Export')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {integrityError && (
+                <div className="bg-error/10 text-error rounded-xl p-4 text-sm flex items-center gap-2">
+                  <span className="material-symbols-outlined">error</span>
+                  {integrityError}
+                </div>
+              )}
+
+              {integrityLoading && !integrityReport && (
+                <div className="bg-surface-container-lowest rounded-2xl p-12 text-center text-secondary">
+                  <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
+                  {t('Scanning...')}
+                </div>
+              )}
+
+              {integrityReport && (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-surface-container-lowest rounded-xl p-5">
+                      <span className="text-xs font-bold uppercase tracking-widest text-secondary">{t('Branches')}</span>
+                      <p className="text-2xl font-extrabold text-on-surface mt-1">{integrityReport.branchCount}</p>
+                    </div>
+                    <div className="bg-surface-container-lowest rounded-xl p-5">
+                      <span className="text-xs font-bold uppercase tracking-widest text-secondary">{t('Total Findings')}</span>
+                      <p className={`text-2xl font-extrabold mt-1 ${integrityReport.findings.length > 0 ? 'text-error' : 'text-tertiary'}`}>
+                        {integrityReport.findings.length}
+                      </p>
+                    </div>
+                    <div className="bg-surface-container-lowest rounded-xl p-5 col-span-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-secondary">{t('By Category')}</span>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {Object.keys(integrityReport.totals).length === 0 && (
+                          <span className="text-xs text-tertiary font-semibold flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">check_circle</span>
+                            {t('No issues found')}
+                          </span>
+                        )}
+                        {Object.entries(integrityReport.totals).map(([type, count]) => (
+                          <span key={type} className="px-2.5 py-1 bg-error/10 text-error rounded-full text-[11px] font-bold">
+                            {type.replace(/_/g, ' ')}: {count as number}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {integrityReport.findings.length > 0 && (
+                    <div className="bg-surface-container-lowest rounded-2xl overflow-hidden">
+                      <div className="px-6 py-4 border-b border-surface-container-high">
+                        <h4 className="font-headline font-bold text-on-surface">{t('Findings')}</h4>
+                        <p className="text-xs text-secondary mt-0.5">
+                          {t('Review each item and re-attribute the record manually if needed.')}
+                        </p>
+                      </div>
+                      <div className="divide-y divide-outline-variant/10 max-h-[500px] overflow-y-auto">
+                        {integrityReport.findings.map((f: any, i: number) => (
+                          <div key={`${f.type}-${f.id}-${i}`} className="px-6 py-3 flex items-start gap-3">
+                            <span className="material-symbols-outlined text-error text-lg mt-0.5">warning</span>
+                            <div className="min-w-0">
+                              <p className="text-sm text-on-surface">{f.detail}</p>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-outline">
+                                {f.type.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {/* ---- User Modal ---- */}

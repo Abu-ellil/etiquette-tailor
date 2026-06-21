@@ -116,6 +116,7 @@ export interface ElectronAPI {
     getAdvanced: (filter: any) => Promise<any>;
     getDailyStats: (days: number, branchId?: number) => Promise<any[]>;
     getWorkerContribution: (branchId?: number, startDate?: string, endDate?: string) => Promise<any[]>;
+    getBranchIntegrity: () => Promise<any>;
     exportPDF: (htmlContent: string, filename: string) => Promise<string>;
     sendEmail: (to: string, subject: string, body: string, htmlContent?: string, filename?: string) => Promise<{ sent: boolean; method: string }>;
     saveEmail: (email: string, label?: string) => Promise<number>;
@@ -305,6 +306,7 @@ const api: ElectronAPI = {
     getAdvanced: (filter: any) => ipcRenderer.invoke('reports:getAdvanced', filter),
     getDailyStats: (days: number, branchId?: number) => ipcRenderer.invoke('reports:getDailyStats', days, branchId),
     getWorkerContribution: (branchId?: number, startDate?: string, endDate?: string) => ipcRenderer.invoke('reports:getWorkerContribution', branchId, startDate, endDate),
+    getBranchIntegrity: () => ipcRenderer.invoke('reports:getBranchIntegrity'),
     exportPDF: (htmlContent: string, filename: string) => ipcRenderer.invoke('reports:exportPDF', htmlContent, filename),
     sendEmail: (to, subject, body, htmlContent?, filename?) => ipcRenderer.invoke('reports:sendEmail', to, subject, body, htmlContent, filename),
     saveEmail: (email: string, label?: string) => ipcRenderer.invoke('reports:saveEmail', email, label),

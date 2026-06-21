@@ -73,14 +73,14 @@ export function createExpense(data: Omit<Expense, 'id' | 'is_deleted' | 'created
   return id;
 }
 
-export function getExpenses(filters?: {
+export function getExpenses(filters: {
   startDate?: string;
   endDate?: string;
   category?: string;
-  branchId?: number;
+  branchId: number;
 }): Expense[] {
-  const conditions = ['e.is_deleted = 0'];
-  const params: any[] = [];
+  const conditions = ['e.is_deleted = 0', '(e.branch_id = ? OR e.branch_id IS NULL)'];
+  const params: any[] = [filters.branchId];
 
   if (filters?.startDate) {
     conditions.push('e.expense_date >= ?');
@@ -93,10 +93,6 @@ export function getExpenses(filters?: {
   if (filters?.category) {
     conditions.push('e.category = ?');
     params.push(filters.category);
-  }
-  if (filters?.branchId) {
-    conditions.push('(e.branch_id = ? OR e.branch_id IS NULL)');
-    params.push(filters.branchId);
   }
 
   const where = conditions.join(' AND ');
@@ -120,17 +116,15 @@ export function deleteExpense(id: number, userId?: number): void {
 export function getExpenseTotals(
   startDate: string,
   endDate: string,
-  branchId?: number,
+  branchId: number,
 ): ExpenseCategoryTotal[] {
-  const branchFilter = branchId ? ' AND (branch_id = ? OR branch_id IS NULL)' : '';
-  const params: any[] = [startDate, endDate];
-  if (branchId) params.push(branchId);
+  const params: any[] = [startDate, endDate, branchId];
 
   const stmt = db.prepare(`
     SELECT category, SUM(amount) as total, COUNT(*) as count
     FROM expenses
     WHERE is_deleted = 0 AND expense_date >= ? AND expense_date <= ?
-    ${branchFilter}
+      AND (branch_id = ? OR branch_id IS NULL)
     GROUP BY category
     ORDER BY total DESC
   `);
@@ -140,17 +134,15 @@ export function getExpenseTotals(
 export function getExpenseTotal(
   startDate: string,
   endDate: string,
-  branchId?: number,
+  branchId: number,
 ): number {
-  const branchFilter = branchId ? ' AND (branch_id = ? OR branch_id IS NULL)' : '';
-  const params: any[] = [startDate, endDate];
-  if (branchId) params.push(branchId);
+  const params: any[] = [startDate, endDate, branchId];
 
   const row = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total
     FROM expenses
     WHERE is_deleted = 0 AND expense_date >= ? AND expense_date <= ?
-    ${branchFilter}
+      AND (branch_id = ? OR branch_id IS NULL)
   `).get(...params) as { total: number };
   return row.total;
 }
@@ -160,29 +152,28 @@ export function getExpenseTotal(
 export function getProfitReport(
   startDate: string,
   endDate: string,
-  branchId?: number,
+  branchId: number,
 ): ProfitReport {
   // 1. Income: total payments received in period
-  const incomeParams: any[] = [startDate, endDate + 'T23:59:59'];
-  if (branchId) incomeParams.push(branchId);
   const incomeRow = db.prepare(`
     SELECT COALESCE(SUM(op.amount), 0) as total
     FROM order_payments op
     JOIN orders o ON op.order_id = o.id
     WHERE op.created_at >= ? AND op.created_at <= ?
-    ${branchId ? ' AND o.branch_id = ?' : ''}
-  `).get(...incomeParams) as { total: number };
+      AND o.branch_id = ?
+  `).get(startDate, endDate + 'T23:59:59', branchId) as { total: number };
   const income = incomeRow.total;
 
-  // 2. Wages paid: total worker_payments in period
-  const wagesParams: any[] = [startDate, endDate + 'T23:59:59'];
+  // 2. Wages paid: total worker_payments in period (scoped to branch workers)
   let wagesPaid = 0;
   try {
     const wagesRow = db.prepare(`
       SELECT COALESCE(SUM(wp.amount), 0) as total
       FROM worker_payments wp
+      JOIN users u ON wp.user_id = u.id
       WHERE wp.created_at >= ? AND wp.created_at <= ?
-    `).get(...wagesParams) as { total: number };
+        AND u.branch_id = ?
+    `).get(startDate, endDate + 'T23:59:59', branchId) as { total: number };
     wagesPaid = wagesRow.total;
   } catch {
     wagesPaid = 0;
@@ -196,12 +187,12 @@ export function getProfitReport(
   const totalExpenses = wagesPaid + otherExpenses;
   const netProfit = income - totalExpenses;
 
-  // 5. Worker summary (productivity + earnings + payments)
+  // 5. Worker summary (productivity + earnings + payments) — session branch only
   let workers: { id: number; name: string; worker_type: string | null; branch_id: number | null }[] = [];
   try {
     workers = db.prepare(
-      `SELECT id, name, worker_type, branch_id FROM users WHERE role = 'worker' AND active = 1 ORDER BY name`
-    ).all() as typeof workers;
+      `SELECT id, name, worker_type, branch_id FROM users WHERE role = 'worker' AND active = 1 AND branch_id = ? ORDER BY name`
+    ).all(branchId) as typeof workers;
   } catch {
     workers = [];
   }
@@ -245,9 +236,6 @@ export function getProfitReport(
   });
 
   // 6. Overdue tasks
-  const overdueBranchFilter = branchId ? ' AND o.branch_id = ?' : '';
-  const overdueParams: any[] = [];
-  if (branchId) overdueParams.push(branchId);
   const overdueTasks = db.prepare(`
     SELECT
       ot.id as task_id, ot.order_id, o.order_number,
@@ -260,9 +248,9 @@ export function getProfitReport(
     LEFT JOIN customers c ON o.customer_id = c.id AND c.is_deleted = 0
     LEFT JOIN users u ON ot.assigned_to = u.id
     WHERE ot.status != 'done' AND o.delivery_date < date('now')
-    ${overdueBranchFilter}
+      AND o.branch_id = ?
     ORDER BY o.delivery_date ASC
-  `).all(...overdueParams);
+  `).all(branchId);
 
   return {
     income,

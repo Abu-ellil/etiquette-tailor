@@ -166,16 +166,6 @@ export default function TaskBoardPage() {
       </div>
 
       <div className="flex gap-4">
-        {(isAdmin) && (
-          <select
-            value={filters.branchId || ''}
-            onChange={(e) => setFilters({ ...filters, branchId: e.target.value ? Number(e.target.value) : undefined })}
-            className="input-field appearance-none min-w-[160px]"
-          >
-            <option value="">{t('All Branches')}</option>
-            {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name_en || b.name_ar}</option>)}
-          </select>
-        )}
         <select
           value={filters.workerId || ''}
           onChange={(e) => setFilters({ ...filters, workerId: e.target.value ? Number(e.target.value) : undefined })}

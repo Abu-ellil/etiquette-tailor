@@ -81,8 +81,8 @@ export default function AdvancedReportsPage() {
 
   const isAdmin = session.role === 'admin' || session.role === 'manager';
 
-  /* ── Branch filter ── */
-  const [selectedBranch, setSelectedBranch] = useState<number | undefined>(undefined);
+  /* ── Branch filter (strict isolation - always active branch) ── */
+  const [selectedBranch, setSelectedBranch] = useState<number>(activeBranchId || 1);
 
   /* ── Date range ── */
   const [quickDate, setQuickDate] = useState<QuickDate>('month');
@@ -210,9 +210,7 @@ export default function AdvancedReportsPage() {
   /* ── PDF & Email ── */
   function buildPDFHtml(): string {
     if (!reportData) return '';
-    const branchLabel = selectedBranch
-      ? branches.find((b: BranchInfo) => b.id === selectedBranch)?.name_en || ''
-      : t('All Branches');
+    const branchLabel = branches.find((b: BranchInfo) => b.id === selectedBranch)?.name_en || '';
     const rows = reportData.orders.map(o => `
       <tr>
         <td style="padding:8px;border:1px solid #ddd">${o.order_number}</td>
@@ -335,30 +333,6 @@ export default function AdvancedReportsPage() {
         </div>
       </header>
 
-      {/* ── Branch Selector (admin only) ── */}
-      {isAdmin && (
-        <div className="flex items-center gap-2 mb-5">
-          <span className="material-symbols-outlined text-on-surface-variant text-lg">store</span>
-          <div className="flex gap-1 bg-surface-container-lowest rounded-xl p-1">
-            <button
-              onClick={() => setSelectedBranch(undefined)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${!selectedBranch ? 'bg-primary text-on-primary shadow-sm' : 'text-secondary hover:text-on-surface'}`}
-            >
-              {t('All Branches')}
-            </button>
-            {branches.map((b: BranchInfo) => (
-              <button
-                key={b.id}
-                onClick={() => setSelectedBranch(b.id)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedBranch === b.id ? 'bg-primary text-on-primary shadow-sm' : 'text-secondary hover:text-on-surface'}`}
-              >
-                {b.prefix} — {b.name_en}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ── Quick Date Pills ── */}
       <div className="flex flex-wrap gap-2 mb-5">
         {QUICK_DATES.map(qd => (
@@ -426,39 +400,6 @@ export default function AdvancedReportsPage() {
           </div>
         ))}
       </div>
-
-      {/* ── Branch Comparison (All Branches only) ── */}
-      {isAdmin && !selectedBranch && (
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          {branches.map((b: BranchInfo) => {
-            const branchOrders = safeData.orders.filter(o => o.branch_id === b.id);
-            const branchRevenue = branchOrders.reduce((s, o) => s + o.price, 0);
-            const branchBalance = branchOrders.reduce((s, o) => s + (o.price - o.paid), 0);
-            return (
-              <div key={b.id} className="bg-surface-container-lowest rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="material-symbols-outlined text-primary text-lg">store</span>
-                  <h3 className="font-headline font-bold text-sm">{b.prefix} — {b.name_en}</h3>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <p className="text-[10px] text-secondary uppercase font-bold mb-0.5">{t('Revenue')}</p>
-                    <p className="text-sm font-headline font-bold">{formatCurrency(branchRevenue)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-secondary uppercase font-bold mb-0.5">{t('Orders')}</p>
-                    <p className="text-sm font-headline font-bold">{branchOrders.length}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-secondary uppercase font-bold mb-0.5">{t('Balance Due')}</p>
-                    <p className="text-sm font-headline font-bold text-tertiary">{formatCurrency(branchBalance)}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* ── Charts Row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

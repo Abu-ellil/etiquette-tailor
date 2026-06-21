@@ -27,15 +27,11 @@ export interface WorkerRate {
   created_at?: string;
 }
 
-export function getAllWorkers(branchId?: number): Worker[] {
-  if (branchId) {
-    const stmt = db.prepare(
-      'SELECT * FROM users WHERE role = ? AND branch_id = ? AND active = 1 ORDER BY name'
-    );
-    return stmt.all('worker', branchId) as Worker[];
-  }
-  const stmt = db.prepare('SELECT * FROM users WHERE role = ? AND active = 1 ORDER BY name');
-  return stmt.all('worker') as Worker[];
+export function getAllWorkers(branchId: number): Worker[] {
+  const stmt = db.prepare(
+    'SELECT * FROM users WHERE role = ? AND branch_id = ? AND active = 1 ORDER BY name'
+  );
+  return stmt.all('worker', branchId) as Worker[];
 }
 
 export function getWorker(id: number): Worker | undefined {
@@ -432,17 +428,15 @@ export interface WorkerProductivity {
   sewing_completed: number;
 }
 
-export function getAllWorkerProductivity(branchId?: number, startDate?: string, endDate?: string): WorkerProductivity[] {
-  const branchFilter = branchId ? ' AND u.branch_id = ?' : '';
+export function getAllWorkerProductivity(branchId: number, startDate?: string, endDate?: string): WorkerProductivity[] {
   const dateFilter = startDate && endDate ? ' AND o.delivery_date BETWEEN ? AND ?' : '';
 
   const workers = db.prepare(
-    `SELECT id, name, worker_type, branch_id FROM users WHERE role = 'worker' AND active = 1${branchFilter} ORDER BY name`
-  ).all(...(branchId ? [branchId] : [])) as { id: number; name: string; worker_type: string | null; branch_id: number }[];
+    `SELECT id, name, worker_type, branch_id FROM users WHERE role = 'worker' AND active = 1 AND branch_id = ? ORDER BY name`
+  ).all(branchId) as { id: number; name: string; worker_type: string | null; branch_id: number }[];
 
   return workers.map(w => {
-    const taskParams: any[] = [w.id];
-    if (branchId) taskParams.push(branchId);
+    const taskParams: any[] = [w.id, branchId];
     if (startDate && endDate) { taskParams.push(startDate); taskParams.push(endDate); }
 
     const stats = db.prepare(
@@ -456,7 +450,7 @@ export function getAllWorkerProductivity(branchId?: number, startDate?: string, 
         SUM(CASE WHEN ot.status = 'done' AND ot.task_type = 'sewing' THEN 1 ELSE 0 END) as sewing_completed
       FROM order_tasks ot
       JOIN orders o ON ot.order_id = o.id
-      WHERE ot.assigned_to = ?${branchFilter}${dateFilter}`
+      WHERE ot.assigned_to = ? AND o.branch_id = ?${dateFilter}`
     ).get(...taskParams) as any;
 
     const total = stats?.total_assigned || 0;
@@ -479,8 +473,7 @@ export function getAllWorkerProductivity(branchId?: number, startDate?: string, 
   });
 }
 
-export function getOverdueTasks(branchId?: number): WorkerTaskView[] {
-  const branchFilter = branchId ? ' AND o.branch_id = ?' : '';
+export function getOverdueTasks(branchId: number): WorkerTaskView[] {
   const stmt = db.prepare(`
     SELECT
       ot.id as task_id, ot.order_id, o.order_number,
@@ -496,10 +489,10 @@ export function getOverdueTasks(branchId?: number): WorkerTaskView[] {
     LEFT JOIN order_items oi ON ot.order_item_id = oi.id AND oi.is_deleted = 0
     LEFT JOIN customers c ON o.customer_id = c.id AND c.is_deleted = 0
     LEFT JOIN users u ON ot.assigned_to = u.id
-    WHERE ot.status != 'done' AND o.delivery_date < date('now')${branchFilter}
+    WHERE ot.status != 'done' AND o.delivery_date < date('now') AND o.branch_id = ?
     ORDER BY o.delivery_date ASC
   `);
-  return stmt.all(...(branchId ? [branchId] : [])) as WorkerTaskView[];
+  return stmt.all(branchId) as WorkerTaskView[];
 }
 
 // ── Workload & Recommendations ──────────────────────────────────────────
@@ -514,8 +507,7 @@ export interface WorkerWorkload {
   total_active: number;
 }
 
-export function getWorkerWorkloads(branchId?: number): WorkerWorkload[] {
-  const branchFilter = branchId ? ' AND u.branch_id = ?' : '';
+export function getWorkerWorkloads(branchId: number): WorkerWorkload[] {
   const stmt = db.prepare(`
     SELECT
       u.id as user_id, u.name as worker_name, u.worker_type,
@@ -524,11 +516,11 @@ export function getWorkerWorkloads(branchId?: number): WorkerWorkload[] {
       COALESCE(SUM(CASE WHEN ot.status = 'done' THEN 1 ELSE 0 END), 0) as done_count
     FROM users u
     LEFT JOIN order_tasks ot ON ot.assigned_to = u.id
-    WHERE u.role = 'worker' AND u.active = 1${branchFilter}
+    WHERE u.role = 'worker' AND u.active = 1 AND u.branch_id = ?
     GROUP BY u.id
     ORDER BY u.name
   `);
-  const rows = stmt.all(...(branchId ? [branchId] : [])) as any[];
+  const rows = stmt.all(branchId) as any[];
   return rows.map(r => ({
     ...r,
     total_active: (r.pending_count || 0) + (r.in_progress_count || 0),
@@ -545,7 +537,7 @@ export interface RecommendedWorker {
   active_tasks: number;
 }
 
-export function getRecommendedWorkers(pieceType: string, taskType: string): RecommendedWorker[] {
+export function getRecommendedWorkers(branchId: number, pieceType: string, taskType: string): RecommendedWorker[] {
   const typeFilter = taskType === 'cutting'
     ? " AND (u.worker_type = 'master_cutter' OR u.worker_type IS NULL)"
     : " AND (u.worker_type = 'tailor' OR u.worker_type IS NULL)";
@@ -564,8 +556,8 @@ export function getRecommendedWorkers(pieceType: string, taskType: string): Reco
       FROM order_tasks WHERE status IN ('pending', 'in_progress')
       GROUP BY assigned_to
     ) active ON active.assigned_to = u.id
-    WHERE u.role = 'worker' AND u.active = 1${typeFilter}
+    WHERE u.role = 'worker' AND u.active = 1 AND u.branch_id = ?${typeFilter}
     ORDER BY has_rate DESC, active_tasks ASC, u.name ASC
   `);
-  return stmt.all(pieceType) as RecommendedWorker[];
+  return stmt.all(pieceType, branchId) as RecommendedWorker[];
 }

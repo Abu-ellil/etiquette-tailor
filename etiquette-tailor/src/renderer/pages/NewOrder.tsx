@@ -45,7 +45,7 @@ export default function NewOrderPage() {
 
   /* Form state */
   const [submitting, setSubmitting] = useState(false);
-  const { activeBranchId: branchId, setActiveBranchId: setBranchId } = useActiveBranch();
+  const { activeBranchId: branchId } = useActiveBranch();
   const [formData, setFormData] = useState({
     customerFullName: '',
     invoiceNumber: '',
@@ -115,7 +115,7 @@ export default function NewOrderPage() {
         ]);
         setBranches(br);
         setPieceTypes(pt);
-        if (br.length > 0) setBranchId(br[0].id);
+        // Branch is locked to the session branch; no override.
       } catch (err) {
         console.error('Failed to load reference data:', err);
       }
@@ -231,7 +231,7 @@ export default function NewOrderPage() {
       await doCreateOrder(customerId);
     } catch (err) {
       console.error('Failed to create order:', err);
-      alert(t('Failed to create order. Please try again.'));
+      alert(t('Failed to create order.') + '\n\n' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setSubmitting(false);
     }
@@ -247,7 +247,7 @@ export default function NewOrderPage() {
       const validItems = items.filter(it => it.piece_type && (parseFloat(it.unit_price) || 0) > 0);
 
       const orderData = {
-        branch_id: branchId,
+        // branch_id is force-stamped by the main process from the session
         customer_id: customerId,
         order_number: formData.invoiceNumber.trim() || undefined,
         piece_type: validItems[0]?.piece_type || '',
@@ -282,7 +282,7 @@ export default function NewOrderPage() {
       navigate('/orders');
     } catch (err) {
       console.error('Failed to create order:', err);
-      alert(t('Failed to create order. Please try again.'));
+      alert(t('Failed to create order.') + '\n\n' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setSubmitting(false);
     }
@@ -316,32 +316,6 @@ export default function NewOrderPage() {
         {/* Content */}
         <div className="p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-
-            {/* ── Branch Selection ── */}
-            {branches.length > 1 && (
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-widest text-secondary">
-                  {t('Workshop Branch')}
-                </label>
-                <div className="flex gap-2">
-                  {branches.map((br) => (
-                    <label key={br.id} className="flex-1 cursor-pointer">
-                      <input
-                        type="radio"
-                        className="hidden peer"
-                        name="branch"
-                        checked={branchId === br.id}
-                        onChange={() => setBranchId(br.id)}
-                      />
-                      <div className="py-3 text-center rounded-lg border-2 border-transparent bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary-fixed peer-checked:text-primary transition-all font-bold text-sm">
-                        <span className="text-[10px] text-outline block">{br.name_ar}</span>
-                        {t('Branch')} {br.prefix}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* ── Customer Info ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -221,44 +221,15 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
 }
 
 function BranchSelector() {
-  const { activeBranch, branches, activeBranchId, setActiveBranchId } = useActiveBranch();
-  const session = React.useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('session') || '{}'); } catch { return {}; }
-  }, []);
-  const isAdmin = session.role === 'admin';
+  const { activeBranch } = useActiveBranch();
 
-  if (branches.length <= 1) {
-    return activeBranch ? (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-container text-on-primary-container text-xs font-semibold">
-        <span className="material-symbols-outlined text-sm">store</span>
-        {activeBranch.prefix} — {activeBranch.name_en}
-      </span>
-    ) : null;
-  }
+  // Strict branch isolation: display active branch only, no switching
+  if (!activeBranch) return null;
 
   return (
-    <div className="relative">
-      <span className="material-symbols-outlined text-sm absolute left-2 top-1/2 -translate-y-1/2 text-on-primary-container pointer-events-none">store</span>
-      <select
-        value={activeBranchId ?? 'all'}
-        onChange={(e) => {
-          const v = e.target.value;
-          setActiveBranchId(v === 'all' ? undefined : Number(v));
-        }}
-        className="appearance-none pl-7 pr-6 py-1 rounded-full bg-primary-container text-on-primary-container text-xs font-semibold border-none outline-none cursor-pointer"
-      >
-        {isAdmin && (
-          <option value="all" className="text-on-surface">
-            All Branches
-          </option>
-        )}
-        {branches.map((b) => (
-          <option key={b.id} value={b.id} className="text-on-surface">
-            {b.prefix} — {b.name_en}
-          </option>
-        ))}
-      </select>
-      <span className="material-symbols-outlined text-sm absolute right-1.5 top-1/2 -translate-y-1/2 text-on-primary-container pointer-events-none">expand_more</span>
-    </div>
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-container text-on-primary-container text-xs font-semibold">
+      <span className="material-symbols-outlined text-sm">store</span>
+      {activeBranch.prefix} — {activeBranch.name_en}
+    </span>
   );
 }

@@ -11,13 +11,9 @@ export interface Customer {
   created_at?: string;
 }
 
-export function getAllCustomers(branchId?: number): Customer[] {
-  if (branchId) {
-    const stmt = db.prepare('SELECT * FROM customers WHERE branch_id = ? AND is_deleted = 0 ORDER BY created_at DESC');
-    return stmt.all(branchId) as Customer[];
-  }
-  const stmt = db.prepare('SELECT * FROM customers WHERE is_deleted = 0 ORDER BY created_at DESC');
-  return stmt.all() as Customer[];
+export function getAllCustomers(branchId: number): Customer[] {
+  const stmt = db.prepare('SELECT * FROM customers WHERE branch_id = ? AND is_deleted = 0 ORDER BY created_at DESC');
+  return stmt.all(branchId) as Customer[];
 }
 
 export function getCustomer(id: number): Customer | undefined {
@@ -25,18 +21,12 @@ export function getCustomer(id: number): Customer | undefined {
   return stmt.get(id) as Customer | undefined;
 }
 
-export function searchCustomers(query: string, branchId?: number): Customer[] {
+export function searchCustomers(query: string, branchId: number): Customer[] {
   const searchTerm = `%${query}%`;
-  if (branchId) {
-    const stmt = db.prepare(
-      'SELECT * FROM customers WHERE branch_id = ? AND is_deleted = 0 AND (name LIKE ? OR phone LIKE ?) ORDER BY created_at DESC'
-    );
-    return stmt.all(branchId, searchTerm, searchTerm) as Customer[];
-  }
   const stmt = db.prepare(
-    'SELECT * FROM customers WHERE is_deleted = 0 AND (name LIKE ? OR phone LIKE ?) ORDER BY created_at DESC'
+    'SELECT * FROM customers WHERE branch_id = ? AND is_deleted = 0 AND (name LIKE ? OR phone LIKE ?) ORDER BY created_at DESC'
   );
-  return stmt.all(searchTerm, searchTerm) as Customer[];
+  return stmt.all(branchId, searchTerm, searchTerm) as Customer[];
 }
 
 export function createCustomer(customer: Omit<Customer, 'id'>, userId?: number): number {

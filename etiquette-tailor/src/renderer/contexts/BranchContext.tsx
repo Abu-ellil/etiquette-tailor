@@ -8,16 +8,14 @@ interface Branch {
 }
 
 interface BranchContextValue {
-  activeBranchId: number | undefined;
+  activeBranchId: number;
   branches: Branch[];
-  setActiveBranchId: (id: number | undefined) => void;
   activeBranch: Branch | undefined;
 }
 
 const BranchContext = createContext<BranchContextValue>({
-  activeBranchId: undefined,
+  activeBranchId: 1,
   branches: [],
-  setActiveBranchId: () => {},
   activeBranch: undefined,
 });
 
@@ -31,13 +29,10 @@ export function BranchProvider({
   sessionRole: string;
 }) {
   const [branches, setBranches] = useState<Branch[]>([]);
-  const isAdmin = sessionRole === 'admin';
 
-  const [activeBranchId, setActiveBranchIdState] = useState<number | undefined>(() => {
-    if (!isAdmin) return defaultBranchId;
-    const saved = localStorage.getItem('activeBranchId');
-    if (saved === 'all') return undefined;
-    if (saved) return parseInt(saved);
+  // Strict branch isolation: EVERY user (including admin) is locked to their session branch
+  // No "all branches" view - no cross-branch visibility
+  const [activeBranchId] = useState<number>(() => {
     return defaultBranchId;
   });
 
@@ -48,24 +43,11 @@ export function BranchProvider({
       .catch(() => {});
   }, []);
 
-  const setActiveBranchId = useCallback((id: number | undefined) => {
-    if (!isAdmin) return;
-    setActiveBranchIdState(id);
-    localStorage.setItem('activeBranchId', id === undefined ? 'all' : String(id));
-  }, [isAdmin]);
-
-  // Non-admin always locked to their session branch
-  useEffect(() => {
-    if (!isAdmin) {
-      setActiveBranchIdState(defaultBranchId);
-    }
-  }, [isAdmin, defaultBranchId]);
-
   const activeBranch = branches.find((b) => b.id === activeBranchId);
 
   return (
     <BranchContext.Provider
-      value={{ activeBranchId, branches, setActiveBranchId, activeBranch }}
+      value={{ activeBranchId, branches, activeBranch }}
     >
       {children}
     </BranchContext.Provider>
