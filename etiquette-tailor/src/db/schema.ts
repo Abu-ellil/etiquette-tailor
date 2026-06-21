@@ -4,6 +4,13 @@ import db from './connection';
 export default db;
 
 export function initializeSchema() {
+  // Branch isolation: ensure notifications.branch_id exists BEFORE the index
+  // that references it is created. On a pre-existing DB the notifications table
+  // already exists without branch_id, so the index creation below would throw
+  // "no such column: branch_id" and crash the app on startup. Run the column
+  // migration up front so both fresh and existing DBs are consistent.
+  ensureNotificationsBranchId();
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS piece_types (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -221,7 +228,8 @@ export function initializeSchema() {
 
   db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(target_user_id, is_read, is_deleted, created_at DESC)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_role ON notifications(target_role, is_read, is_deleted, created_at DESC)`);
-  db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_branch ON notifications(branch_id, is_read, is_deleted, created_at DESC)`);
+  // branch_id index is created in ensureNotificationsBranchId() (idempotent) —
+  // guarded because the column may be added by a migration on existing DBs.
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS expenses (
@@ -742,24 +750,41 @@ function migrateColumns() {
     console.log('daily_production table creation skipped:', (e as Error).message);
   }
 
-  // ── Notifications branch_id migration ──
-  // Branch isolation: notifications must carry the branch they belong to so the
-  // main process can scope them to the caller's session branch.
-  if (!tables.notifications?.includes('branch_id')) {
-    console.log('Migrating: adding branch_id to notifications');
-    try {
-      db.exec('ALTER TABLE notifications ADD COLUMN branch_id INTEGER REFERENCES branches(id)');
-      // Backfill from related order's branch where possible
-      db.exec(`
-        UPDATE notifications SET branch_id = (
-          SELECT o.branch_id FROM orders o WHERE o.id = notifications.order_id
-        )
-        WHERE branch_id IS NULL AND order_id IS NOT NULL
-      `);
-      try { db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_branch ON notifications(branch_id, is_read, is_deleted, created_at DESC)`); } catch { /* ignore */ }
-    } catch (e) {
-      console.log('notifications branch_id migration skipped:', (e as Error).message);
-    }
+  // notifications.branch_id is handled by ensureNotificationsBranchId() at the
+  // top of initializeSchema() so the referencing index can be created safely.
+}
+
+/**
+ * Idempotently ensure notifications.branch_id exists (with index + backfill).
+ * Called at the very start of initializeSchema, before the notifications table
+ * indexes are created, because on a pre-existing DB the table already exists
+ * WITHOUT the column and CREATE INDEX ... ON notifications(branch_id) would
+ * otherwise throw "no such column: branch_id" and crash startup.
+ */
+function ensureNotificationsBranchId() {
+  const cols = db.prepare(`PRAGMA table_info(notifications)`).all() as { name: string }[];
+  // Table may not exist yet on a fresh DB — in that case CREATE TABLE will add
+  // the column natively, nothing to do here.
+  if (cols.length === 0) return;
+  if (cols.some((c) => c.name === 'branch_id')) {
+    // Column already present — just make sure the index exists.
+    try { db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_branch ON notifications(branch_id, is_read, is_deleted, created_at DESC)`); } catch { /* ignore */ }
+    return;
+  }
+
+  console.log('Migrating: adding branch_id to notifications');
+  try {
+    db.exec('ALTER TABLE notifications ADD COLUMN branch_id INTEGER REFERENCES branches(id)');
+    // Backfill from related order's branch where possible
+    db.exec(`
+      UPDATE notifications SET branch_id = (
+        SELECT o.branch_id FROM orders o WHERE o.id = notifications.order_id
+      )
+      WHERE branch_id IS NULL AND order_id IS NOT NULL
+    `);
+    try { db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_branch ON notifications(branch_id, is_read, is_deleted, created_at DESC)`); } catch { /* ignore */ }
+  } catch (e) {
+    console.log('notifications branch_id migration skipped:', (e as Error).message);
   }
 }
 
