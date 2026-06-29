@@ -78,6 +78,7 @@ export default {
   'Sign In': 'تسجيل الدخول',
   'Bespoke Security Standards': 'معايير أمان متميزة',
   '© 2026 Etiquette Tailor System. All rights reserved.': '© 2026 نظام إتيكيت تيلور. جميع الحقوق محفوظة.',
+  'Developed by Abo Ellil': 'تطوير: أبو الليل',
   'Invalid username or password': 'اسم المستخدم أو كلمة المرور غير صحيحة',
   'Login failed. Please try again.': 'فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.',
 

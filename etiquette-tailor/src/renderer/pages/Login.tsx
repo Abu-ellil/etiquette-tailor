@@ -292,6 +292,9 @@ export default function LoginPage({ onLogin }: LoginProps) {
           <p className="text-[11px] text-secondary/60 font-medium">
             {t('© 2026 Etiquette Tailor System. All rights reserved.')}
           </p>
+          <p className="text-[10px] text-secondary/50 font-medium mt-1">
+            {t('Developed by Abo Ellil')}
+          </p>
         </footer>
       </main>
 
