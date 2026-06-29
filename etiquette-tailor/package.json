@@ -1,7 +1,7 @@
 {
   "name": "etiquette-tailor",
   "productName": "etiquette-tailor",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "My Electron application description",
   "main": ".vite/build/etiquette-tailor.js",
   "private": true,
