@@ -351,10 +351,18 @@ function registerIpcHandlers() {
     clearSession();
   });
 
+  ipcMain.handle('auth:setBranch', async (_event, branchId: number) => {
+    if (!currentSession) throw new Error('Not authenticated');
+    currentSession.branch_id = branchId;
+    const saved = loadSession();
+    if (saved) {
+      saveSession({ ...saved, branch_id: branchId });
+    }
+    return true;
+  });
+
   ipcMain.handle('branches:getAll', async () => {
-    // Branch isolation: only the session branch is exposed
-    const branchId = requireBranch();
-    return getAllBranches().filter((b: any) => b.id === branchId);
+    return getAllBranches();
   });
 
   ipcMain.handle('branches:getById', async (_event, id: number) => {

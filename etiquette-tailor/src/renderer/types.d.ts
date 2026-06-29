@@ -12,6 +12,7 @@ export interface ElectronAPI {
     login: (credentials: { username: string; password: string; remember?: boolean }) => Promise<Session | null>;
     getSession: () => Promise<Session | null>;
     logout: () => Promise<void>;
+    setBranch: (branchId: number) => Promise<boolean>;
   };
 
   branches: {

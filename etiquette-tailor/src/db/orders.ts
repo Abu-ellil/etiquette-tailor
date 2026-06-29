@@ -66,7 +66,14 @@ function generateOrderNumber(branchId: number): string {
   const branch = db.prepare('SELECT prefix, last_sequence FROM branches WHERE id = ?').get(branchId) as { prefix: string; last_sequence: number };
   if (!branch) throw new Error('Branch not found');
 
-  const nextSeq = branch.last_sequence + 1;
+  // Find the highest sequence number actually used in orders for this branch
+  const maxUsed = db.prepare(`
+    SELECT MAX(CAST(SUBSTR(order_number, 3) AS INTEGER)) AS max_seq
+    FROM orders
+    WHERE branch_id = ? AND order_number LIKE ?
+  `).get(branchId, `${branch.prefix}-%`) as { max_seq: number | null };
+
+  const nextSeq = Math.max(branch.last_sequence, maxUsed?.max_seq ?? 0) + 1;
 
   const updateSeq = db.prepare('UPDATE branches SET last_sequence = ? WHERE id = ?');
   updateSeq.run(nextSeq, branchId);

@@ -195,6 +195,7 @@ const api: ElectronAPI = {
     login: (credentials) => ipcRenderer.invoke('auth:login', credentials.username, credentials.password, credentials.remember),
     getSession: () => ipcRenderer.invoke('auth:getSession'),
     logout: () => ipcRenderer.invoke('auth:logout'),
+    setBranch: (branchId) => ipcRenderer.invoke('auth:setBranch', branchId),
   },
 
   branches: {

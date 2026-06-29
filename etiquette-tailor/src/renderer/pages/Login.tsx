@@ -56,8 +56,9 @@ export default function LoginPage({ onLogin }: LoginProps) {
     }
   };
 
-  const handleBranchConfirm = () => {
+  const handleBranchConfirm = async () => {
     if (loggedInSession && selectedBranchId) {
+      await window.electronAPI.auth.setBranch(selectedBranchId);
       onLogin({ ...loggedInSession, branch_id: selectedBranchId });
     }
   };
