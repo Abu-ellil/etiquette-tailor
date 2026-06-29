@@ -26,4 +26,5 @@ TypeScript 5.x: Follow standard conventions
 - 002-workers-tasks-wages: Added TypeScript 5.x + Electron, React 19, Tailwind CSS v4 (via @theme), shadcn/ui (listed in CLAUDE.md but not currently used), react-hook-form, date-fns, react-to-print
 
 <!-- MANUAL ADDITIONS START -->
+- The repo root is `etiquette-tailor/` inside the git repo (`D:\DevDev\Dev\etiquette-tailor`). Always put `.github/workflows/` at the **git repo root**, not under the subdirectory.
 <!-- MANUAL ADDITIONS END -->
