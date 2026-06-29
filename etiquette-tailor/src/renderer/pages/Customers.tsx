@@ -63,6 +63,27 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /* Pagination */
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(customers.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedCustomers = customers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  // Compact page-number list with ellipses, e.g. [1, 2, 3, '...', 9]
+  const pageNumbers: (number | string)[] = React.useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (safePage <= 4) {
+      return [1, 2, 3, 4, 5, '...', totalPages];
+    }
+    if (safePage >= totalPages - 3) {
+      return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '...', safePage - 1, safePage, safePage + 1, '...', totalPages];
+  }, [totalPages, safePage]);
+
   /* Order history state */
   const [orderHistoryCustomer, setOrderHistoryCustomer] = useState<Customer | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
@@ -111,6 +132,11 @@ export default function CustomersPage() {
 
     return () => clearTimeout(handler);
   }, [searchQuery, loadCustomers, activeBranchId]);
+
+  // Reset to first page whenever the result set or branch changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeBranchId, customers.length === 0]);
 
   /* ── Modal helpers ── */
 
@@ -260,7 +286,7 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody>
-              {customers.map((customer) => (
+              {paginatedCustomers.map((customer) => (
                 <tr key={customer.id}>
                   {/* Name + Avatar */}
                   <td>
@@ -332,10 +358,57 @@ export default function CustomersPage() {
           </table>
         )}
 
-        {/* Table Footer */}
+        {/* Table Footer + Pagination */}
         {customers.length > 0 && (
-          <div className="px-6 py-4 border-t border-surface-container-high text-sm text-secondary">
-            {t('Showing {count} customer(s)').replace('{count}', String(customers.length))}
+          <div className="px-6 py-4 border-t border-surface-container-high text-sm text-secondary flex flex-wrap items-center justify-between gap-4">
+            <span>
+              {t('Showing {from}-{to} of {total} customer(s)')
+                .replace('{from}', String((safePage - 1) * PAGE_SIZE + 1))
+                .replace('{to}', String(Math.min(safePage * PAGE_SIZE, customers.length)))
+                .replace('{total}', String(customers.length))}
+            </span>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="p-2 text-outline hover:text-primary transition-colors disabled:opacity-30 disabled:hover:text-outline disabled:cursor-not-allowed"
+                  title={t('Previous page')}
+                >
+                  <span className="material-symbols-outlined">chevron_left</span>
+                </button>
+
+                {pageNumbers.map((page) =>
+                  page === '...' ? (
+                    <span key={`ellipsis-${page}`} className="px-1 text-outline select-none">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-[2.25rem] h-9 px-2 rounded-lg text-sm font-semibold transition-colors ${
+                        page === safePage
+                          ? 'bg-primary text-on-primary'
+                          : 'text-secondary hover:bg-surface-container-high'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="p-2 text-outline hover:text-primary transition-colors disabled:opacity-30 disabled:hover:text-outline disabled:cursor-not-allowed"
+                  title={t('Next page')}
+                >
+                  <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

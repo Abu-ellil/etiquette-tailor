@@ -82,6 +82,11 @@ export default {
   'Invalid username or password': 'اسم المستخدم أو كلمة المرور غير صحيحة',
   'Login failed. Please try again.': 'فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.',
 
+  // Customers pagination
+  'Showing {from}-{to} of {total} customer(s)': 'عرض {from}-{to} من {total} عميل',
+  'Previous page': 'الصفحة السابقة',
+  'Next page': 'الصفحة التالية',
+
   // Dashboard
   'Total Orders': 'إجمالي الطلبات',
   'All time orders': 'جميع الطلبات',
