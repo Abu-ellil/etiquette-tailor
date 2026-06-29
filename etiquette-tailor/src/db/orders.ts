@@ -66,12 +66,26 @@ function generateOrderNumber(branchId: number): string {
   const branch = db.prepare('SELECT prefix, last_sequence FROM branches WHERE id = ?').get(branchId) as { prefix: string; last_sequence: number };
   if (!branch) throw new Error('Branch not found');
 
-  // Find the highest sequence number actually used in orders for this branch
+  // Find the highest sequence number actually used in orders for this branch.
+  // The sequence is parsed from the suffix AFTER "<prefix>-", so the SUBSTR
+  // offset must depend on the actual prefix length (SUBSTR is 1-indexed, hence
+  // prefix.length + 2). The old code hard-coded SUBSTR(order_number, 3), which
+  // only worked for single-character prefixes — for a multi-char prefix the
+  // substring started with "-" (e.g. "MA-001" -> "-001") and CAST yielded a
+  // negative number that MAX ignored, so the generator kept emitting
+  // "<prefix>-001" and hit the UNIQUE constraint. GLOB "<prefix>-[0-9]*"
+  // restricts to rows whose suffix starts with a digit, so the cast is always
+  // a non-negative integer and stray/migrated numbers can't poison the MAX.
+  const suffixOffset = branch.prefix.length + 2;
+  // Escape GLOB metacharacters in the prefix so a prefix like "C?" or "A*"
+  // matches literally rather than as a wildcard (wrapped in a class, e.g. "[?]").
+  const escapedPrefix = Array.from(branch.prefix, c => ('*?[]'.includes(c) ? `[${c}]` : c)).join('');
+  const globPattern = `${escapedPrefix}-[0-9]*`;
   const maxUsed = db.prepare(`
-    SELECT MAX(CAST(SUBSTR(order_number, 3) AS INTEGER)) AS max_seq
+    SELECT MAX(CAST(SUBSTR(order_number, ?) AS INTEGER)) AS max_seq
     FROM orders
-    WHERE branch_id = ? AND order_number LIKE ?
-  `).get(branchId, `${branch.prefix}-%`) as { max_seq: number | null };
+    WHERE branch_id = ? AND order_number GLOB ?
+  `).get(suffixOffset, branchId, globPattern) as { max_seq: number | null };
 
   const nextSeq = Math.max(branch.last_sequence, maxUsed?.max_seq ?? 0) + 1;
 
