@@ -164,6 +164,7 @@ export default function AppLayout({ session, setSession }: AppLayoutProps) {
           </nav>
 
           <div className="px-6 mt-4 space-y-3">
+            <UpdateButton />
             <button
               onClick={handleLogout}
               title={t('Logout')}
@@ -231,5 +232,77 @@ function BranchSelector() {
       <span className="material-symbols-outlined text-sm">store</span>
       {activeBranch.prefix} — {activeBranch.name_en}
     </span>
+  );
+}
+
+type UpdateStatus = 'idle' | 'checking' | 'downloading' | 'downloaded' | 'not-available' | 'error';
+
+function UpdateButton() {
+  const { t } = useTranslation();
+  const [status, setStatus] = React.useState<UpdateStatus>('idle');
+
+  React.useEffect(() => {
+    // The updater events are forwarded from the main process via the same
+    // channels used by the Settings page; subscribing here doesn't interfere.
+    const unsubAvailable = window.electronAPI.updater.onUpdateAvailable(() => setStatus('downloading'));
+    const unsubNotAvailable = window.electronAPI.updater.onUpdateNotAvailable(() => setStatus('not-available'));
+    const unsubDownloaded = window.electronAPI.updater.onUpdateDownloaded(() => setStatus('downloaded'));
+    const unsubError = window.electronAPI.updater.onUpdateError(() => setStatus('error'));
+    return () => {
+      unsubAvailable();
+      unsubNotAvailable();
+      unsubDownloaded();
+      unsubError();
+    };
+  }, []);
+
+  const handleCheck = async () => {
+    setStatus('checking');
+    try {
+      await window.electronAPI.updater.check();
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  // When an update has been downloaded, install it on demand.
+  const handleInstall = () => window.electronAPI.updater.quitAndInstall();
+
+  const busy = status === 'checking' || status === 'downloading';
+
+  if (status === 'downloaded') {
+    return (
+      <button
+        onClick={handleInstall}
+        className="w-full py-2 bg-tertiary text-white hover:opacity-90 rounded-lg text-xs font-semibold transition-opacity flex items-center justify-center gap-2"
+      >
+        <span className="material-symbols-outlined text-sm">restart_alt</span>
+        <span className="whitespace-nowrap">{t('Restart & Install')}</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleCheck}
+      disabled={busy}
+      title={t('Check for Updates')}
+      className="w-full py-2 text-on-surface-variant hover:bg-surface-container/50 disabled:opacity-50 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2"
+    >
+      {busy ? (
+        <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+      ) : (
+        <span className="material-symbols-outlined text-sm">system_update</span>
+      )}
+      <span className="whitespace-nowrap">
+        {status === 'downloading'
+          ? t('Updating...')
+          : status === 'not-available'
+            ? t('Up to date')
+            : status === 'error'
+              ? t('Update failed')
+              : t('Check for Updates')}
+      </span>
+    </button>
   );
 }

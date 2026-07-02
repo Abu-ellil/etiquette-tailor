@@ -84,7 +84,7 @@ export default function TaskManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterBranch, filterWorker, filterType, activeBranchId]);
+  }, [filterWorker, filterType, activeBranchId]);
 
   useEffect(() => {
     loadData();
